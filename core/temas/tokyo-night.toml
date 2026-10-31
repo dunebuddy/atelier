@@ -1,0 +1,39 @@
+# Tema do atelier. Edite à vontade: o app relê os temas ao abrir as Configurações e ao voltar para a janela.
+# Para criar o seu, copie este arquivo com outro nome (ex.: meu-tema.toml) na mesma pasta (~/atelier/temas).
+# Se apagar um tema que veio com o app, ele volta na próxima abertura; para esconder, mude o nome do arquivo
+# para terminar em .toml.off
+#
+# base: "claro" ou "escuro" (controles do sistema e valores das chaves que faltarem).
+# [cores]: variáveis da interface; as que faltarem vêm do tema base (hover, ativo e acento-suave são calculados).
+#   moldura (barra e menu), bg (folha), bg-elev (cartões, menus), bg-fundo (ficha, cabeçalho de tabela),
+#   texto, texto-2, texto-3, borda, borda-forte, acento, acento-texto, codigo
+# [etiquetas]: cor-base de cada cor de opção (gray, brown, orange, yellow, green, blue, purple, pink, red);
+#   o fundo e a borda da pílula são calculados a partir dela.
+
+nome = "Tokyo Night"
+base = "escuro"
+
+[cores]
+moldura = "#16161e"
+bg = "#1a1b26"
+bg-elev = "#1f2335"
+bg-fundo = "#1c1d29"
+texto = "#c0caf5"
+texto-2 = "#a9b1d6"
+texto-3 = "#565f89"
+borda = "#292e42"
+borda-forte = "#3b4261"
+acento = "#7aa2f7"
+acento-texto = "#16161e"
+codigo = "#16161e"
+
+[etiquetas]
+gray = "#737aa2"
+brown = "#c4a38a"
+orange = "#ff9e64"
+yellow = "#e0af68"
+green = "#9ece6a"
+blue = "#7dcfff"
+purple = "#bb9af7"
+pink = "#ff007c"
+red = "#f7768e"

@@ -1,0 +1,203 @@
+# SESSOES — atelier
+
+## 2026-10-30 — nascimento (no posto `daily-work`)
+- Ideia e decisões na conversa do posto: ver `CONTEXTO.md` e `REQUISITOS.md`.
+- Criados só os docs. Sem código, sem git e sem repo no GitHub.
+
+## 2026-10-30 — fatia 1 (primeira sessão na pasta do atelier)
+- Conversa com o Paulo: tudo maleável como Notion (tipos e propriedades são dados, item troca de tipo), frente vira
+  propriedade, item aponta para pasta no disco, Diário com entradas que viram item, **modelos (templates)** por tipo,
+  temas **claro / escuro / Nord** e interface bonita estilo Claude/Notion com menu lateral recolhível. Registrado em
+  `CONTEXTO.md` e `REQUISITOS.md`.
+- **Estrutura do código:**
+  - `core/` — crate `atelier-core` (sem Tauri): `db.rs` (SQLite, migrations por `user_version`, tipos, propriedades,
+    modelos, itens, notas) e `api.rs` (axum em `127.0.0.1:7477`). Testes: `cd core; cargo test`.
+    Os testes ficam aqui porque binário de teste que linka Tauri não roda no Windows (STATUS_ENTRYPOINT_NOT_FOUND).
+  - `src-tauri/` — o app: abre o banco, sobe a API e a janela.
+  - `src/` — React + Vite. `api.ts` (cliente), `components/` (Sidebar, Lista, PaginaItem, ConfigTipo, Valor, Editor
+    TipTap com markdown, Popover), `styles.css` (os três temas por variáveis CSS).
+  - Workspace Cargo na raiz (`Cargo.toml`), `target/` na raiz.
+- **Banco:** um por bancada, `<bancada>/atelier.db`. Config em `~/atelier/config.toml` (`core/src/bancada.rs`).
+  Para testar sem mexer no real: `ATELIER_HOME=<pasta de teste>`.
+- **Rodar em dev:** `bun run tauri dev`.
+- **Modelo:** `itens.props` é JSON `{ "<id da propriedade>": valor }`. Opções de seleção moram na propriedade ou,
+  quando o tipo tem as suas (status), em `tipo_propriedades.opcoes`. Opção com `historico: true` some da lista ativa.
+  Mudança de status/tipo vira nota automática na linha do tempo.
+- **Toolchain:** Rust GNU (WinLibs). A lib do app é só `rlib`: `cdylib` estoura "export ordinal too large" no ld.
+- **Testado:** 4 testes do core; fumaça da API (tipo e propriedade novos, modelo, troca de tipo com nota, filtro por
+  frente, CORS bloqueando origem de fora); interface no navegador (lista, página, status, editor markdown, 3 temas).
+- **Bancadas + Configurações** (mesma sessão, a pedido do Paulo): `core/src/bancada.rs`, rotas `/api/bancadas*` e
+  `/api/preferencias`; a API troca a conexão quando troca a bancada. Front: `Configuracoes.tsx` (modal), seletor de
+  bancada no rodapé do `Sidebar`.
+- **Redesenho** para fugir do Notion: `BarraTitulo.tsx` (janela sem moldura, `decorations: false`, permissões de
+  janela em `capabilities/default.json`), busca rápida Ctrl+K, ficha à direita na página, fontes Fraunces/Inter via
+  `@fontsource-variable`. Ver `REQUISITOS.md` 3c.
+- **Testado:** 6 testes do core; bancadas pela interface (criar uma bancada Trabalho, trocar, item dela não aparece na Principal,
+  `config.toml` gravado); busca rápida; temas. **Não testado pelo Claude:** arrastar a janela e os botões
+  minimizar/maximizar/fechar no app de verdade (só aparecem na janela do Tauri, não no navegador de teste).
+- **Fatia 2 (MCP) + Integrações + temas em arquivo + pastas** (mesma sessão):
+  - `mcp/` — `atelier-mcp`, JSON-RPC por linha, sem SDK. O `tauri dev`/`build` compila ele antes
+    (`beforeDevCommand`). O app procura o executável ao lado de si.
+  - `core/src/integracoes.rs` — 18 agentes; caminhos e formatos em `docs/INTEGRACOES.md` (pesquisa de 2026-10-30).
+    Teste sem mexer nas configs reais: `ATELIER_AGENTES_HOME=<pasta falsa>`.
+  - `core/src/temas.rs` + `core/temas/*.toml` (semeados em `~/atelier/temas` se faltarem; `.toml.off` esconde).
+  - `core/src/pastas.rs` — pasta do item; migration 3 (`itens.codigo`, 7 hex).
+- **Testado:** 11 testes do core; MCP por JSON-RPC real (criar tipo, criar item por nome com opção nova, trocar
+  tipo, criar pasta, ler pelo código `#ABC` em maiúsculas, assinatura Claude/Codex); integrações numa home falsa
+  (Codex TOML com comentário preservado, Gemini instalar/remover sem perder chaves, Kiro criado do zero, Zed com
+  comentários recusado e intocado, backups `.bak-atelier`); interface com Dracula e Frappé, seção Integrações.
+- Commit `46ed776` e repositório privado `dunebuddy/atelier` criado, com push (ok do Paulo).
+- **Visões** (pedido do Paulo: "o menu são filtros"): migration 4 (`visoes`: nome, ícone, layout, filtro, config).
+  Menu lateral = visões; tipos foram para Configurações → Tipos e modelos. Layouts: tabela, lista, quadro
+  (arrastar muda a propriedade), linha do tempo. **Hoje** = linha do tempo do dia + captura rápida, que cria item sem
+  tipo, visível na Caixa de entrada. "Diário" virou isso, sem entidade própria. MCP ganhou `linha_do_tempo`
+  ("no que trabalhei hoje?"). Front: `Visao.tsx`, `Layouts.tsx`, `LinhaDoTempo.tsx`, `visao.ts` (períodos).
+- **Registro de tudo com data e hora** (pedido forte do Paulo): toda mudança vira nota com autor; edições de
+  texto seguidas viram uma só. A interface mostra data e hora completas em todo lugar.
+- **Lixeira e versões** (migrations 5 e 6): apagar é lógico (`apagado_em`) para itens e notas; esvaziar apaga
+  de vez. `versoes` guarda o texto anterior do corpo (por sessão de edição) e das notas editadas. Telas: `Lixeira.tsx`,
+  `Historico.tsx`.
+- **Qualidade de vida:** ver `docs/QUALIDADE-DE-VIDA.md` (o que entrou e a lista para discutir).
+- **Escopo por bancada:** tipos, propriedades, modelos, visões, itens, notas, versões e lixeira são de cada bancada
+  (no `atelier.db` dela). Global (`~/atelier`): só preferências, temas e lista de bancadas.
+- **Bancada nova escolhe o começo:** "Em branco" (padrão: sem tipos, só Hoje/Caixa/Todos; `db::limpar_sementes`) ou
+  "Trabalho" (Task, Dívida...). Exemplo do Paulo: uma bancada de trabalho e outra de uma aventura de RPG.
+- **Testado:** 14 testes do core; API e interface (captura, quadro arrastando, lista, linha do tempo, notas
+  editadas, histórico, lixeira e restaurar).
+- **QoL aprovada (1-7, 10-17)**, ver tabela em `docs/QUALIDADE-DE-VIDA.md`. Peças novas:
+  - `core/src/terminal.rs` — PTY (`portable-pty`) + websocket `/api/terminal`; só aceita Origin da janela do atelier e
+    só roda o shell ou agentes da lista `AGENTES`. Front: `Terminal.tsx` (xterm.js). No Windows o ConPTY pergunta a
+    posição do cursor (`ESC[6n`) e espera resposta: o xterm responde sozinho; cliente cru precisa responder.
+  - `core/src/manutencao.rs` — backup (`VACUUM INTO`) e lixeira automática; rodada a cada 10 min em `api::servir`.
+    Preferências novas em `bancada::Preferencias` (backup, captura, lixeira, zoom), **tudo desligado por padrão**.
+  - `src-tauri/src/lib.rs` — bandeja (`tray-icon`), fechar esconde quando a captura está ligada; atalho global
+    registrado pela tela (`Captura.tsx`, plugin global-shortcut).
+  - Relações (migration 7), "Vence em breve" (8), grupos de visões (9). `pastas.rs`: copiar e colar arquivos.
+- **Erro corrigido na mesma sessão:** inseri a migration 8 antes da 7 e um banco antigo quebrou ("table relacoes
+  already exists"). Agora há testes de guarda: `migrations_em_ordem` (numeração 1..N na ordem da lista) e
+  `banco_antigo_migra_ate_o_fim`. **Migration nova sempre no fim.**
+- **Testado:** 21 testes do core; terminal por websocket (comando, pasta, prompt do Paulo; origem de fora = 403);
+  relações e menções; arquivos (copiar sem sobrescrever); prazos; backup; preferências mesclando sem perder campos;
+  contagem do menu, relatório, atalhos, painel do terminal abrindo. **Não visto na tela pelo Claude** (painel do
+  navegador sem desenhar): a pintura do xterm, arrastar arquivo do sistema (só no app), bandeja e atalho global
+  (só no app).
+- Commit `d7f4ee1` (visões, lixeira, versões, agente no app e QoL), com push.
+- **Explorador de arquivos** (pedido do Paulo): `core/src/explorador.rs` (`/api/explorar`, `/api/arquivo` GET/PUT,
+  `/api/arquivo/info`; tudo restrito à bancada por caminho canônico; HTML e SVG servidos com CSP `sandbox`; salvar
+  recusa se o arquivo mudou depois de aberto). Front: `Explorador.tsx` (painel à direita, pdf.js, marked num iframe
+  isolado, editor de texto com auto-salvar configurável em `preferencias.editor`).
+- Commit `28d61c1` (explorador de arquivos), com push. App de teste encerrado.
+
+## PONTO DE PARADA — 2026-10-30 (fim do dia)
+
+**Situação das fatias** (do `REQUISITOS.md`):
+
+| Fatia | Situação |
+|---|---|
+| 1 Esqueleto, tabela, página, criar/editar | ✅ |
+| 1b Diário | ✅ virou a visão **Hoje** (linha do tempo + captura) |
+| 2 MCP | ✅ pronto + tela de Integrações; ⚠️ **não instalado/testado no Claude Code real** |
+| 3 Controle da tela pelo MCP (`abrir`, `recarregar`, `filtrar`, `destacar` via websocket) | ❌ **não feita** (hoje a tela só relê a cada 15 s) |
+| 4 Kanban, links, relações, linha do tempo, busca | 🟡 faltam **links por ferramenta** (URL + rótulo + tipo ADO e chamados/GitHub... com ícone, vários por item) e **busca nas anotações** (hoje: título, corpo e código; sem FTS5) |
+| 5 Visões e relatórios | ✅ |
+| 6 Migração do posto `daily-work` | ❌ **não feita**: planejar com o Paulo antes (conteúdo da empresa) |
+
+Fora das fatias: **instalador** (`tauri build`; o `atelier-mcp` precisa ir junto, ao lado do executável) não feito.
+
+**Plano para amanhã (combinado com o Paulo), nesta ordem:**
+1. **Usar de verdade:** `bun run tauri dev` sem `ATELIER_HOME`/`ATELIER_AGENTES_HOME` → nasce `~/atelier` real.
+   Conferir com o Paulo o que o Claude não viu na tela: terminal desenhando (botão **Agente**), arrastar arquivo do
+   Explorer para o item, botões da janela (minimizar/maximizar/fechar/arrastar), bandeja e atalho global (ligar em
+   Configurações → Automação), explorador de arquivos.
+2. **Instalar o MCP no Claude Code real** (Configurações → Integrações) e testar numa sessão nova: criar item, anotar,
+   `linha_do_tempo`.
+3. **Fatia 3**: controle da tela pelo MCP — o "vai na página disso aqui" que motivou o projeto.
+4. **Instalador.**
+5. Depois: links por ferramenta, busca nas anotações (FTS5), e planejar a migração do posto.
+
+**Ideias em aberto** (`docs/QUALIDADE-DE-VIDA.md`): aviso do sistema para prazos, página com várias visões, trava de
+bancada em pasta sincronizada, configurações com busca no estilo VS Code.
+
+**2026-10-31 — ideias de layout do Paulo** (em [`docs/LAYOUT.md`](LAYOUT.md), ainda não feitas): barra da esquerda
+redimensionável com voltar/avançar e histórico de navegação; painel de trabalho dividido em dois; em cada metade, três
+modos (abas, tile MonadTall do Qtile, fita do Niri com colunas de 1/1 a 1/4 e itens empilhados); visões que expandem como árvore na barra
+da esquerda, com a hierarquia vinda de uma propriedade de relação escolhida na visão e botão de recarregar
+(**relações deixam de ser fixas e viram tipo de propriedade "relação"**, criada pelo Paulo — princípio reforçado
+por ele: o atelier só conhece **item e propriedades**; pai, filho, bloqueio, atraso não podem estar no código. A
+lista fixa `TIPOS_RELACAO` em `core/src/db.rs` hoje viola isso e tem de sair); botão de terminal com escolha do tipo (shells + agentes configurados) e seção Configurações →
+Agentes com detectar/testar e os interruptores "terminal ativo" e "Executor"; e em [`docs/AGENTES.md`](AGENTES.md) o
+Executor (chamar agente sem terminal) e o `/prompt` no editor. Ele avisou que vem mais.
+
+## PLANO REFEITO — 2026-10-31 (pedido do Paulo: "implementar 100% do que falta mais o que eu pedi")
+
+Juntando o que faltava das fatias com as ideias de hoje ([`LAYOUT.md`](LAYOUT.md), [`AGENTES.md`](AGENTES.md)).
+Nenhuma fatia antiga cobria as ideias novas; viram fatias novas, nesta ordem (cada uma depende da anterior):
+
+| Fatia | O quê |
+|---|---|
+| 7 Relações como propriedade | tipo de propriedade **relação** (lista de itens); migration converte a tabela `relacoes` em propriedades; some a lista fixa `TIPOS_RELACAO`; filtros "contém / vazia / preenchida"; MCP relaciona via `atualizar_item` |
+| 8 Barra da esquerda | largura arrastável e guardada; voltar/avançar com histórico (botão direito e drop-down); visões expandem como árvore, hierarquia por uma propriedade de relação escolhida na visão (e sentido); botão recarregar |
+| 9 Painel de trabalho | "coisas abertas" genéricas (item, visão, terminal, arquivo, configurações, lixeira); dividir em duas metades; modos **abas**, **tile** (MonadTall) e **fita** (Niri: 1/1, 1/2, 1/3, 1/4, empilhar); arrastar entre metades; estado guardado; atalhos |
+| 10 Agentes | Configurações → Agentes (detectar, testar, **terminal ativo**, **Executor**, comando editável); botão de terminal com escolha (shells + agentes); Executor não interativo; `/prompt` no editor |
+| 3 Controle da tela pelo MCP | `abrir`, `recarregar`, `filtrar`, `destacar` por websocket, abrindo no painel de trabalho |
+| 4 (resto) | links por ferramenta (propriedade **link** com rótulo e ícone); busca nas anotações com FTS5 |
+| Instalador | `tauri build` com o `atelier-mcp` junto do executável |
+| 11 Exportar (pedido no meio do dia) | item ou visão em Markdown, HTML, PDF, Excel ou CSV, escolhendo os campos (título, código, tipo, link, datas, propriedades, texto, linha do tempo, apontado por, itens ligados) e o arranjo (relatório, tabela, lista) |
+
+Fica com o Paulo (precisa dele): usar o app de verdade e conferir o visual; instalar o MCP no Claude Code real;
+planejar a migração do posto `daily-work` (fatia 6).
+
+**Lembretes técnicos:** migration nova **sempre no fim** da lista (há teste de guarda); para testar sem mexer no real,
+`ATELIER_HOME=<pasta>` e `ATELIER_AGENTES_HOME=<pasta>`; se o `tauri dev` reclamar de "recurso em uso" no WebView,
+sobrou um `msedgewebview2` com `com.paulo.atelier` na linha de comando — encerrar só esse.
+
+## 2026-10-31 — fatias 7 a 11, 3, 4 e instalador (Paulo fora, acompanhando pelo celular)
+
+Tudo do plano refeito foi feito e testado no app de teste (`ATELIER_HOME`), pela API, pelo MCP e na tela:
+
+- **7 Relações como propriedade.** Migration 10: coluna `propriedades.config` (`{inverso, um_so}`); a tabela
+  `relacoes` vira valores (lista de códigos) de propriedades da espécie `relacao` (só as que estavam em uso) e some.
+  `db::ligar`, `ramo`, `resumos`, `referencias_do_item` (o "Apontado por", lido pelo nome inverso). Rotas
+  `/api/itens/{id}/ligar`, `/ramo`, `/api/resumos`. Filtro "preenchida/vazia" para qualquer propriedade (`d.<id>=..`
+  ou `vazio`). MCP: `relacionar` agora usa propriedade (`propriedade`, `remover`); `ler_item` mostra
+  `itens_apontados` e `apontado_por`. Front: `ValorRelacao` (chips + busca), `Relacoes.tsx` virou "Apontado por",
+  cache de títulos em `src/resumos.ts`, `abrir(rota, nova)` em `ui.ts`.
+- **9 Painel de trabalho** (`src/painel.ts` puro + `components/Painel.tsx`). Janelas com histórico próprio; uma ou
+  duas metades; modos abas / tile / fita. Todas as janelas ficam num lugar só do DOM, posicionadas por conta: mudar
+  de modo ou de metade não desmonta (o terminal continua vivo). Terminal e arquivos viraram janelas
+  (`TerminalJanela`, `Explorador`). Seletor de modo visível em cada metade; arrastar abas entre metades; estado no
+  `localStorage` (`atelier.painel`; terminais não voltam). Página e visão se ajustam à largura da janela
+  (`@container janela`).
+- **8 Barra da esquerda.** Largura arrastável (`atelier.sidebarLargura`); voltar/avançar e histórico da janela com o
+  foco (botão direito ou o ícone de relógio; saíram da barra de título). Visão focada (ícone de árvore ao passar o
+  mouse): sobe para o topo, as outras somem, itens em árvore pela `config.arvore {prop, sentido, so_raizes}` da visão
+  (`Arvore.tsx`), filhos carregados ao expandir, sem ciclos, botão recarregar.
+- **10 Agentes** (`core/src/agentes.rs`). Lista fixa = a das Integrações; só entra em uso com MCP instalado; cada uso
+  (Terminal, Executor, Prompt) ligado à mão em `preferencias.agentes` (tudo desligado por padrão). Integrações ganhou
+  Detectar todos, Testar (`--version`) e os interruptores; argumentos do modo não interativo editáveis
+  (`{prompt}`, ou pela entrada padrão). `/api/agentes`, `/api/agentes/{id}/testar`, `/api/executar` (até 10 min;
+  cancelar = cancelar a requisição, o processo morre junto). Botão de terminal com escolha (PowerShell 7, Windows
+  PowerShell, CMD, WSL, Git Bash; no Linux os shells do sistema; e os agentes ligados). `/prompt` no editor do item
+  (`PromptAgente.tsx`): caixinha, marcador "escrevendo…" que acompanha a edição, texto entra no ponto, nota com o
+  agente como autor. Testado de verdade com o Claude Code (`claude -p`, 9 s).
+- **3 Controle da tela.** `/api/tela` (abrir item ou visão, ao lado ou não; recarregar; filtrar; destacar) +
+  websocket `/api/tela/eventos`; ferramenta `tela` no MCP (fala com o app por HTTP; avisa se o app está fechado).
+- **4 (resto).** Busca com FTS5 (migration 11, gatilhos): acha nas anotações, sem acento, cada palavra em qualquer
+  lugar do item. Propriedade **links** (vários por item, `{url, rotulo}`), selo da ferramenta pelo endereço (ADO,
+  GitHub, Jira, SharePoint... ou o nome do host, como "Intranet"), sem logos de terceiros.
+- **11 Exportar** (`Exportar.tsx` + `core/src/exportar.rs`, rota `/api/exportar`). Botão na página do item e na
+  visão. PDF pela impressão do WebView ("Salvar como PDF"). Excel com `rust_xlsxwriter`; CSV com `;` e BOM.
+- **Instalador:** `scripts/mcp-junto.mjs` compila o `atelier-mcp` e põe em `src-tauri/binaries/` (externalBin); o
+  Tauri leva para o lado do `atelier.exe`. NSIS por usuário, em português.
+- Testes do core: 29 passando.
+
+## PONTO DE PARADA — 2026-10-31
+
+**Nada commitado ainda** (o Paulo aprova a mensagem antes). Fica com o Paulo:
+1. Usar o app de verdade e conferir o que só se vê na janela real: painel (arrastar abas, fita, tile), terminal,
+   barra lateral, exportar com a janela de salvar, PDF pela impressão, botões da janela, bandeja.
+2. Instalar o MCP no Claude Code real (Integrações) e ligar os usos dos agentes que ele quiser.
+3. Planejar a migração do posto `daily-work` (fatia 6).
+4. Deep link `atelier://item/<código>` (vai no exportar como texto) ainda não abre o app: falta registrar o protocolo
+   (plugin deep-link do Tauri) no instalador.
+

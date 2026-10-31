@@ -1,0 +1,39 @@
+# Tema do atelier. Edite à vontade: o app relê os temas ao abrir as Configurações e ao voltar para a janela.
+# Para criar o seu, copie este arquivo com outro nome (ex.: meu-tema.toml) na mesma pasta (~/atelier/temas).
+# Se apagar um tema que veio com o app, ele volta na próxima abertura; para esconder, mude o nome do arquivo
+# para terminar em .toml.off
+#
+# base: "claro" ou "escuro" (controles do sistema e valores das chaves que faltarem).
+# [cores]: variáveis da interface; as que faltarem vêm do tema base (hover, ativo e acento-suave são calculados).
+#   moldura (barra e menu), bg (folha), bg-elev (cartões, menus), bg-fundo (ficha, cabeçalho de tabela),
+#   texto, texto-2, texto-3, borda, borda-forte, acento, acento-texto, codigo
+# [etiquetas]: cor-base de cada cor de opção (gray, brown, orange, yellow, green, blue, purple, pink, red);
+#   o fundo e a borda da pílula são calculados a partir dela.
+
+nome = "Solarized Claro"
+base = "claro"
+
+[cores]
+moldura = "#eee8d5"
+bg = "#fdf6e3"
+bg-elev = "#fffbf0"
+bg-fundo = "#f5efdc"
+texto = "#073642"
+texto-2 = "#586e75"
+texto-3 = "#93a1a1"
+borda = "#e9e2cb"
+borda-forte = "#d9d2bb"
+acento = "#268bd2"
+acento-texto = "#fdf6e3"
+codigo = "#eee8d5"
+
+[etiquetas]
+gray = "#839496"
+brown = "#9c6b3c"
+orange = "#cb4b16"
+yellow = "#b58900"
+green = "#859900"
+blue = "#2aa198"
+purple = "#6c71c4"
+pink = "#d33682"
+red = "#dc322f"

@@ -1,0 +1,39 @@
+# Tema do atelier. Edite à vontade: o app relê os temas ao abrir as Configurações e ao voltar para a janela.
+# Para criar o seu, copie este arquivo com outro nome (ex.: meu-tema.toml) na mesma pasta (~/atelier/temas).
+# Se apagar um tema que veio com o app, ele volta na próxima abertura; para esconder, mude o nome do arquivo
+# para terminar em .toml.off
+#
+# base: "claro" ou "escuro" (controles do sistema e valores das chaves que faltarem).
+# [cores]: variáveis da interface; as que faltarem vêm do tema base (hover, ativo e acento-suave são calculados).
+#   moldura (barra e menu), bg (folha), bg-elev (cartões, menus), bg-fundo (ficha, cabeçalho de tabela),
+#   texto, texto-2, texto-3, borda, borda-forte, acento, acento-texto, codigo
+# [etiquetas]: cor-base de cada cor de opção (gray, brown, orange, yellow, green, blue, purple, pink, red);
+#   o fundo e a borda da pílula são calculados a partir dela.
+
+nome = "Rosé Pine"
+base = "escuro"
+
+[cores]
+moldura = "#191724"
+bg = "#1f1d2e"
+bg-elev = "#26233a"
+bg-fundo = "#1c1a29"
+texto = "#e0def4"
+texto-2 = "#908caa"
+texto-3 = "#6e6a86"
+borda = "#26233a"
+borda-forte = "#403d52"
+acento = "#c4a7e7"
+acento-texto = "#191724"
+codigo = "#191724"
+
+[etiquetas]
+gray = "#908caa"
+brown = "#ebbcba"
+orange = "#f0a58a"
+yellow = "#f6c177"
+green = "#8fbf9f"
+blue = "#9ccfd8"
+purple = "#c4a7e7"
+pink = "#ebbcba"
+red = "#eb6f92"

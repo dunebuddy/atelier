@@ -1,0 +1,39 @@
+# Tema do atelier. Edite à vontade: o app relê os temas ao abrir as Configurações e ao voltar para a janela.
+# Para criar o seu, copie este arquivo com outro nome (ex.: meu-tema.toml) na mesma pasta (~/atelier/temas).
+# Se apagar um tema que veio com o app, ele volta na próxima abertura; para esconder, mude o nome do arquivo
+# para terminar em .toml.off
+#
+# base: "claro" ou "escuro" (controles do sistema e valores das chaves que faltarem).
+# [cores]: variáveis da interface; as que faltarem vêm do tema base (hover, ativo e acento-suave são calculados).
+#   moldura (barra e menu), bg (folha), bg-elev (cartões, menus), bg-fundo (ficha, cabeçalho de tabela),
+#   texto, texto-2, texto-3, borda, borda-forte, acento, acento-texto, codigo
+# [etiquetas]: cor-base de cada cor de opção (gray, brown, orange, yellow, green, blue, purple, pink, red);
+#   o fundo e a borda da pílula são calculados a partir dela.
+
+nome = "Dracula"
+base = "escuro"
+
+[cores]
+moldura = "#21222c"
+bg = "#282a36"
+bg-elev = "#2f3241"
+bg-fundo = "#252631"
+texto = "#f8f8f2"
+texto-2 = "#c9c9c3"
+texto-3 = "#6272a4"
+borda = "#343746"
+borda-forte = "#44475a"
+acento = "#bd93f9"
+acento-texto = "#21222c"
+codigo = "#21222c"
+
+[etiquetas]
+gray = "#a4accc"
+brown = "#d4a373"
+orange = "#ffb86c"
+yellow = "#f1fa8c"
+green = "#50fa7b"
+blue = "#8be9fd"
+purple = "#bd93f9"
+pink = "#ff79c6"
+red = "#ff5555"

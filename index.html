@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="pt-BR" data-tema="nord">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>atelier</title>
+    <script>
+      try {
+        const t = JSON.parse(localStorage.getItem("atelier.tema") || '"nord"');
+        document.documentElement.dataset.tema = ["claro", "escuro", "nord"].includes(t) ? t : "escuro";
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

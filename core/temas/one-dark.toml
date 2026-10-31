@@ -1,0 +1,39 @@
+# Tema do atelier. Edite à vontade: o app relê os temas ao abrir as Configurações e ao voltar para a janela.
+# Para criar o seu, copie este arquivo com outro nome (ex.: meu-tema.toml) na mesma pasta (~/atelier/temas).
+# Se apagar um tema que veio com o app, ele volta na próxima abertura; para esconder, mude o nome do arquivo
+# para terminar em .toml.off
+#
+# base: "claro" ou "escuro" (controles do sistema e valores das chaves que faltarem).
+# [cores]: variáveis da interface; as que faltarem vêm do tema base (hover, ativo e acento-suave são calculados).
+#   moldura (barra e menu), bg (folha), bg-elev (cartões, menus), bg-fundo (ficha, cabeçalho de tabela),
+#   texto, texto-2, texto-3, borda, borda-forte, acento, acento-texto, codigo
+# [etiquetas]: cor-base de cada cor de opção (gray, brown, orange, yellow, green, blue, purple, pink, red);
+#   o fundo e a borda da pílula são calculados a partir dela.
+
+nome = "One Dark"
+base = "escuro"
+
+[cores]
+moldura = "#21252b"
+bg = "#282c34"
+bg-elev = "#2c313a"
+bg-fundo = "#252930"
+texto = "#dcdfe4"
+texto-2 = "#abb2bf"
+texto-3 = "#5c6370"
+borda = "#323842"
+borda-forte = "#3e4451"
+acento = "#61afef"
+acento-texto = "#21252b"
+codigo = "#21252b"
+
+[etiquetas]
+gray = "#7f848e"
+brown = "#be8f67"
+orange = "#d19a66"
+yellow = "#e5c07b"
+green = "#98c379"
+blue = "#56b6c2"
+purple = "#c678dd"
+pink = "#e48ebd"
+red = "#e06c75"

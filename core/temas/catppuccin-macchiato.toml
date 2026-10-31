@@ -1,0 +1,40 @@
+# Tema do atelier. Edite à vontade: o app relê os temas ao abrir as Configurações e ao voltar para a janela.
+# Para criar o seu, copie este arquivo com outro nome (ex.: meu-tema.toml) na mesma pasta (~/atelier/temas).
+# Se apagar um tema que veio com o app, ele volta na próxima abertura; para esconder, mude o nome do arquivo
+# para terminar em .toml.off
+#
+# base: "claro" ou "escuro" (controles do sistema e valores das chaves que faltarem).
+# [cores]: variáveis da interface; as que faltarem vêm do tema base (hover, ativo e acento-suave são calculados).
+#   moldura (barra e menu), bg (folha), bg-elev (cartões, menus), bg-fundo (ficha, cabeçalho de tabela),
+#   texto, texto-2, texto-3, borda, borda-forte, acento, acento-texto, codigo
+# [etiquetas]: cor-base de cada cor de opção (gray, brown, orange, yellow, green, blue, purple, pink, red);
+#   o fundo e a borda da pílula são calculados a partir dela.
+
+
+nome = "Catppuccin Macchiato"
+base = "escuro"
+
+[cores]
+moldura = "#1e2030"
+bg = "#24273a"
+bg-elev = "#2a2e45"
+bg-fundo = "#212436"
+texto = "#cad3f5"
+texto-2 = "#b8c0e0"
+texto-3 = "#8087a2"
+borda = "#363a4f"
+borda-forte = "#494d64"
+acento = "#c6a0f6"
+acento-texto = "#24273a"
+codigo = "#1e2030"
+
+[etiquetas]
+gray = "#939ab7"
+brown = "#f0c6c6"
+orange = "#f5a97f"
+yellow = "#eed49f"
+green = "#a6da95"
+blue = "#8aadf4"
+purple = "#c6a0f6"
+pink = "#f5bde6"
+red = "#ed8796"

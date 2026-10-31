@@ -1,0 +1,21 @@
+[package]
+name = "atelier-core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
+axum = { version = "0.8", features = ["ws"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time", "fs", "process", "io-util"] }
+tower-http = { version = "0.6", features = ["cors"] }
+dirs = "6"
+toml = "0.8"
+toml_edit = "0.22"
+portable-pty = "0.9"
+base64 = "0.22"
+mime_guess = "2"
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+rust_xlsxwriter = "0.79"

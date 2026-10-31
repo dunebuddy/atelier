@@ -259,6 +259,14 @@ body.redimensionando .sidebar { transition: none; }
 .principal { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .conteudo { flex: 1; overflow: auto; }
 
+/* aviso de versão nova */
+.aviso-atualizacao {
+  position: fixed; right: 18px; bottom: 18px; z-index: 65; width: min(440px, calc(100vw - 36px)); display: flex; align-items: center; gap: 10px;
+  padding: 12px 12px 12px 14px; background: var(--bg-elev); border: 1px solid var(--acento); border-radius: 12px; box-shadow: var(--sombra);
+  animation: surgir .15s ease-out; color: var(--texto); font-size: 13.5px;
+}
+.aviso-atualizacao svg:first-child { color: var(--acento); flex-shrink: 0; }
+
 /* exportar */
 .modal.exportar { height: auto; max-height: calc(100vh - 48px); width: min(640px, calc(100vw - 48px)); overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; }
 .modal-cabeca { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }

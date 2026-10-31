@@ -4,6 +4,7 @@ import { aplicarTema } from "./tema";
 import { BarraTitulo } from "./components/BarraTitulo";
 import { Configuracoes, SecaoConfig } from "./components/Configuracoes";
 import { EscolherAgente } from "./components/Terminal";
+import { AvisoAtualizacao } from "./components/Atualizacao";
 import { CapturaGlobal } from "./components/Captura";
 import { Atalhos } from "./components/Atalhos";
 import { Sidebar } from "./components/Sidebar";
@@ -398,6 +399,7 @@ export default function App() {
       )}
       <CapturaGlobal prefs={prefs} />
       <EscolherAgente />
+      <AvisoAtualizacao prefs={prefs} />
       {verAtalhos && <Atalhos aoFechar={() => setVerAtalhos(false)} />}
       {aviso && (
         <div className="toast">

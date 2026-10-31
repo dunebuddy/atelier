@@ -415,6 +415,8 @@ export interface Preferencias {
   lixeira: { ativo: boolean; dias: number };
   /** editor de arquivos: auto-salvar como no VS Code */
   editor: { auto_salvar: "desligado" | "atraso" | "foco"; atraso_ms: number };
+  /** ao abrir, procura versão nova no GitHub e avisa */
+  atualizacao: { avisar: boolean };
   /** por id da integração: Terminal, Executor e Prompt (tudo desligado até ligar) */
   agentes: Record<string, UsoAgente>;
 }

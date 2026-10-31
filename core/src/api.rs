@@ -748,7 +748,7 @@ async fn mudar_preferencias(State(b): State<Banco>, Json(d): Json<Value>) -> R {
     }
     // zoom, backup, captura, lixeira: mescla só o que veio
     let mut atual = serde_json::to_value(&cfg.preferencias).map_err(|e| Erro::Invalido(e.to_string()))?;
-    for chave in ["zoom", "backup", "captura", "lixeira", "editor", "agentes"] {
+    for chave in ["zoom", "backup", "captura", "lixeira", "editor", "agentes", "atualizacao"] {
         match (d.get(chave), atual.get_mut(chave)) {
             (Some(Value::Object(novo)), Some(Value::Object(velho))) => velho.extend(novo.clone()),
             (Some(v), Some(velho)) if !v.is_object() => *velho = v.clone(),

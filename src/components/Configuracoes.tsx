@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Check, Copy, FileCode, FolderOpen, FolderPlus, Languages, Package, Palette, Pencil, Plug, Plus, RefreshCw, Shapes, Timer, X } from "lucide-react";
 import { Agente, api, Bancada, Bancadas, Esquema, Integracoes, Preferencias, TemaArquivo, AgenteCli, UsoAgente } from "../api";
 import { SecaoAutomacao } from "./Automacao";
+import { procurarAtualizacao } from "./Atualizacao";
 import { avisar, falhou, Tema } from "../ui";
 
 export type SecaoConfig = "aparencia" | "geral" | "bancadas" | "tipos" | "integracoes" | "automacao" | "editor";
@@ -81,6 +82,18 @@ export function Configuracoes({
           {secao === "bancadas" && <SecaoBancadas aoTrocar={aoTrocarBancada} />}
           {secao === "integracoes" && <SecaoIntegracoes />}
           {secao === "automacao" && prefs && <SecaoAutomacao prefs={prefs} mudar={mudarPrefs} />}
+          {secao === "automacao" && prefs && (
+            <>
+              <h4 style={{ marginTop: 22 }}>Atualização</h4>
+              <label className="menu-item" style={{ cursor: "pointer", paddingLeft: 0 }}>
+                <input type="checkbox" checked={prefs.atualizacao?.avisar ?? true} style={{ accentColor: "var(--acento)" }}
+                  onChange={(e) => mudarPrefs({ atualizacao: { avisar: e.target.checked } })} />
+                Ao abrir, ver se tem versão nova e avisar (só instala se você mandar)
+              </label>
+              <button className="btn" onClick={procurarAtualizacao}>Procurar versão nova agora</button>
+              <p className="dica">Versão instalada: {__VERSAO__}. As versões saem em github.com/dunebuddy/atelier/releases.</p>
+            </>
+          )}
           {secao === "editor" && prefs && (
             <>
               <h3>Editor de arquivos</h3>

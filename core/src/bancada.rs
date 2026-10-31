@@ -108,9 +108,25 @@ pub struct Preferencias {
     pub lixeira: LixeiraAuto,
     #[serde(default)]
     pub editor: EditorArquivos,
+    /// procura versão nova ao abrir (pedido do Paulo: "tem versão nova, quer instalar?")
+    #[serde(default)]
+    pub atualizacao: Atualizacao,
     /// por id da integração ("claude-code", "codex"...)
     #[serde(default)]
     pub agentes: std::collections::BTreeMap<String, UsoAgente>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Atualizacao {
+    /// ao abrir o app, pergunta ao GitHub se tem versão nova e avisa (não instala sem perguntar)
+    #[serde(default = "verdadeiro")]
+    pub avisar: bool,
+}
+
+impl Default for Atualizacao {
+    fn default() -> Self {
+        Atualizacao { avisar: true }
+    }
 }
 
 fn tema_padrao() -> String {
@@ -173,6 +189,7 @@ impl Default for Preferencias {
             captura: Captura::default(),
             lixeira: LixeiraAuto::default(),
             editor: EditorArquivos::default(),
+            atualizacao: Atualizacao::default(),
             agentes: Default::default(),
         }
     }

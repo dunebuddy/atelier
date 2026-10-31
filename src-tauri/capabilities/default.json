@@ -18,6 +18,8 @@
     "global-shortcut:allow-unregister-all",
     "global-shortcut:allow-is-registered",
     "opener:default",
-    "dialog:default"
+    "dialog:default",
+    "updater:default",
+    "process:allow-restart"
   ]
 }

@@ -1,0 +1,70 @@
+# Release: ao subir uma tag v* (ex.: v0.2.0), gera os instaladores de Windows e Linux, assina as atualizações e
+# publica a release com o latest.json que o app consulta para avisar de versão nova.
+# Antes da tag: node scripts/versao.mjs 0.2.0 (muda a versão em todos os arquivos) e commit.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  testes:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+      - run: cargo test -p atelier-core
+
+  build:
+    needs: testes
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - sistema: windows-latest
+            pacotes: nsis
+          - sistema: ubuntu-22.04
+            pacotes: appimage,deb
+    runs-on: ${{ matrix.sistema }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dependências do Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libssl-dev
+
+      - uses: oven-sh/setup-bun@v2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+
+      - name: Versão da tag bate com a do app
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          app=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          [ "v$app" = "${GITHUB_REF_NAME}" ] || { echo "tag ${GITHUB_REF_NAME} mas o app está em $app: rode node scripts/versao.mjs"; exit 1; }
+
+      - run: bun install --frozen-lockfile
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tauriScript: bun tauri
+          args: --bundles ${{ matrix.pacotes }}
+          tagName: ${{ github.ref_name }}
+          releaseName: atelier ${{ github.ref_name }}
+          releaseBody: |
+            Windows: baixe o `atelier_*_x64-setup.exe`. Linux: o `.AppImage` ou o `.deb`.
+            Quem já tem o atelier instalado recebe o aviso de versão nova ao abrir.
+          releaseDraft: false
+          prerelease: false

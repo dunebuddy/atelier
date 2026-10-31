@@ -201,3 +201,19 @@ Tudo do plano refeito foi feito e testado no app de teste (`ATELIER_HOME`), pela
 4. Deep link `atelier://item/<código>` (vai no exportar como texto) ainda não abre o app: falta registrar o protocolo
    (plugin deep-link do Tauri) no instalador.
 
+
+## 2026-10-31 (noite) — repositório público, CI e atualização
+
+- Commit das fatias (`c32f5bf`) e push. O Paulo pediu CI por tag e aviso de versão nova. Como o app não baixa
+  atualização de repositório privado, ele escolheu **tornar o atelier público**, depois de **tirar o que é da empresa**
+  dos docs e do código (o original ficou em `privado/`, fora do git). Para não sobrar nada nos commits antigos, o repo
+  antigo virou `dunebuddy/atelier-antigo` (privado, backup) e `dunebuddy/atelier` nasceu público com um commit limpo.
+- **CI:** `.github/workflows/release.yml`: tag `v*` → testes do core → instaladores de Windows (NSIS) e Linux
+  (AppImage, deb) com `tauri-action`, assinados, e a release com o `latest.json`. Confere que a tag bate com a versão
+  do app. `scripts/versao.mjs X.Y.Z` muda a versão em todos os arquivos.
+- **Atualização:** plugins `updater` e `process`; chave pública no `tauri.conf.json`; a privada em
+  `~/.tauri/atelier.key` (só na máquina do Paulo; **fazer backup**). Aviso "tem versão nova, quer instalar?" ao
+  abrir (`preferencias.atualizacao.avisar`, ligado porque o Paulo pediu o aviso; desliga em Configurações →
+  Automação, onde também tem "Procurar versão nova agora"). Só instala quando ele manda; o app reinicia sozinho.
+- **Falta (Paulo):** pôr a chave privada no segredo `TAURI_SIGNING_PRIVATE_KEY` do repositório (o Claude foi barrado
+  de gravar segredo) e subir a primeira tag para testar o CI.

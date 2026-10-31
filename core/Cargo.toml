@@ -19,3 +19,4 @@ mime_guess = "2"
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 rust_xlsxwriter = "0.79"
+sysinfo = { version = "0.40.1", default-features = false, features = ["system"] }

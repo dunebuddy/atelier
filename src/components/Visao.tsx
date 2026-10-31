@@ -10,7 +10,7 @@ import { Kanban, ListaCompacta, Tabela } from "./Layouts";
 import { Exportar } from "./Exportar";
 import { LinhaDoTempo } from "./LinhaDoTempo";
 import { Popover, usePopover } from "./Popover";
-import { Etiqueta, IconeEspecie } from "./Valor";
+import { Etiqueta, IconeEspecie, valorDe } from "./Valor";
 
 const LAYOUTS: { id: Layout; nome: string; icone: React.ReactNode }[] = [
   { id: "tabela", nome: "Tabela", icone: <Table2 size={15} /> },
@@ -105,7 +105,13 @@ export function VisaoTela({
     const l = (itens ?? []).filter((i) => f.historico || !ehHistorico(esquema, i));
     if (!ordenar) return l;
     // ordem fixa da visão (ex.: por prazo); sem valor vai para o fim
-    const val = (i: Item) => { const x = i.props[ordenar.prop]; return x == null || x === "" ? null : String(x); };
+    const p = esquema.propriedades.find((x) => x.id === ordenar.prop);
+    // número compara como número; o resto como texto (datas AAAA-MM-DD ordenam certo)
+    const val = (i: Item): string | number | null => {
+      const x = p ? valorDe(i, p) : i.props[ordenar.prop];
+      if (x == null || x === "") return null;
+      return typeof x === "number" ? x : Array.isArray(x) ? String(x[0] ?? "") : String(x);
+    };
     return [...l].sort((a, b) => {
       const va = val(a), vb = val(b);
       if (va === vb) return 0;
@@ -285,7 +291,7 @@ export function VisaoTela({
           <button className="menu-item" onClick={() => { const { ordenar: _o, ...resto } = v.config ?? {}; mudar({ config: resto }); pOrdem.fechar(); }}>
             Última atualização {!ordenar && <span className="dir">✓</span>}
           </button>
-          {props.filter((p) => ["data", "numero", "texto", "selecao", "status"].includes(p.especie)).map((p) => (
+          {props.filter((p) => ["data", "numero", "texto", "selecao", "status", "criado_em", "atualizado_em", "email", "telefone"].includes(p.especie)).map((p) => (
             <button key={p.id} className="menu-item" onClick={() => {
               const asc = ordenar?.prop === p.id ? !ordenar.asc : true;
               mudar({ config: { ...v.config, ordenar: { prop: p.id, asc } } });

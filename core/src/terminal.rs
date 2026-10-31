@@ -73,10 +73,12 @@ pub async fn terminal(ws: WebSocketUpgrade, headers: HeaderMap, Query(q): Query<
     let cwd = q.get("cwd").cloned().filter(|c| std::path::Path::new(c).is_dir());
     let cols = q.get("cols").and_then(|v| v.parse().ok()).unwrap_or(100);
     let rows = q.get("rows").and_then(|v| v.parse().ok()).unwrap_or(30);
-    ws.on_upgrade(move |s| sessao(s, agente, escolhido, cwd, cols, rows))
+    // número da sessão que a tela deu: a barra de status soma a memória por workspace
+    let num: Option<u64> = q.get("sessao").and_then(|v| v.parse().ok());
+    ws.on_upgrade(move |s| sessao(s, num, agente, escolhido, cwd, cols, rows))
 }
 
-async fn sessao(socket: WebSocket, agente: Option<std::path::PathBuf>, escolhido: Option<std::path::PathBuf>, cwd: Option<String>, cols: u16, rows: u16) {
+async fn sessao(socket: WebSocket, num: Option<u64>, agente: Option<std::path::PathBuf>, escolhido: Option<std::path::PathBuf>, cwd: Option<String>, cols: u16, rows: u16) {
     let (mut saida, mut entrada) = socket.split();
     let par = match native_pty_system().openpty(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 }) {
         Ok(p) => p,
@@ -121,6 +123,9 @@ async fn sessao(socket: WebSocket, agente: Option<std::path::PathBuf>, escolhido
         }
     };
     drop(par.slave);
+    if let (Some(n), Some(pid)) = (num, filho.process_id()) {
+        crate::sistema::registrar_sessao(n, pid);
+    }
     let mut leitor = match par.master.try_clone_reader() {
         Ok(l) => l,
         Err(_) => return,
@@ -181,4 +186,7 @@ async fn sessao(socket: WebSocket, agente: Option<std::path::PathBuf>, escolhido
     }
     let _ = filho.kill();
     envio.abort();
+    if let Some(n) = num {
+        crate::sistema::esquecer_sessao(n);
+    }
 }

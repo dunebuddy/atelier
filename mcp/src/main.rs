@@ -208,12 +208,17 @@ fn ferramentas() -> Value {
         },
         {
             "name": "criar_propriedade",
-            "description": "Cria uma propriedade (compartilhada entre tipos) e, se quiser, já coloca em tipos. Espécies: texto, numero, data, checkbox, url, selecao, multisselecao, status, relacao (aponta para outros itens; `inverso` é como se lê do outro lado, ex.: \"Bloqueado por\" ↔ \"Bloqueia\"; `um_so` aceita um item só, ex.: \"Pai\").",
+            "description": "Cria uma propriedade (compartilhada entre tipos) e, se quiser, já coloca em tipos. Espécies: texto, numero (inteiro, casas, formato), data (hora), checkbox (sim/não), url, email, telefone, selecao, multisselecao, status, links (vários links com rótulo), criado_em e atualizado_em (automáticas); texto/numero/data/email/telefone/url com lista: true guardam vários valores; relacao (aponta para outros itens; `inverso` é como se lê do outro lado, ex.: \"Bloqueado por\" ↔ \"Bloqueia\"; `um_so` aceita um item só, ex.: \"Pai\").",
             "inputSchema": { "type": "object", "properties": {
                 "nome": { "type": "string" },
                 "especie": { "type": "string" },
                 "opcoes": { "type": "array", "items": { "type": "string" } },
                 "inverso": { "type": "string", "description": "relacao: nome do outro lado" },
+                "lista": { "type": "boolean", "description": "texto, numero, data, email, telefone, url: aceita vários valores" },
+                "inteiro": { "type": "boolean", "description": "numero: só inteiros" },
+                "casas": { "type": "integer", "description": "numero: casas decimais" },
+                "formato": { "type": "string", "enum": ["numero", "percentual", "moeda"], "description": "numero: como mostrar" },
+                "hora": { "type": "boolean", "description": "data: com hora (AAAA-MM-DDTHH:MM)" },
                 "um_so": { "type": "boolean", "description": "relacao: aceita um item só" },
                 "tipos": { "type": "array", "items": { "type": "string" }, "description": "nomes dos tipos que passam a ter a propriedade" }
             }, "required": ["nome", "especie"] }
@@ -425,9 +430,8 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
                                 .map(|o| if o["historico"] == true { json!(format!("{} (histórico)", o["nome"].as_str().unwrap_or(""))) } else { o["nome"].clone() })
                                 .collect();
                             let mut d = json!({ "nome": p["nome"], "especie": p["especie"], "opcoes": opcoes });
-                            if p["especie"] == "relacao" {
-                                d["inverso"] = p["config"]["inverso"].clone();
-                                d["um_so"] = p["config"]["um_so"].clone();
+                            if p["config"].as_object().is_some_and(|c| !c.is_empty()) {
+                                d["config"] = p["config"].clone();
                             }
                             Some(d)
                         })
@@ -603,7 +607,13 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
                 .filter_map(|o| o.as_str())
                 .map(|o| json!({ "nome": o, "cor": "gray" }))
                 .collect();
-            let config = json!({ "inverso": s(a, "inverso"), "um_so": a.get("um_so").and_then(|v| v.as_bool()).unwrap_or(false) });
+            let mut config = Map::new();
+            for k in ["inverso", "um_so", "lista", "inteiro", "casas", "formato", "hora"] {
+                if let Some(v) = a.get(k).filter(|v| !v.is_null()) {
+                    config.insert(k.into(), v.clone());
+                }
+            }
+            let config = Value::Object(config);
             let pid = db::criar_propriedade(&conn, &json!({ "nome": s(a, "nome"), "especie": s(a, "especie"), "opcoes": opcoes, "config": config })).map_err(e)?;
             let mut em = vec![];
             for t in a.get("tipos").and_then(|v| v.as_array()).into_iter().flatten().filter_map(|t| t.as_str()) {

@@ -6,6 +6,7 @@ import { Bot, ChevronDown, SquareTerminal } from "lucide-react";
 import { Popover, usePopover } from "./Popover";
 import { BASE } from "../api";
 import { abrir } from "../ui";
+import { bate } from "../atalhos";
 
 interface Aba {
   id: number;
@@ -29,10 +30,14 @@ function cor(nome: string) {
 }
 
 let proximaSessao = Date.now() % 1_000_000;
+/** sessões abertas nesta execução do app; as outras voltaram do workspace guardado e estão paradas */
+const vivas = new Set<number>();
 
 /** Abre um terminal (o shell, ou um agente) numa janela ao lado. */
 export function abrirTerminal(cwd?: string, programa?: string, titulo?: string, shell?: string) {
-  abrir({ v: "terminal", sessao: proximaSessao++, cwd, programa, shell, titulo: titulo ?? nomePasta(cwd) ?? "terminal" }, true);
+  const sessao = proximaSessao++;
+  vivas.add(sessao);
+  abrir({ v: "terminal", sessao, cwd, programa, shell, titulo: titulo ?? nomePasta(cwd) ?? "terminal" }, true);
 }
 
 /** Botão de terminal, como no VS Code: clique abre o shell padrão; a setinha escolhe o tipo (shells e agentes). */
@@ -73,6 +78,19 @@ export function BotaoTerminal() {
 
 /** Conteúdo de uma janela de terminal. A sessão vive enquanto a janela existir (trocar de aba ou de modo não mata). */
 export function TerminalJanela({ sessao, cwd, programa, shell, visivel }: { sessao: number; cwd?: string; programa?: string; shell?: string; visivel: boolean }) {
+  const [, setN] = useState(0);
+  if (!vivas.has(sessao)) {
+    return (
+      <div className="janela-terminal parado">
+        <div>
+          <SquareTerminal size={22} />
+          <p>Terminal parado: o app foi fechado{programa ? " (o agente também parou)" : ""}.</p>
+          {cwd && <p className="dica-inline">{cwd}</p>}
+          <button className="btn primario" onClick={() => { vivas.add(sessao); setN((n) => n + 1); }}>Reabrir {programa ? "o agente" : "o terminal"}</button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="janela-terminal">
       <TerminalXterm aba={{ id: sessao, titulo: "", cwd, programa, shell }} visivel={visivel} aoSair={() => {}} />
@@ -104,7 +122,7 @@ export function EscolherAgente() {
       else abrirTerminal(d.cwd, d.programa, d.programa ? rotulo(d.programa, d.titulo) : d.titulo);
     };
     const tecla = (e: KeyboardEvent) => {
-      if (e.ctrlKey && !e.altKey && (e.key === "`" || e.code === "Backquote")) {
+      if (bate("terminal", e)) {
         e.preventDefault();
         abrirTerminal();
       }
@@ -182,6 +200,7 @@ function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; aoSair: (
     if (aba.cwd) q.set("cwd", aba.cwd);
     if (aba.programa) q.set("programa", aba.programa);
     if (aba.shell) q.set("shell", aba.shell);
+    q.set("sessao", String(aba.id));
     const ws = new WebSocket(`${WS}/terminal?${q}`);
     ws.binaryType = "arraybuffer";
     ws.onmessage = (ev) => !morto && term.write(typeof ev.data === "string" ? ev.data : new Uint8Array(ev.data));
@@ -193,7 +212,7 @@ function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; aoSair: (
       if (e.type !== "keydown") return true;
       if (e.ctrlKey && e.key === "c" && term.hasSelection()) { navigator.clipboard.writeText(term.getSelection()); return false; }
       if (e.ctrlKey && e.key === "v") { navigator.clipboard.readText().then((t) => ws.send(JSON.stringify({ t: "i", d: t }))); return false; }
-      if (e.ctrlKey && (e.key === "`" || e.code === "Backquote")) return false;
+      if (bate("terminal", e)) return false;
       return true;
     });
 

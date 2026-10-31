@@ -4,7 +4,7 @@ import { api, Esquema, Item, Opcao, opcoesDe, Propriedade, Valor } from "../api"
 import { avisar, falhou, Rota } from "../ui";
 import { dataHora } from "../visao";
 import { MenuPasta } from "./MenuPasta";
-import { Etiqueta, IconeEspecie, urgencia, ValorProp } from "./Valor";
+import { Etiqueta, IconeEspecie, textoSimples, urgencia, valorDe, ValorProp } from "./Valor";
 
 /** Grava uma propriedade com otimismo: a tela muda na hora e confirma com o banco. */
 function useMudarProp(todos: Item[], aoMudarItens: (l: Item[]) => void, esquema?: Esquema) {
@@ -103,7 +103,7 @@ export function Tabela({
                 {colunas.map((p) => (
                   <td key={p.id}>
                     {doTipo.has(p.id) ? (
-                      <ValorProp classe="celula" esquema={esquema} prop={p} tipoId={it.tipo_id} valor={it.props[p.id]} proprio={it.codigo} aoMudar={(v) => mudar(it, p.id, v)} aoMudarEsquema={aoMudarEsquema} />
+                      <ValorProp classe="celula" esquema={esquema} prop={p} tipoId={it.tipo_id} valor={valorDe(it, p)} proprio={it.codigo} aoMudar={(v) => mudar(it, p.id, v)} aoMudarEsquema={aoMudarEsquema} />
                     ) : (
                       <div className="celula" />
                     )}
@@ -152,7 +152,7 @@ export function ListaCompacta({ esquema, itens, colunas, ir }: { esquema: Esquem
 
 /** Valor de propriedade só para ler (lista e cartões). */
 function Resumo({ esquema, prop, item }: { esquema: Esquema; prop: Propriedade; item: Item }) {
-  const v = item.props[prop.id];
+  const v = valorDe(item, prop);
   if (v == null || v === "" || (Array.isArray(v) && !v.length)) return null;
   const ops = opcoesDe(esquema, prop, item.tipo_id);
   const achar = (n: string): Opcao => ops.find((o) => o.nome === n) ?? { nome: n };
@@ -160,7 +160,8 @@ function Resumo({ esquema, prop, item }: { esquema: Esquema; prop: Propriedade; 
   if (prop.especie === "multisselecao" && Array.isArray(v)) return <>{(v as string[]).map((x) => <Etiqueta key={x} opcao={achar(x)} />)}</>;
   if (prop.especie === "data" && typeof v === "string") return <span className={`resumo-texto data ${urgencia(v)}`}>{prop.nome} {v.split("-").reverse().join("/")}</span>;
   if (prop.especie === "checkbox") return v ? <span className="resumo-texto">✓ {prop.nome}</span> : null;
-  return <span className="resumo-texto">{String(v)}</span>;
+  if (Array.isArray(v)) return <span className="resumo-texto">{(v as (string | number)[]).map((x) => textoSimples(x, prop)).join(", ")}</span>;
+  return <span className="resumo-texto">{textoSimples(v, prop)}</span>;
 }
 
 // ---------- quadro (kanban) ----------

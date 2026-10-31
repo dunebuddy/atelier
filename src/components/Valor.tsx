@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import {
-  CalendarDays, ExternalLink, Flag, Hash, Link2, PenLine, Plus, SquareCheck, Tag, Tags, Waypoints, X,
+  CalendarDays, Clock, ExternalLink, Flag, Hash, Link2, Mail, PenLine, Phone, Plus, SquareCheck, Tag, Tags, Waypoints, X,
 } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
-  acrescentarOpcao, api, Cor, corAleatoria, Especie, Esquema, Item, Link as LinkItem, Opcao, opcoesDe, Propriedade, Valor,
+  acrescentarOpcao, api, ConfigProp, Cor, corAleatoria, LISTAVEIS, Especie, Esquema, Item, Link as LinkItem, Opcao, opcoesDe, Propriedade, Valor,
 } from "../api";
 import { abrir } from "../ui";
 import { lembrarResumo, useResumos } from "../resumos";
@@ -23,6 +23,9 @@ export function IconeEspecie({ especie, tam = 15 }: { especie: Especie; tam?: nu
     case "status": return <Flag {...P} />;
     case "relacao": return <Waypoints {...P} />;
     case "links": return <Link2 {...P} />;
+    case "email": return <Mail {...P} />;
+    case "telefone": return <Phone {...P} />;
+    case "criado_em": case "atualizado_em": return <Clock {...P} />;
   }
 }
 
@@ -51,6 +54,31 @@ export function dataBR(iso: string) {
   return d && m && a ? `${d}/${m}/${a}` : iso;
 }
 
+/** Valor da propriedade no item (as automáticas vêm do próprio item). */
+export function valorDe(it: Item, p: Propriedade): Valor | undefined {
+  if (p.especie === "criado_em") return it.criado_em;
+  if (p.especie === "atualizado_em") return it.atualizado_em;
+  return it.props[p.id];
+}
+
+/** Número como o Paulo lê: 1.234,5 · 12% · R$ 1.234,50 (conforme a config). */
+export function formatarNumero(n: number, c: ConfigProp = {}) {
+  const casas = c.inteiro ? 0 : c.casas ?? undefined;
+  const o: Intl.NumberFormatOptions = { minimumFractionDigits: casas, maximumFractionDigits: casas ?? 6 };
+  if (c.formato === "percentual") return `${n.toLocaleString("pt-BR", o)}%`;
+  if (c.formato === "moeda") return n.toLocaleString("pt-BR", { ...o, style: "currency", currency: "BRL" });
+  return n.toLocaleString("pt-BR", o);
+}
+
+/** Valor simples em texto, conforme a espécie (para chips de lista, resumo e exportar). */
+export function textoSimples(v: Valor | undefined, p: Propriedade): string {
+  if (v == null || v === "") return "";
+  if (p.especie === "numero" && typeof v === "number") return formatarNumero(v, p.config);
+  if (p.especie === "data" && typeof v === "string") return v.length > 10 ? `${dataBR(v)} ${v.slice(11, 16)}` : dataBR(v);
+  if (p.especie === "criado_em" || p.especie === "atualizado_em") return typeof v === "string" ? `${dataBR(v)} ${v.slice(11, 16)}` : "";
+  return String(v);
+}
+
 /** Mostra o valor de uma propriedade e deixa editar no lugar, conforme a espécie. */
 export function ValorProp({
   esquema, prop, tipoId, valor, aoMudar, aoMudarEsquema, classe = "prop-valor", proprio,
@@ -71,7 +99,15 @@ export function ValorProp({
   const opcoes = opcoesDe(esquema, prop, tipoId);
   const achar = (nome: string): Opcao => opcoes.find((o) => o.nome === nome) ?? { nome };
 
+  if (prop.config?.lista && LISTAVEIS.includes(prop.especie)) {
+    return <ValorLista prop={prop} valor={valor} aoMudar={aoMudar} classe={classe} />;
+  }
+
   switch (prop.especie) {
+    case "criado_em":
+    case "atualizado_em":
+      return <div className={classe} title="Preenchida pelo atelier"><span style={{ color: "var(--texto-2)" }}>{textoSimples(valor, prop) || "—"}</span></div>;
+
     case "checkbox":
       return (
         <div className={classe} onClick={() => aoMudar(!valor)}>
@@ -82,9 +118,13 @@ export function ValorProp({
     case "texto":
     case "numero":
     case "url":
+    case "email":
+    case "telefone":
     case "data": {
       if (editando) {
-        const tipoInput = prop.especie === "numero" ? "number" : prop.especie === "data" ? "date" : "text";
+        const comHora = prop.especie === "data" && !!prop.config?.hora;
+        const tipoInput = prop.especie === "numero" ? "number" : prop.especie === "data" ? (comHora ? "datetime-local" : "date")
+          : prop.especie === "email" ? "email" : prop.especie === "telefone" ? "tel" : "text";
         const gravar = (s: string) => {
           setEditando(false);
           const v = s.trim() === "" ? null : prop.especie === "numero" ? Number(s) : s.trim();
@@ -95,8 +135,9 @@ export function ValorProp({
             <input
               className="inline"
               type={tipoInput}
+              step={prop.especie === "numero" ? (prop.config?.inteiro ? 1 : "any") : undefined}
               autoFocus
-              defaultValue={valor == null ? "" : String(valor)}
+              defaultValue={valor == null ? "" : comHora && typeof valor === "string" && valor.length === 10 ? `${valor}T00:00` : String(valor)}
               onBlur={(e) => gravar(e.currentTarget.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") gravar(e.currentTarget.value);
@@ -106,8 +147,9 @@ export function ValorProp({
           </div>
         );
       }
-      let mostra = valor == null || valor === "" ? vazio : <span>{String(valor)}</span>;
-      if (prop.especie === "data" && typeof valor === "string") mostra = <span className={`data ${urgencia(valor)}`}>{dataBR(valor)}</span>;
+      let mostra = valor == null || valor === "" ? vazio : <span>{textoSimples(valor, prop)}</span>;
+      if (prop.especie === "data" && typeof valor === "string") mostra = <span className={`data ${urgencia(valor)}`}>{textoSimples(valor, prop)}</span>;
+      if (prop.especie === "numero" && typeof valor === "number") mostra = <span style={{ fontVariantNumeric: "tabular-nums" }}>{textoSimples(valor, prop)}</span>;
       if (prop.especie === "url" && typeof valor === "string" && valor) {
         mostra = (
           <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
@@ -129,10 +171,11 @@ export function ValorProp({
       return (
         <div
           className={classe}
-          title={prop.especie === "url" && valor ? "Ctrl+clique para abrir" : undefined}
+          title={["url", "email", "telefone"].includes(prop.especie) && valor ? "Ctrl+clique para abrir" : undefined}
           onClick={(e) => {
-            if (prop.especie === "url" && typeof valor === "string" && valor && (e.ctrlKey || e.metaKey)) {
-              openUrl(valor).catch(() => window.open(valor));
+            if (["url", "email", "telefone"].includes(prop.especie) && typeof valor === "string" && valor && (e.ctrlKey || e.metaKey)) {
+              const u = prop.especie === "email" ? `mailto:${valor}` : prop.especie === "telefone" ? `tel:${valor.replace(/[^\d+]/g, "")}` : valor;
+              openUrl(u).catch(() => window.open(u));
               return;
             }
             setEditando(true);
@@ -273,6 +316,45 @@ function ValorLinks({ valor, aoMudar, classe }: { valor: Valor | undefined; aoMu
           <input className="campo" placeholder="Rótulo (opcional, ex.: Work item 123)" value={rotulo} onChange={(e) => setRotulo(e.target.value)} onKeyDown={(e) => e.key === "Enter" && por()} />
           {url.trim() && <div className="menu-rotulo">Ferramenta: {ferramentaDo(url.trim()).nome}</div>}
           <button className="menu-item" onClick={por} disabled={!url.trim()}><Plus size={14} /> Acrescentar</button>
+        </Popover>
+      )}
+    </>
+  );
+}
+
+/** Vários valores (lista de textos, números, datas...): chips; o + acrescenta, o x tira. */
+function ValorLista({ prop, valor, aoMudar, classe }: { prop: Propriedade; valor: Valor | undefined; aoMudar: (v: Valor) => void; classe: string }) {
+  const pop = usePopover();
+  const lista: (string | number)[] = Array.isArray(valor) ? (valor as (string | number)[]) : valor == null || valor === "" ? [] : [valor as string];
+  const [novo, setNovo] = useState("");
+  const tipo = prop.especie === "numero" ? "number" : prop.especie === "data" ? (prop.config?.hora ? "datetime-local" : "date")
+    : prop.especie === "email" ? "email" : prop.especie === "telefone" ? "tel" : "text";
+  const por = () => {
+    const s = novo.trim();
+    if (!s) return;
+    aoMudar([...lista, prop.especie === "numero" ? Number(s.replace(",", ".")) : s] as Valor);
+    setNovo("");
+  };
+  return (
+    <>
+      <div className={`${classe}${pop.ancora ? " editando" : ""}`} onClick={pop.abrir}>
+        {lista.length === 0 ? <span className="vazio">Vazio</span> : (
+          <span className="tags">
+            {lista.map((x, i) => <span key={i} className="tag cor-gray">{textoSimples(x, prop)}</span>)}
+          </span>
+        )}
+      </div>
+      {pop.ancora && (
+        <Popover ancora={pop.ancora} aoFechar={() => { por(); pop.fechar(); }} largura={280}>
+          <div className="menu-rotulo">{prop.nome}</div>
+          {lista.map((x, i) => (
+            <div key={i} className="menu-item">
+              {textoSimples(x, prop)}
+              <button className="dir btn-icone mini" title="Tirar" onClick={() => { const n = lista.filter((_, k) => k !== i); aoMudar(n.length ? (n as Valor) : null); }}><X size={12} /></button>
+            </div>
+          ))}
+          <input className="campo" autoFocus type={tipo} step={prop.especie === "numero" ? "any" : undefined} placeholder="Acrescentar… (Enter)" value={novo}
+            onChange={(e) => setNovo(e.target.value)} onKeyDown={(e) => e.key === "Enter" && por()} />
         </Popover>
       )}
     </>

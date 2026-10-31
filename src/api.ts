@@ -12,19 +12,24 @@ export interface Opcao {
 }
 
 export type Especie =
-  | "texto" | "numero" | "data" | "checkbox" | "url" | "selecao" | "multisselecao" | "status" | "relacao" | "links";
+  | "texto" | "numero" | "data" | "checkbox" | "url" | "email" | "telefone" | "selecao" | "multisselecao" | "status"
+  | "relacao" | "links" | "criado_em" | "atualizado_em";
 
 export const ESPECIES: { id: Especie; nome: string }[] = [
   { id: "texto", nome: "Texto" },
   { id: "numero", nome: "Número" },
   { id: "data", nome: "Data" },
-  { id: "checkbox", nome: "Checkbox" },
+  { id: "checkbox", nome: "Sim/não" },
   { id: "url", nome: "Link (URL)" },
+  { id: "email", nome: "E-mail" },
+  { id: "telefone", nome: "Telefone" },
   { id: "selecao", nome: "Seleção" },
   { id: "multisselecao", nome: "Multisseleção" },
   { id: "status", nome: "Status" },
   { id: "relacao", nome: "Relação (aponta para itens)" },
   { id: "links", nome: "Links (vários, por ferramenta)" },
+  { id: "criado_em", nome: "Criado em (automática)" },
+  { id: "atualizado_em", nome: "Atualizado em (automática)" },
 ];
 
 export interface Propriedade {
@@ -32,9 +37,48 @@ export interface Propriedade {
   nome: string;
   especie: Especie;
   opcoes: Opcao[];
-  /** relação: como se lê do outro lado, e se aceita um item só */
-  config: { inverso?: string | null; um_so?: boolean };
+  /** relação: inverso, um_so · número: inteiro, casas, formato · data: hora · texto/número/data/e-mail/telefone/url: lista */
+  config: ConfigProp;
 }
+
+export interface ConfigProp {
+  inverso?: string | null;
+  um_so?: boolean;
+  lista?: boolean;
+  inteiro?: boolean;
+  casas?: number | null;
+  formato?: "numero" | "percentual" | "moeda";
+  hora?: boolean;
+}
+
+/** Espécies que aceitam vários valores (config.lista). */
+export const LISTAVEIS: Especie[] = ["texto", "numero", "data", "email", "telefone", "url"];
+
+/** Os jeitos de criar uma propriedade (espécie + config), como no Notion. */
+export const MOLDES: { nome: string; especie: Especie; config?: ConfigProp }[] = [
+  { nome: "Texto", especie: "texto" },
+  { nome: "Lista de textos", especie: "texto", config: { lista: true } },
+  { nome: "Número inteiro", especie: "numero", config: { inteiro: true } },
+  { nome: "Número decimal", especie: "numero", config: { casas: 2 } },
+  { nome: "Percentual", especie: "numero", config: { formato: "percentual" } },
+  { nome: "Moeda (R$)", especie: "numero", config: { formato: "moeda", casas: 2 } },
+  { nome: "Lista de números", especie: "numero", config: { lista: true } },
+  { nome: "Data", especie: "data" },
+  { nome: "Data e hora", especie: "data", config: { hora: true } },
+  { nome: "Lista de datas", especie: "data", config: { lista: true } },
+  { nome: "Sim/não", especie: "checkbox" },
+  { nome: "Seleção", especie: "selecao" },
+  { nome: "Multisseleção", especie: "multisselecao" },
+  { nome: "Status", especie: "status" },
+  { nome: "Item (aponta para um)", especie: "relacao", config: { um_so: true } },
+  { nome: "Lista de itens", especie: "relacao" },
+  { nome: "Link (URL)", especie: "url" },
+  { nome: "Links por ferramenta", especie: "links" },
+  { nome: "E-mail", especie: "email" },
+  { nome: "Telefone", especie: "telefone" },
+  { nome: "Criado em (automática)", especie: "criado_em" },
+  { nome: "Atualizado em (automática)", especie: "atualizado_em" },
+];
 
 export interface TipoProp {
   propriedade_id: number;
@@ -72,7 +116,7 @@ export interface Link {
   rotulo?: string;
 }
 
-export type Valor = string | number | boolean | string[] | Link[] | null;
+export type Valor = string | number | boolean | string[] | number[] | Link[] | null;
 export type Props = Record<string, Valor>;
 
 export interface Nota {
@@ -415,6 +459,8 @@ export interface Preferencias {
   lixeira: { ativo: boolean; dias: number };
   /** editor de arquivos: auto-salvar como no VS Code */
   editor: { auto_salvar: "desligado" | "atraso" | "foco"; atraso_ms: number };
+  /** atalhos mudados: id → combinação ("Ctrl+Alt+R"); vazio = padrão */
+  atalhos: Record<string, string>;
   /** ao abrir, procura versão nova no GitHub e avisa */
   atualizacao: { avisar: boolean };
   /** por id da integração: Terminal, Executor e Prompt (tudo desligado até ligar) */

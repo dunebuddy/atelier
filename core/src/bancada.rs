@@ -111,6 +111,9 @@ pub struct Preferencias {
     /// procura versão nova ao abrir (pedido do Paulo: "tem versão nova, quer instalar?")
     #[serde(default)]
     pub atualizacao: Atualizacao,
+    /// atalhos de teclado mudados pelo Paulo: id → combinação ("Ctrl+Alt+R"); vazio = o padrão
+    #[serde(default)]
+    pub atalhos: std::collections::BTreeMap<String, String>,
     /// por id da integração ("claude-code", "codex"...)
     #[serde(default)]
     pub agentes: std::collections::BTreeMap<String, UsoAgente>,
@@ -190,6 +193,7 @@ impl Default for Preferencias {
             lixeira: LixeiraAuto::default(),
             editor: EditorArquivos::default(),
             atualizacao: Atualizacao::default(),
+            atalhos: Default::default(),
             agentes: Default::default(),
         }
     }

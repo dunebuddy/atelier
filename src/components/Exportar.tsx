@@ -3,7 +3,7 @@ import { Download, FileDown, X } from "lucide-react";
 import { marked } from "marked";
 import { api, BASE, Esquema, Item, Link, Propriedade, propsDoTipo } from "../api";
 import { avisar, falhou, guardar, ler } from "../ui";
-import { dataBR, ferramentaDo } from "./Valor";
+import { dataBR, ferramentaDo, textoSimples, valorDe } from "./Valor";
 
 // Tudo pode virar relatório: um item ou os itens de uma visão, em Markdown, HTML, PDF, Excel ou CSV, com os campos
 // escolhidos. O conteúdo é montado aqui; o backend só grava (e monta a planilha do Excel).
@@ -237,17 +237,16 @@ export function Exportar({ esquema, ids, nome, aoFechar }: {
 // ---------- montagem ----------
 
 function valorTexto(it: Item, p: Propriedade): string {
-  const v = it.props[p.id];
+  const v = valorDe(it, p);
   if (v == null || v === "") return "";
   if (p.especie === "relacao") {
     const cods = Array.isArray(v) ? (v as string[]) : [String(v)];
     return cods.map((c) => { const r = it.relacionados?.find((x) => x.codigo === c); return r ? `#${c} ${r.titulo}` : `#${c}`; }).join(", ");
   }
   if (p.especie === "links") return (v as Link[]).map((l) => `${l.rotulo ?? ferramentaDo(l.url).nome}: ${l.url}`).join("\n");
-  if (p.especie === "data") return dataBR(String(v));
   if (p.especie === "checkbox") return v ? "sim" : "não";
-  if (Array.isArray(v)) return (v as string[]).join(", ");
-  return String(v);
+  if (Array.isArray(v)) return (v as (string | number)[]).map((x) => textoSimples(x, p)).join(", ");
+  return textoSimples(v, p);
 }
 
 function notasDe(it: Item, modo: Notas) {

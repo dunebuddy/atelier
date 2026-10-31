@@ -19,6 +19,37 @@ fn trazer_para_frente(app: &tauri::AppHandle) {
     }
 }
 
+fn anotar_atualizacao(t: &str) {
+    use std::io::Write;
+    let p = std::env::temp_dir().join("atelier-atualizacao.log");
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(p) {
+        let _ = writeln!(f, "{} v{} {t}", atelier_core::db::agora(), env!("CARGO_PKG_VERSION"));
+    }
+}
+
+async fn atualizar_sozinho(app: tauri::AppHandle) {
+    use tauri_plugin_updater::UpdaterExt;
+    anotar_atualizacao("procurando versão nova");
+    let achada = match app.updater() {
+        Ok(u) => u.check().await,
+        Err(e) => return anotar_atualizacao(&format!("sem atualizador: {e}")),
+    };
+    match achada {
+        Ok(Some(u)) => {
+            anotar_atualizacao(&format!("achou {}; baixando e instalando", u.version));
+            match u.download_and_install(|_, _| {}, || {}).await {
+                Ok(()) => {
+                    anotar_atualizacao("instalada; reiniciando");
+                    app.restart();
+                }
+                Err(e) => anotar_atualizacao(&format!("falhou ao instalar: {e}")),
+            }
+        }
+        Ok(None) => anotar_atualizacao("já está na mais nova"),
+        Err(e) => anotar_atualizacao(&format!("falhou ao procurar: {e}")),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let estado = api::Estado::iniciar().unwrap_or_else(|e| panic!("não abri a bancada: {e}"));
@@ -52,6 +83,13 @@ pub fn run() {
             }
             let t = tray.build(app)?;
             let _ = t.set_visible(bancada::carregar().preferencias.captura.ativo);
+
+            // teste da atualização sem clicar: ATELIER_ATUALIZAR_SOZINHO=1 procura, instala e reinicia sozinho,
+            // anotando cada passo em %TEMP%/atelier-atualizacao.log (no uso normal, a tela pergunta antes)
+            if std::env::var("ATELIER_ATUALIZAR_SOZINHO").is_ok() {
+                let app = app.handle().clone();
+                tauri::async_runtime::spawn(async move { atualizar_sozinho(app).await });
+            }
             Ok(())
         })
         .on_window_event(|janela, ev| {

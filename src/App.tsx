@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, BASE, Bancadas, Esquema, Preferencias, TemaArquivo, Visao } from "./api";
 import { aplicarTema } from "./tema";
 import { BarraTitulo } from "./components/BarraTitulo";
@@ -12,6 +12,11 @@ import { Contexto, PainelTrabalho } from "./components/Painel";
 import * as P from "./painel";
 import { EstadoPainel, janelaAtiva, rotaDe } from "./painel";
 import { avisar, falhou, guardar, ler, Rota, Tema } from "./ui";
+import * as W from "./workspaces";
+import { bate, definirAtalhos } from "./atalhos";
+import { BarraStatus, SeletorWorkspace, VisaoGeralWorkspaces } from "./components/Workspaces";
+
+const VAZIO: EstadoPainel = P.inicial({ v: "inicio" });
 
 /** Pisca o item onde ele aparecer (linhas das visões, árvore, citações). */
 function destacar(codigo: string) {
@@ -46,20 +51,58 @@ export default function App() {
   const [fechada, setFechada] = useState<boolean>(() => ler("sidebarFechada", false));
   const [largura, setLargura] = useState<number>(() => ler("sidebarLargura", 248));
   useEffect(() => guardar("sidebarLargura", largura), [largura]);
-  const [painel, setPainel] = useState<EstadoPainel>(() => P.restaurar(ler<EstadoPainel | null>("painel", null), ler<Rota>("rota", { v: "inicio" })));
+  // workspaces da bancada aberta (o painel de agora é o do workspace ativo)
+  const [ws, setWs] = useState<W.Workspaces | null>(null);
   const [aviso, setAviso] = useState<{ msg: string; desfazer?: () => Promise<unknown> | void } | null>(null);
   const [bancadas, setBancadas] = useState<Bancadas | null>(null);
   const [config, setConfig] = useState<null | SecaoConfig>(null);
   const [temas, setTemas] = useState<TemaArquivo[]>([]);
   const [prefs, setPrefs] = useState<Preferencias | null>(null);
   const [verAtalhos, setVerAtalhos] = useState(false);
+  const [verWs, setVerWs] = useState(false);
+  useEffect(() => {
+    const abrir = () => setVerWs(true);
+    // Ctrl+Shift+O (o "O" do overview do Niri)
+    const tecla = (e: KeyboardEvent) => {
+      if (bate("visao-geral", e)) { e.preventDefault(); setVerWs((v) => !v); }
+    };
+    window.addEventListener("atelier:ver-workspaces", abrir);
+    window.addEventListener("keydown", tecla);
+    return () => { window.removeEventListener("atelier:ver-workspaces", abrir); window.removeEventListener("keydown", tecla); };
+  }, []);
 
+  const painel: EstadoPainel = ws?.estados[ws.ativo] ?? VAZIO;
+  // muda o painel de um workspace (o ativo, se não disser qual)
+  const mudarDe = useCallback((chave?: string) => (f: EstadoPainel | ((e: EstadoPainel) => EstadoPainel)) =>
+    setWs((w) => {
+      if (!w) return w;
+      const k = chave ?? w.ativo;
+      const atual = w.estados[k];
+      if (!atual) return w;
+      const novo = typeof f === "function" ? f(atual) : f;
+      return novo === atual ? w : { ...w, estados: { ...w.estados, [k]: novo } };
+    }), []);
+  const setPainel = useMemo(() => mudarDe(), [mudarDe]);
   const ativa = janelaAtiva(painel);
   const rota: Rota = ativa ? rotaDe(ativa) : { v: "inicio" };
+  const bancadaAtual = bancadas?.ativa?.caminho ?? null;
   useEffect(() => {
-    const t = window.setTimeout(() => guardar("painel", painel), 300);
+    if (bancadaAtual) setWs(W.carregar(bancadaAtual));
+  }, [bancadaAtual]);
+  useEffect(() => {
+    if (!ws || !bancadaAtual) return;
+    const t = window.setTimeout(() => W.salvar(bancadaAtual, ws), 300);
     return () => window.clearTimeout(t);
-  }, [painel]);
+  }, [ws, bancadaAtual]);
+  // "Workspace" na página do item (ou o Geral)
+  useEffect(() => {
+    const f = (e: Event) => {
+      const d = (e as CustomEvent<{ id: number; titulo: string; icone?: string } | null>).detail;
+      setWs((w) => (w ? W.abrir(w, d ? W.chaveItem(d.id) : W.GERAL, d ? { titulo: d.titulo || "Sem título", icone: d.icone } : undefined) : w));
+    };
+    window.addEventListener("atelier:workspace", f);
+    return () => window.removeEventListener("atelier:workspace", f);
+  }, []);
 
   // itens abertos por último (aparecem na busca rápida vazia)
   useEffect(() => {
@@ -122,14 +165,15 @@ export default function App() {
   useEffect(() => {
     (document.body.style as CSSStyleDeclaration & { zoom: string }).zoom = String(zoom / 100);
   }, [zoom]);
+  // atalhos que o Paulo mudou (Configurações → Atalhos)
+  useEffect(() => definirAtalhos(prefs?.atalhos), [prefs?.atalhos]);
   useEffect(() => {
     const f = (e: KeyboardEvent) => {
-      if (!e.ctrlKey || e.altKey) return;
       const passos = [80, 85, 90, 100, 110, 125, 140, 160];
       const i = passos.findIndex((p) => p >= zoom);
-      if (e.key === "=" || e.key === "+") { e.preventDefault(); mudarPrefs({ zoom: passos[Math.min(passos.length - 1, (passos[i] === zoom ? i : i - 1) + 1)] }); }
-      if (e.key === "-") { e.preventDefault(); mudarPrefs({ zoom: passos[Math.max(0, i - 1)] }); }
-      if (e.key === "0") { e.preventDefault(); mudarPrefs({ zoom: 100 }); }
+      if (bate("zoom-mais", e)) { e.preventDefault(); mudarPrefs({ zoom: passos[Math.min(passos.length - 1, (passos[i] === zoom ? i : i - 1) + 1)] }); }
+      if (bate("zoom-menos", e)) { e.preventDefault(); mudarPrefs({ zoom: passos[Math.max(0, i - 1)] }); }
+      if (bate("zoom-normal", e)) { e.preventDefault(); mudarPrefs({ zoom: 100 }); }
     };
     window.addEventListener("keydown", f);
     return () => window.removeEventListener("keydown", f);
@@ -143,7 +187,7 @@ export default function App() {
   // depois de trocar a bancada: tudo da bancada anterior sai de cena
   const aposTrocarBancada = useCallback(async () => {
     setConfig(null);
-    setPainel(P.inicial({ v: "inicio" }));
+    setWs(null);
     setEsquema(null);
     setVisoes(null);
     await Promise.all([aoMudarEsquema(), carregarBancadas()]);
@@ -232,61 +276,58 @@ export default function App() {
   const passo = (n: number) => setPainel((e) => { const a = janelaAtiva(e); return a ? P.irParaPasso(e, a.id, a.pos + n) : e; });
   const voltar = () => passo(-1);
   const avancar = () => passo(1);
+  const voltarRef = useRef(voltar);
+  voltarRef.current = voltar;
+  const avancarRef = useRef(avancar);
+  avancarRef.current = avancar;
 
-  // atalhos do painel de trabalho (Ctrl+Alt+…; os dígitos ficam de fora quando se está digitando, por causa do AltGr)
+  // atalhos do painel de trabalho e da navegação (todos configuráveis: src/atalhos.ts)
   useEffect(() => {
     const f = (e: KeyboardEvent) => {
-      const digitando = !!(e.target as HTMLElement).closest?.("input, textarea, [contenteditable=true]");
-      // no terminal, Ctrl+W apaga palavra e as setas são do programa: o painel não rouba
-      if ((e.target as HTMLElement).closest?.(".xterm") && !(e.ctrlKey && e.altKey && !e.key.startsWith("Arrow"))) return;
-      if (e.ctrlKey && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "w") {
-        e.preventDefault();
-        setPainel((s) => { const a = janelaAtiva(s); return a ? P.fechar(s, a.id) : s; });
-        return;
-      }
-      if (e.ctrlKey && !e.altKey && e.key === "Tab") {
-        e.preventDefault();
-        setPainel((s) => P.focarVizinha(s, e.shiftKey ? -1 : 1));
-        return;
-      }
-      if (!e.ctrlKey || !e.altKey) return;
+      const alvo = e.target as HTMLElement;
+      const digitando = !!alvo.closest?.("input, textarea, [contenteditable=true]");
+      // no terminal, as teclas são do programa (Ctrl+W apaga palavra, setas...): só passam Ctrl+Alt e Ctrl+Shift sem seta
+      if (alvo.closest?.(".xterm") && !(e.ctrlKey && (e.altKey || e.shiftKey) && !e.code.startsWith("Arrow"))) return;
+      // digitando, Ctrl+Alt+letra/número é o AltGr do teclado (ABNT2: ?, °, ¹...): não é atalho
+      if (digitando && e.ctrlKey && e.altKey && /^(Key|Digit)/.test(e.code)) return;
       const com = (g: (s: EstadoPainel, id: string) => EstadoPainel) => setPainel((s) => { const a = janelaAtiva(s); return a ? g(s, a.id) : s; });
-      const modos: Record<string, P.Modo> = { "1": "abas", "2": "tile", "3": "fita" };
-      if (modos[e.key] && !digitando) { e.preventDefault(); setPainel((s) => P.mudarModo(s, s.foco, modos[e.key])); return; }
-      switch (e.key) {
-        case "\\": e.preventDefault(); setPainel(P.dividir); break;
-        case "ArrowLeft": e.preventDefault(); if (e.shiftKey) com((s, id) => P.moverLado(s, id, -1)); else setPainel((s) => P.focarVizinha(s, -1)); break;
-        case "ArrowRight": e.preventDefault(); if (e.shiftKey) com((s, id) => P.moverLado(s, id, 1)); else setPainel((s) => P.focarVizinha(s, 1)); break;
-        case "ArrowDown": e.preventDefault(); com((s, id) => P.empilhar(s, id, true)); break;
-        case "ArrowUp": e.preventDefault(); com((s, id) => P.empilhar(s, id, false)); break;
-        case "Enter": e.preventDefault(); com(P.promover); break;
-        case "r": case "R": e.preventDefault(); com(P.proximaLargura); break;
-        case "o": case "O": e.preventDefault(); setPainel((s) => (s.metades.length > 1 ? { ...s, foco: 1 - s.foco } : s)); break;
+      const acoes: [string, () => void][] = [
+        ["fechar-janela", () => com(P.fechar)],
+        ["proxima-janela", () => setPainel((s) => P.focarVizinha(s, 1))],
+        ["janela-anterior", () => setPainel((s) => P.focarVizinha(s, -1))],
+        ["modo-abas", () => setPainel((s) => P.mudarModo(s, s.foco, "abas"))],
+        ["modo-tile", () => setPainel((s) => P.mudarModo(s, s.foco, "tile"))],
+        ["modo-fita", () => setPainel((s) => P.mudarModo(s, s.foco, "fita"))],
+        ["dividir", () => setPainel(P.dividir)],
+        ["foco-esquerda", () => setPainel((s) => P.focarVizinha(s, -1))],
+        ["foco-direita", () => setPainel((s) => P.focarVizinha(s, 1))],
+        ["mover-esquerda", () => com((s, id) => P.moverLado(s, id, -1))],
+        ["mover-direita", () => com((s, id) => P.moverLado(s, id, 1))],
+        ["empilhar", () => com((s, id) => P.empilhar(s, id, true))],
+        ["desempilhar", () => com((s, id) => P.empilhar(s, id, false))],
+        ["promover", () => com(P.promover)],
+        ["largura", () => com(P.proximaLargura)],
+        ["trocar-metade", () => setPainel((s) => (s.metades.length > 1 ? { ...s, foco: 1 - s.foco } : s))],
+        ["workspace-proximo", () => setWs((w) => (w ? W.vizinho(w, 1) : w))],
+        ["workspace-anterior", () => setWs((w) => (w ? W.vizinho(w, -1) : w))],
+        ["menu", () => setFechada((x) => !x)],
+        ["config", () => setConfig("aparencia")],
+        ["atalhos", () => setVerAtalhos((v) => !v)],
+        ["voltar", voltarRef.current],
+        ["avancar", avancarRef.current],
+      ];
+      for (const [id, faz] of acoes) {
+        if (bate(id, e)) { e.preventDefault(); faz(); return; }
       }
-    };
-    window.addEventListener("keydown", f);
-    return () => window.removeEventListener("keydown", f);
-  }, []);
-
-  useEffect(() => {
-    const tecla = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === "\\") { e.preventDefault(); setFechada((f) => !f); }
-      if (e.ctrlKey && e.key === ",") { e.preventDefault(); setConfig("aparencia"); }
-      if (e.ctrlKey && e.key === "/") { e.preventDefault(); setVerAtalhos((v) => !v); }
-      if (e.altKey && e.key === "ArrowLeft") voltar();
-      if (e.altKey && e.key === "ArrowRight") avancar();
     };
     const mouse = (e: MouseEvent) => {
-      if (e.button === 3) voltar();
-      if (e.button === 4) avancar();
+      if (e.button === 3) voltarRef.current();
+      if (e.button === 4) avancarRef.current();
     };
-    window.addEventListener("keydown", tecla);
+    window.addEventListener("keydown", f);
     window.addEventListener("mouseup", mouse);
-    return () => {
-      window.removeEventListener("keydown", tecla);
-      window.removeEventListener("mouseup", mouse);
-    };
-  }, []);
+    return () => { window.removeEventListener("keydown", f); window.removeEventListener("mouseup", mouse); };
+  }, [setPainel]);
 
   if (offline) {
     return (
@@ -297,7 +338,7 @@ export default function App() {
       </div>
     );
   }
-  if (!esquema || !visoes) return null;
+  if (!esquema || !visoes || !ws) return null;
 
   // a trilha da barra de título: bancada › tipo (do item) › o que está aberto na janela com o foco
   const visaoDoTipo = (tid: number) => visoes.find((v) => v.filtro?.tipos?.length === 1 && v.filtro.tipos[0] === tid);
@@ -338,6 +379,14 @@ export default function App() {
         ir={ir}
         trilha={trilha}
         alternarMenu={() => setFechada((f) => !f)}
+        workspace={
+          <SeletorWorkspace
+            ws={ws}
+            trocar={(k) => setWs((w) => (w ? W.abrir(w, k) : w))}
+            fechar={(k) => setWs((w) => (w ? W.fechar(w, k) : w))}
+            esquecer={(k) => setWs((w) => (w ? W.esquecer(w, k) : w))}
+          />
+        }
         abrirConfig={() => setConfig("aparencia")}
         aoApagarItem={
           rota.v === "item"
@@ -378,7 +427,12 @@ export default function App() {
           }}
         />
         <main className="principal">
-          <PainelTrabalho estado={painel} mudar={setPainel} ctx={ctx} />
+          {/* os workspaces abertos ficam montados por trás: trocar não mata terminal nem agente */}
+          {ws.abertos.filter((k) => ws.estados[k]).map((k) => (
+            <div key={k} className="workspace" style={{ display: k === ws.ativo ? undefined : "none" }}>
+              <PainelTrabalho estado={ws.estados[k]} mudar={mudarDe(k)} ctx={ctx} />
+            </div>
+          ))}
         </main>
       </div>
       {config && (
@@ -397,10 +451,19 @@ export default function App() {
           mudarPrefs={mudarPrefs}
         />
       )}
+      <BarraStatus ws={ws} />
       <CapturaGlobal prefs={prefs} />
       <EscolherAgente />
       <AvisoAtualizacao prefs={prefs} />
       {verAtalhos && <Atalhos aoFechar={() => setVerAtalhos(false)} />}
+      {verWs && (
+        <VisaoGeralWorkspaces
+          ws={ws}
+          aoEscolher={(k) => { setWs((w) => (w ? W.abrir(w, k) : w)); setVerWs(false); }}
+          aoFechar={() => setVerWs(false)}
+          fecharWs={(k) => setWs((w) => (w ? W.fechar(w, k) : w))}
+        />
+      )}
       {aviso && (
         <div className="toast">
           {aviso.msg}

@@ -73,7 +73,7 @@ pub fn rotas(banco: Banco) -> Router {
         .allow_headers([axum::http::header::CONTENT_TYPE]);
 
     Router::new()
-        .route("/api/saude", get(|| async { Json(json!({ "ok": true, "app": "atelier" })) }))
+        .route("/api/saude", get(|| async { Json(json!({ "ok": true, "app": "atelier", "versao": env!("CARGO_PKG_VERSION") })) }))
         .route("/api/esquema", get(esquema))
         .route("/api/tipos", post(criar_tipo))
         .route("/api/tipos/{id}", patch(atualizar_tipo).delete(apagar_tipo))
@@ -117,6 +117,7 @@ pub fn rotas(banco: Banco) -> Router {
         .route("/api/integracoes", get(|| async { Json(crate::integracoes::listar()) }))
         .route("/api/agentes", get(agentes))
         .route("/api/tela", post(tela))
+        .route("/api/sistema", get(|| async { Json(tokio::task::spawn_blocking(crate::sistema::medir).await.unwrap_or_default()) }))
         .route("/api/exportar", post(exportar))
         .route("/api/tela/eventos", get(tela_eventos))
         .route("/api/agentes/{id}/testar", post(testar_agente))
@@ -748,7 +749,7 @@ async fn mudar_preferencias(State(b): State<Banco>, Json(d): Json<Value>) -> R {
     }
     // zoom, backup, captura, lixeira: mescla só o que veio
     let mut atual = serde_json::to_value(&cfg.preferencias).map_err(|e| Erro::Invalido(e.to_string()))?;
-    for chave in ["zoom", "backup", "captura", "lixeira", "editor", "agentes", "atualizacao"] {
+    for chave in ["zoom", "backup", "captura", "lixeira", "editor", "agentes", "atualizacao", "atalhos"] {
         match (d.get(chave), atual.get_mut(chave)) {
             (Some(Value::Object(novo)), Some(Value::Object(velho))) => velho.extend(novo.clone()),
             (Some(v), Some(velho)) if !v.is_object() => *velho = v.clone(),

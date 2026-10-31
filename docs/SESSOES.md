@@ -217,3 +217,28 @@ Tudo do plano refeito foi feito e testado no app de teste (`ATELIER_HOME`), pela
   Automação, onde também tem "Procurar versão nova agora"). Só instala quando ele manda; o app reinicia sozinho.
 - **Falta (Paulo):** pôr a chave privada no segredo `TAURI_SIGNING_PRIVATE_KEY` do repositório (o Claude foi barrado
   de gravar segredo) e subir a primeira tag para testar o CI.
+
+## 2026-10-31 (noite) — workspaces, barra de status e tipos de propriedade
+
+- **Workspaces** (`src/workspaces.ts`, `components/Workspaces.tsx`). Todo item tem o seu (vazio até ser usado; começa
+  com o próprio item aberto), além do "Geral". Botão **Workspace** na página do item; seletor na barra de título
+  (trocar, fechar = parar os terminais, esquecer); Ctrl+Alt+PgUp/PgDn. Os abertos na sessão ficam montados por
+  trás (agente continua trabalhando). Guardados por bancada no `localStorage` (`workspaces:<caminho>`): ao reabrir o
+  app, as janelas voltam e os terminais aparecem **parados**, com "Reabrir".
+  Decisão do Paulo: **contexto mãe/filhas** (história com tasks) fica para quando a necessidade aparecer no uso.
+- **Barra de status** (`core/src/sistema.rs`, `/api/sistema`, crate `sysinfo`): memória (principal, com barra) e CPU
+  do app e de todos os processos filhos; clique mostra por workspace (cada terminal/agente pelo número da sessão,
+  que a tela manda no websocket), a interface (WebView, uma só para todos) e o núcleo.
+- **Tipos de propriedade** (no estilo do Notion): número inteiro, decimal (casas), percentual, moeda; data com hora;
+  e-mail; telefone; "criado em" e "atualizado em" automáticas; **listas** (`config.lista`) de textos, números,
+  datas, e-mails, telefones e URLs; item único (relação `um_so`) e lista de itens. Valores conferidos e ajeitados no
+  banco (`normalizar_valor`); o menu de criar mostra cada molde; o menu da propriedade muda a config. MCP aceita a
+  config em `criar_propriedade`. Fórmula e rollup ficam para depois.
+- **Visão geral dos workspaces** (como o overview do Niri/Hyprland): Ctrl+Shift+O ou "Ver todos" no seletor. Um
+  cartão por workspace (abertos primeiro): nome e ícone do item, esboço das metades e janelas (modo de cada metade,
+  janela ativa, memória de cada terminal), memória e CPU dos terminais, aberto/guardado. Setas, Enter, Esc; digitar
+  filtra; fechar workspace pelo cartão.
+- **Atalhos configuráveis** (`src/atalhos.ts`): todos num registro (id, nome, grupo, padrão), comparados pela tecla
+  física (`e.code`, sem confusão com AltGr/ABNT2). Mudanças em `preferencias.atalhos` (config.toml). Configurações →
+  Atalhos: clique e aperte a combinação; recusa conflito e tecla sem modificador; voltar ao padrão por atalho ou
+  todos. A lista do Ctrl+/ vem do registro. Os de dentro do texto (/, #código, Ctrl+clique, Ctrl+Z) não mudam.

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, Trash2, Unlink } from "lucide-react";
-import { api, Especie, ESPECIES, Esquema, Propriedade, Tipo } from "../api";
+import { api, ConfigProp, Especie, ESPECIES, Esquema, LISTAVEIS, MOLDES, Propriedade, Tipo } from "../api";
 import { falhou } from "../ui";
 import { Popover } from "./Popover";
 import { IconeEspecie } from "./Valor";
@@ -32,9 +32,9 @@ export function AdicionarProp({
     }
   };
 
-  const criar = async (esp: Especie) => {
+  const criar = async (esp: Especie, config: ConfigProp = {}) => {
     try {
-      const { id } = await api.criarProp({ nome: busca.trim(), especie: esp, ...(esp === "relacao" ? { config: { inverso: `${busca.trim()} (de)` } } : {}) });
+      const { id } = await api.criarProp({ nome: busca.trim(), especie: esp, config: esp === "relacao" ? { inverso: `${busca.trim()} (de)`, ...config } : config });
       await por(id);
     } catch (e) {
       falhou(e);
@@ -53,9 +53,9 @@ export function AdicionarProp({
       {especie === null && b && !existe && (
         <>
           <div className="menu-rotulo">Criar “{busca.trim()}” como</div>
-          {ESPECIES.map((e) => (
-            <button key={e.id} className="menu-item" onClick={() => criar(e.id)}>
-              <IconeEspecie especie={e.id} /> {e.nome}
+          {MOLDES.map((m) => (
+            <button key={m.nome} className="menu-item" onClick={() => criar(m.especie, m.config)}>
+              <IconeEspecie especie={m.especie} /> {m.nome}
             </button>
           ))}
         </>
@@ -109,6 +109,7 @@ export function MenuProp({
         {ESPECIES.find((e) => e.id === prop.especie)?.nome} · vale para todos os tipos que a usam
       </div>
       {prop.especie === "relacao" && <ConfigRelacao prop={prop} aoMudarEsquema={aoMudarEsquema} />}
+      <ConfigGeral prop={prop} aoMudarEsquema={aoMudarEsquema} />
       <div className="menu-sep" />
       {tipo && (
         <button
@@ -163,6 +164,49 @@ function ConfigRelacao({ prop, aoMudarEsquema }: { prop: Propriedade; aoMudarEsq
         <input type="checkbox" checked={!!prop.config?.um_so} onChange={(e) => gravar({ um_so: e.target.checked })} style={{ accentColor: "var(--acento)" }} />
         Aponta para um item só
       </label>
+    </>
+  );
+}
+
+/** Número (inteiro, casas, formato), data (com hora) e lista (vários valores). */
+function ConfigGeral({ prop, aoMudarEsquema }: { prop: Propriedade; aoMudarEsquema: () => Promise<void> }) {
+  const c = prop.config ?? {};
+  const gravar = async (d: ConfigProp) => {
+    try {
+      await api.atualizarProp(prop.id, { config: { ...c, ...d } });
+      await aoMudarEsquema();
+    } catch (e) {
+      falhou(e);
+    }
+  };
+  const caixa = (rotulo: string, ligado: boolean, mudar: (v: boolean) => void) => (
+    <label className="menu-item" style={{ cursor: "pointer" }}>
+      <input type="checkbox" checked={ligado} onChange={(e) => mudar(e.target.checked)} style={{ accentColor: "var(--acento)" }} /> {rotulo}
+    </label>
+  );
+  return (
+    <>
+      {prop.especie === "numero" && (
+        <>
+          {caixa("Só números inteiros", !!c.inteiro, (v) => gravar({ inteiro: v }))}
+          {!c.inteiro && (
+            <label className="menu-item">
+              Casas decimais
+              <input className="campo" type="number" min={0} max={6} style={{ width: 60, marginLeft: "auto" }} defaultValue={c.casas ?? ""}
+                onBlur={(e) => gravar({ casas: e.target.value === "" ? null : Math.max(0, Math.min(6, Number(e.target.value))) })} />
+            </label>
+          )}
+          <div className="filtro-chips">
+            {(["numero", "percentual", "moeda"] as const).map((f) => (
+              <button key={f} className={`chip${(c.formato ?? "numero") === f ? " ligado" : ""}`} onClick={() => gravar({ formato: f })}>
+                {f === "numero" ? "1.234,5" : f === "percentual" ? "12%" : "R$ 1,00"}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      {prop.especie === "data" && caixa("Com hora", !!c.hora, (v) => gravar({ hora: v }))}
+      {LISTAVEIS.includes(prop.especie) && caixa("Aceita vários valores (lista)", !!c.lista, (v) => gravar({ lista: v }))}
     </>
   );
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bot, Check, Copy, FileDown, PanelRight, FolderOpen, FolderPlus, History, Layers, Pencil, RotateCcw, Send, Trash2, X } from "lucide-react";
+import { Bot, Check, Copy, FileDown, LayoutDashboard, PanelRight, FolderOpen, FolderPlus, History, Layers, Pencil, RotateCcw, Send, Trash2, X } from "lucide-react";
 import { Exportar } from "./Exportar";
+import { abrirWorkspace } from "./Workspaces";
 import { api, Esquema, Item, Nota, Propriedade, propsDoTipo, Valor } from "../api";
 import { avisar, falhou, Rota } from "../ui";
 import { dataHora } from "../visao";
@@ -13,7 +14,7 @@ import { Arquivos, trazerArquivos } from "./Arquivos";
 import { abrirExplorador } from "./Explorador";
 import { Popover, usePopover } from "./Popover";
 import { AdicionarProp, BotaoAdicionarProp, MenuProp } from "./Propriedades";
-import { IconeEspecie, ValorProp } from "./Valor";
+import { IconeEspecie, valorDe, ValorProp } from "./Valor";
 
 export function PaginaItem({
   esquema, id, ir, aoMudarEsquema, aoCarregar,
@@ -155,7 +156,7 @@ export function PaginaItem({
         esquema={esquema}
         prop={p}
         tipoId={item.tipo_id}
-        valor={item.props[p.id]}
+        valor={valorDe(item, p)}
         proprio={item.codigo}
         aoMudar={(v) => mudarProp(p.id, v)}
         aoMudarEsquema={aoMudarEsquema}
@@ -245,6 +246,13 @@ export function PaginaItem({
             </button>
             <button className="btn" onClick={duplicar} title="Cria uma cópia com o mesmo tipo, propriedades e texto">
               <Copy size={14} /> Duplicar
+            </button>
+            <button
+              className="btn"
+              onClick={() => abrirWorkspace({ id: item.id, titulo: item.titulo, icone: esquema.tipos.find((t) => t.id === item.tipo_id)?.icone })}
+              title="Vai para o workspace deste item: as janelas, terminais e agentes dele (Ctrl+Alt+PgUp / PgDn troca)"
+            >
+              <LayoutDashboard size={14} /> Workspace
             </button>
             <button className="btn" onClick={() => setExportando(true)} title="Markdown, HTML, PDF, Excel ou CSV, com os campos que você escolher">
               <FileDown size={14} /> Exportar

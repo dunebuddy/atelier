@@ -259,6 +259,66 @@ body.redimensionando .sidebar { transition: none; }
 .principal { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .conteudo { flex: 1; overflow: auto; }
 
+/* workspaces e barra de status */
+.workspace { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.seletor-ws { gap: 6px; max-width: 240px; border: 1px solid var(--borda); }
+.seletor-ws .ws-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
+.ws-conta { font-size: 10.5px; background: var(--acento-suave); color: var(--acento); border-radius: 999px; padding: 0 6px; }
+.ws-linha { cursor: pointer; }
+.ws-linha.atual { font-weight: 600; }
+.ws-titulo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+.ws-ponto { width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--texto-3); flex-shrink: 0; }
+.ws-ponto.vivo { background: var(--t-green); border-color: var(--t-green); }
+.barra-status { height: 24px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 11.5px; color: var(--texto-3); }
+.bs-ws { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bs-medida { display: flex; align-items: center; gap: 5px; color: var(--texto-3); font-size: 11.5px; padding: 1px 6px; border-radius: 6px; font-variant-numeric: tabular-nums; }
+.bs-medida:hover { background: var(--hover); color: var(--texto); }
+.bs-barra { width: 64px; height: 6px; border-radius: 3px; background: var(--hover); overflow: hidden; display: inline-block; }
+.bs-barra > span { display: block; height: 100%; background: var(--acento); border-radius: 3px; }
+.bs-barra > span.alto { background: var(--t-red); }
+.bs-grupo { padding: 4px 8px; border-top: 1px solid var(--borda); }
+.bs-linha { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; padding: 1px 0; color: var(--texto-2); font-variant-numeric: tabular-nums; }
+.bs-linha.forte { color: var(--texto); font-weight: 600; }
+.janela-terminal.parado { display: grid; place-items: center; text-align: center; color: var(--texto-2); }
+.janela-terminal.parado p { margin: 8px 0; }
+
+/* visão geral dos workspaces */
+.ws-geral {
+  position: fixed; inset: 0; z-index: 55; display: flex; flex-direction: column; gap: 14px; padding: 28px 36px;
+  background: color-mix(in srgb, var(--bg-fundo) 82%, transparent); backdrop-filter: blur(10px); animation: aparecer .12s ease-out;
+}
+.ws-geral-topo { display: flex; align-items: center; gap: 12px; color: var(--texto); }
+.ws-geral-topo .campo { width: 280px; }
+.ws-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; overflow-y: auto; align-content: start; padding: 4px; }
+.ws-cartao {
+  display: flex; flex-direction: column; gap: 10px; padding: 12px; min-height: 190px; cursor: pointer; border-radius: 14px;
+  background: var(--bg); border: 1px solid var(--borda); box-shadow: var(--sombra-folha); transition: transform .12s, border-color .12s;
+}
+.ws-cartao.sel { border-color: var(--acento); box-shadow: 0 0 0 2px var(--acento), var(--sombra); transform: translateY(-2px); }
+.ws-cartao.guardado { opacity: .72; }
+.ws-cartao-cabeca { display: flex; align-items: center; gap: 8px; }
+.ws-cartao-icone { font-size: 20px; }
+.ws-cartao-titulo { flex: 1; min-width: 0; font-weight: 650; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-cartao.atual .ws-cartao-titulo::after { content: " · atual"; font-weight: 400; color: var(--acento); font-size: 12px; }
+.ws-esboco { flex: 1; display: flex; gap: 6px; min-height: 0; }
+.ws-metade { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 5px; border-radius: 9px; background: var(--bg-fundo); }
+.ws-modo { color: var(--texto-3); display: flex; }
+.ws-janela { display: flex; align-items: center; gap: 5px; padding: 3px 6px; border-radius: 6px; font-size: 11.5px; color: var(--texto-2); background: var(--bg); min-width: 0; }
+.ws-janela.ativa { color: var(--texto); box-shadow: inset 2px 0 0 var(--acento); }
+.ws-janela.vazia, .ws-janela.mais { color: var(--texto-3); background: transparent; }
+.ws-janela-icone { flex-shrink: 0; font-size: 11px; }
+.ws-janela-titulo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.ws-janela-ram { font-size: 10.5px; color: var(--texto-3); font-variant-numeric: tabular-nums; }
+.ws-cartao-pe { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--texto-3); }
+.ws-uso { display: flex; align-items: center; gap: 3px; font-variant-numeric: tabular-nums; color: var(--texto-2); }
+
+/* Configurações → Atalhos */
+.atalhos-config .atalho { grid-template-columns: 1fr auto; }
+.atalho-botao { display: inline-flex; gap: 3px; align-items: center; padding: 3px 6px; border-radius: 7px; border: 1px solid transparent; min-width: 120px; justify-content: flex-end; color: var(--texto-2); font-size: 12px; }
+.atalho-botao:hover { border-color: var(--borda-forte); }
+.atalho-botao.gravando { border-color: var(--acento); color: var(--acento); }
+.atalho-botao.mudado kbd { border-color: var(--acento); }
+
 /* aviso de versão nova */
 .aviso-atualizacao {
   position: fixed; right: 18px; bottom: 18px; z-index: 65; width: min(440px, calc(100vw - 36px)); display: flex; align-items: center; gap: 10px;

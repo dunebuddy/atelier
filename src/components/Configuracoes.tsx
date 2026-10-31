@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, FileCode, FolderOpen, FolderPlus, Languages, Package, Palette, Pencil, Plug, Plus, RefreshCw, Shapes, Timer, X } from "lucide-react";
+import { Check, Copy, FileCode, FolderOpen, FolderPlus, Keyboard, Languages, Package, Palette, Pencil, Plug, Plus, RefreshCw, Shapes, Timer, X } from "lucide-react";
 import { Agente, api, Bancada, Bancadas, Esquema, Integracoes, Preferencias, TemaArquivo, AgenteCli, UsoAgente } from "../api";
 import { SecaoAutomacao } from "./Automacao";
+import { SecaoAtalhos } from "./ConfigAtalhos";
 import { procurarAtualizacao } from "./Atualizacao";
 import { avisar, falhou, Tema } from "../ui";
 
-export type SecaoConfig = "aparencia" | "geral" | "bancadas" | "tipos" | "integracoes" | "automacao" | "editor";
+export type SecaoConfig = "aparencia" | "geral" | "bancadas" | "tipos" | "integracoes" | "automacao" | "editor" | "atalhos";
 type Secao = SecaoConfig;
 
 const TEMAS: { id: Tema; nome: string; cores: string[] }[] = [
@@ -63,6 +64,7 @@ export function Configuracoes({
           <button className={secao === "tipos" ? "ativo" : ""} onClick={() => setSecao("tipos")}><Shapes size={15} /> Tipos e modelos</button>
           <button className={secao === "integracoes" ? "ativo" : ""} onClick={() => setSecao("integracoes")}><Plug size={15} /> Integrações</button>
           <button className={secao === "editor" ? "ativo" : ""} onClick={() => setSecao("editor")}><FileCode size={15} /> Editor de arquivos</button>
+          <button className={secao === "atalhos" ? "ativo" : ""} onClick={() => setSecao("atalhos")}><Keyboard size={15} /> Atalhos</button>
           <button className={secao === "automacao" ? "ativo" : ""} onClick={() => setSecao("automacao")}><Timer size={15} /> Automação</button>
         </nav>
         <section className="config-corpo">
@@ -81,6 +83,7 @@ export function Configuracoes({
           )}
           {secao === "bancadas" && <SecaoBancadas aoTrocar={aoTrocarBancada} />}
           {secao === "integracoes" && <SecaoIntegracoes />}
+          {secao === "atalhos" && prefs && <SecaoAtalhos prefs={prefs} mudar={mudarPrefs} />}
           {secao === "automacao" && prefs && <SecaoAutomacao prefs={prefs} mudar={mudarPrefs} />}
           {secao === "automacao" && prefs && (
             <>

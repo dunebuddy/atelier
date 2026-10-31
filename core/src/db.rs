@@ -723,8 +723,94 @@ pub struct Propriedade {
 }
 
 pub const ESPECIES: &[&str] = &[
-    "texto", "numero", "data", "checkbox", "url", "selecao", "multisselecao", "status", "relacao", "links",
+    "texto", "numero", "data", "checkbox", "url", "email", "telefone", "selecao", "multisselecao", "status", "relacao",
+    "links", "criado_em", "atualizado_em",
 ];
+
+/// Espécies que aceitam `config.lista` (vários valores).
+const LISTAVEIS: &[&str] = &["texto", "numero", "data", "email", "telefone", "url"];
+
+/// Confere e ajeita um valor simples conforme a espécie e a config da propriedade
+/// (`numero`: `inteiro`, `casas`; `data`: `hora`). Vazio vira `null`.
+fn normalizar_simples(nome: &str, especie: &str, config: &Value, v: &Value) -> Res<Value> {
+    if v.is_null() || v.as_str().is_some_and(|s| s.trim().is_empty()) {
+        return Ok(Value::Null);
+    }
+    let invalido = |o: &str| Erro::Invalido(format!("{nome}: {o}"));
+    Ok(match especie {
+        "numero" => {
+            let n = match v {
+                Value::Number(n) => n.as_f64().unwrap_or(0.0),
+                Value::String(s) => s.trim().replace(' ', "").replace(',', ".").parse::<f64>().map_err(|_| invalido(&format!("\"{s}\" não é número")))?,
+                _ => return Err(invalido("use um número")),
+            };
+            if config.get("inteiro").and_then(|x| x.as_bool()).unwrap_or(false) {
+                if n.fract() != 0.0 {
+                    return Err(invalido(&format!("{n} não é inteiro")));
+                }
+                json!(n as i64)
+            } else if let Some(c) = config.get("casas").and_then(|x| x.as_u64()) {
+                let f = 10f64.powi(c.min(10) as i32);
+                json!((n * f).round() / f)
+            } else {
+                json!(n)
+            }
+        }
+        "data" => {
+            let s = v.as_str().ok_or_else(|| invalido("use AAAA-MM-DD"))?.trim();
+            let com_hora = config.get("hora").and_then(|x| x.as_bool()).unwrap_or(false);
+            let ok_dia = s.len() >= 10 && chrono::NaiveDate::parse_from_str(&s[..10], "%Y-%m-%d").is_ok();
+            if !ok_dia {
+                return Err(invalido(&format!("\"{s}\" não é data (AAAA-MM-DD)")));
+            }
+            // com hora: AAAA-MM-DDTHH:MM (sem hora fica só o dia)
+            if com_hora && s.len() >= 16 { json!(s[..16].replace(' ', "T")) } else { json!(s[..10]) }
+        }
+        "email" => {
+            let s = v.as_str().unwrap_or("").trim();
+            if !s.contains('@') || s.contains(' ') {
+                return Err(invalido(&format!("\"{s}\" não parece e-mail")));
+            }
+            json!(s)
+        }
+        "telefone" => {
+            let s = v.as_str().map(str::trim).map(String::from).unwrap_or_else(|| v.to_string());
+            if !s.chars().all(|c| c.is_ascii_digit() || " +()-.".contains(c)) {
+                return Err(invalido(&format!("\"{s}\" não parece telefone")));
+            }
+            json!(s)
+        }
+        "criado_em" | "atualizado_em" => return Err(invalido("é preenchida pelo atelier")),
+        _ => v.clone(),
+    })
+}
+
+/// Valor conforme a propriedade: lista (se `config.lista`) ou simples.
+fn normalizar_valor(nome: &str, especie: &str, config: &Value, v: &Value) -> Res<Value> {
+    let lista = config.get("lista").and_then(|x| x.as_bool()).unwrap_or(false) && LISTAVEIS.contains(&especie);
+    if !lista {
+        return match v {
+            // valor em lista numa propriedade simples: fica o primeiro
+            Value::Array(l) if !["multisselecao"].contains(&especie) && LISTAVEIS.contains(&especie) => {
+                normalizar_simples(nome, especie, config, l.first().unwrap_or(&Value::Null))
+            }
+            _ => normalizar_simples(nome, especie, config, v),
+        };
+    }
+    let brutos = match v {
+        Value::Null => vec![],
+        Value::Array(l) => l.clone(),
+        outro => vec![outro.clone()],
+    };
+    let mut l = vec![];
+    for b in brutos {
+        let x = normalizar_simples(nome, especie, config, &b)?;
+        if !x.is_null() {
+            l.push(x);
+        }
+    }
+    Ok(if l.is_empty() { Value::Null } else { Value::Array(l) })
+}
 
 pub fn esquema(conn: &Connection) -> Res<Value> {
     let mut st = conn.prepare("SELECT id, nome, icone, cor, ordem FROM tipos ORDER BY ordem, id")?;
@@ -1338,7 +1424,7 @@ pub fn atualizar_item(conn: &Connection, id: i64, dados: &Value) -> Res<()> {
             } else if especie == "links" {
                 normalizar_links(v)?
             } else {
-                v.clone()
+                normalizar_valor(&nome, &especie, &config, v)?
             };
             if antes == v {
                 continue;
@@ -1823,6 +1909,33 @@ mod testes {
         apagar_item(&c, id, "Paulo").unwrap();
         assert_eq!(esvaziar_lixeira(&c).unwrap().0, 1);
         assert!(ler_item(&c, id).is_err());
+    }
+
+    #[test]
+    fn tipos_de_propriedade() {
+        let c = banco();
+        let prop = |nome: &str, especie: &str, config: Value| criar_propriedade(&c, &json!({"nome": nome, "especie": especie, "config": config})).unwrap().to_string();
+        let inteiro = prop("Pontos", "numero", json!({"inteiro": true}));
+        let preco = prop("Preço", "numero", json!({"casas": 2}));
+        let notas = prop("Notas", "numero", json!({"lista": true}));
+        let reuniao = prop("Reunião", "data", json!({"hora": true}));
+        let datas = prop("Entregas", "data", json!({"lista": true}));
+        let email = prop("Contato", "email", json!({}));
+        let criado = prop("Criado", "criado_em", json!({}));
+        let id = criar_item(&c, &json!({"titulo": "x", "modelo_id": null})).unwrap();
+        atualizar_item(&c, id, &json!({"props": {
+            &inteiro: "3", &preco: "10,456", &notas: [7, "8,5", ""], &reuniao: "2026-11-03 14:30", &datas: ["2026-11-01", "2026-12-01"], &email: "a@b.com"
+        }})).unwrap();
+        let p = ler_item(&c, id).unwrap().props;
+        assert_eq!(p[&inteiro], json!(3));
+        assert_eq!(p[&preco], json!(10.46));
+        assert_eq!(p[&notas], json!([7.0, 8.5]));
+        assert_eq!(p[&reuniao], json!("2026-11-03T14:30"));
+        assert_eq!(p[&datas], json!(["2026-11-01", "2026-12-01"]));
+        assert!(atualizar_item(&c, id, &json!({"props": {&inteiro: 2.5}})).is_err(), "inteiro não aceita fração");
+        assert!(atualizar_item(&c, id, &json!({"props": {&reuniao: "amanhã"}})).is_err());
+        assert!(atualizar_item(&c, id, &json!({"props": {&email: "sem arroba"}})).is_err());
+        assert!(atualizar_item(&c, id, &json!({"props": {&criado: "2020-01-01"}})).is_err(), "automática não se escreve");
     }
 
     #[test]

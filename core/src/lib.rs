@@ -8,5 +8,6 @@ pub mod exportar;
 pub mod integracoes;
 pub mod manutencao;
 pub mod pastas;
+pub mod sistema;
 pub mod temas;
 pub mod terminal;

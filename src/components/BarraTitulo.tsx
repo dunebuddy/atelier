@@ -5,6 +5,7 @@ import {
 import { api, Esquema, Item } from "../api";
 import { falhou, ler, Rota } from "../ui";
 import { Popover, usePopover } from "./Popover";
+import { bate, combinacao } from "../atalhos";
 
 /** Janela do Tauri, se estivermos no app (no navegador de teste não há). */
 async function janela() {
@@ -28,8 +29,10 @@ export function Marca() {
 }
 
 export function BarraTitulo({
-  esquema, rota, ir, trilha, alternarMenu, abrirConfig, aoApagarItem,
+  esquema, rota, ir, trilha, alternarMenu, abrirConfig, aoApagarItem, workspace,
 }: {
+  /** seletor de workspace */
+  workspace?: React.ReactNode;
   esquema: Esquema | null;
   rota: Rota;
   ir: (r: Rota) => void;
@@ -58,8 +61,8 @@ export function BarraTitulo({
 
   useEffect(() => {
     const f = (e: KeyboardEvent) => {
-      if (e.ctrlKey && (e.key === "k" || e.key === "K")) { e.preventDefault(); setBuscando(true); }
-      if (e.ctrlKey && (e.key === "n" || e.key === "N") && botaoNovo.current) { e.preventDefault(); novo.abrir({ currentTarget: botaoNovo.current }); }
+      if (bate("busca", e)) { e.preventDefault(); setBuscando(true); }
+      if (bate("novo", e) && botaoNovo.current) { e.preventDefault(); novo.abrir({ currentTarget: botaoNovo.current }); }
     };
     window.addEventListener("keydown", f);
     return () => window.removeEventListener("keydown", f);
@@ -80,6 +83,7 @@ export function BarraTitulo({
       <div className="bt-esq" data-tauri-drag-region>
         <Marca />
         <button className="bt-btn" title="Menu lateral (Ctrl+\)" onClick={alternarMenu}><PanelLeft size={16} /></button>
+        {workspace}
         <nav className="trilha" data-tauri-drag-region>
           {trilha.map((t, i) => (
             <span key={i} className="trilha-pedaco">
@@ -91,7 +95,7 @@ export function BarraTitulo({
       </div>
 
       <button className="bt-busca" onClick={() => setBuscando(true)}>
-        <Search size={14} /> <span>Buscar ou ir para…</span> <kbd>Ctrl K</kbd>
+        <Search size={14} /> <span>Buscar ou ir para…</span> <kbd>{combinacao("busca").replace(/\+/g, " ")}</kbd>
       </button>
 
       <div className="bt-dir" data-tauri-drag-region>

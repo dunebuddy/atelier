@@ -57,12 +57,12 @@ export function inicial(r: Rota): EstadoPainel {
   return { metades: [{ janelas: [j], ativa: j.id, modo: "abas", proporcao: 0.6 }], foco: 0, divisao: 0.5 };
 }
 
-/** Estado guardado: terminais não sobrevivem a reabrir o app (a sessão morreu), então saem. */
+/** Estado guardado. Os terminais voltam como janela (parados: o processo morreu com o app; a janela oferece reabrir). */
 export function restaurar(e: EstadoPainel | null, padrao: Rota): EstadoPainel {
   if (!e?.metades?.length) return inicial(padrao);
   const metades = e.metades
     .map((m) => {
-      const janelas = m.janelas.filter((j) => j.hist?.length && rotaDe(j) && rotaDe(j).v !== "terminal");
+      const janelas = m.janelas.filter((j) => j.hist?.length && rotaDe(j));
       return { ...m, janelas, ativa: janelas.some((j) => j.id === m.ativa) ? m.ativa : janelas[0]?.id ?? null };
     })
     .filter((m, i) => m.janelas.length || i === 0);

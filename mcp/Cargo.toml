@@ -1,6 +1,6 @@
 [package]
 name = "atelier-mcp"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 description = "Servidor MCP (stdio) do atelier: dá aos agentes leitura e escrita na bancada aberta"
 

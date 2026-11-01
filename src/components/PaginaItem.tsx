@@ -235,12 +235,12 @@ export function PaginaItem({
       )}
       {item.apagado_em && (
         <div className="aviso-lixeira">
-          <Trash2 size={15} /> Este item está na lixeira desde {dataHora(item.apagado_em)}.
+          <Trash2 size={15} /> Este documento está na lixeira desde {dataHora(item.apagado_em)}.
           <button
             className="btn"
             onClick={async () => {
               await api.restaurarItem(item.id).catch(falhou);
-              avisar("Item restaurado.");
+              avisar("Documento restaurado.");
               carregar();
             }}
           >
@@ -275,7 +275,7 @@ export function PaginaItem({
             )}
             <button
               className="btn"
-              title="Abre um agente (Claude, Codex...) num terminal aqui no atelier, dentro da pasta do item. Cria a pasta se faltar."
+              title="Abre um agente (Claude, Codex...) num terminal aqui no atelier, dentro da pasta do documento. Cria a pasta se faltar."
               onClick={async () => {
                 try {
                   const pasta = item.pasta ?? (await api.criarPasta(item.id)).pasta;
@@ -290,7 +290,7 @@ export function PaginaItem({
             </button>
             <button
               className="btn"
-              title="Ver e editar os arquivos do item aqui, num painel à direita. Cria a pasta se faltar."
+              title="Ver e editar os arquivos do documento aqui, num painel à direita. Cria a pasta se faltar."
               onClick={async () => {
                 try {
                   const pasta = item.pasta ?? (await api.criarPasta(item.id)).pasta;
@@ -312,7 +312,7 @@ export function PaginaItem({
             <button
               className="btn"
               onClick={() => abrirWorkspace({ id: item.id, titulo: item.titulo, icone: esquema.tipos.find((t) => t.id === item.tipo_id)?.icone })}
-              title="Vai para o workspace deste item: as janelas, terminais e agentes dele (Ctrl+Alt+PgUp / PgDn troca)"
+              title="Vai para o workspace deste documento: as janelas, terminais e agentes dele (Ctrl+Alt+PgUp / PgDn troca)"
             >
               <LayoutDashboard size={14} /> Workspace
             </button>
@@ -367,7 +367,7 @@ export function PaginaItem({
                   return null;
                 }
               }}
-              placeholder="Escreva aqui… (markdown: ## título, - lista, [ ] tarefa; cite outro item com #código)"
+              placeholder="Escreva aqui… (markdown: ## título, - lista, [ ] tarefa; cite outro documento com #código)"
             />
           </Suspense>
 
@@ -431,7 +431,7 @@ export function PaginaItem({
 
       {escolherTipo.ancora && (
         <Popover ancora={escolherTipo.ancora} aoFechar={escolherTipo.fechar} largura={240}>
-          <div className="menu-rotulo">Este item é um…</div>
+          <div className="menu-rotulo">Este documento é um…</div>
           {esquema.tipos.map((t) => (
             <button
               key={t.id}

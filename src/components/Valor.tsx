@@ -546,7 +546,7 @@ export function EscolherItem({ ancora, aoFechar, esquema, selecionados, proprio,
   return (
     <Popover ancora={ancora} aoFechar={aoFechar} largura={340}>
       <div className="menu-rotulo">{titulo}</div>
-      <input className="campo" autoFocus placeholder="Buscar item (título ou código)…" value={q} onChange={(e) => setQ(e.target.value)}
+      <input className="campo" autoFocus placeholder="Buscar documento (título ou código)…" value={q} onChange={(e) => setQ(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter" && achados[0]) aoEscolher(achados[0]); }} />
       {achados.map((o) => {
         const t = esquema.tipos.find((x) => x.id === o.tipo_id);

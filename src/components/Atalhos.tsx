@@ -5,11 +5,11 @@ import { ATALHOS, combinacao, partes } from "../atalhos";
 // os que não se configuram (dependem de onde se está)
 const FIXOS: [string, string][] = [
   ["Ctrl Z", "Desfazer a última mudança que mostrou \"Desfazer\""],
-  ["Ctrl clique / clique do meio", "Num item (lista, árvore, relação): abre numa janela ao lado"],
-  ["Ctrl clique", "Abrir link, #código de item ou arquivo colado no texto"],
+  ["Ctrl clique / clique do meio", "Num documento (lista, árvore, relação): abre numa janela ao lado"],
+  ["Ctrl clique", "Abrir link, #código de documento ou arquivo colado no texto"],
   ["/", "No texto: menu para inserir título, lista, tarefa, código, data…"],
-  ["/prompt", "No texto do item: pede a um agente para escrever ali (ligue em Configurações → Integrações)"],
-  ["#código", "No texto ou numa nota: cita outro item (vira link e aparece em \"Mencionado em\")"],
+  ["/prompt", "No texto do documento: pede a um agente para escrever ali (ligue em Configurações → Integrações)"],
+  ["#código", "No texto ou numa nota: cita outro documento (vira link e aparece em \"Mencionado em\")"],
   ["Enter / Shift Enter", "Na anotação: anota / quebra linha"],
   ["Esc", "Fecha menus e janelas"],
 ];

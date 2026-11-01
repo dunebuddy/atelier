@@ -318,6 +318,11 @@ const MIGRACOES: &[&str] = &[
     INSERT INTO visoes (nome, icone, ordem, layout, filtro, fixa, criado_em)
       SELECT 'Todos os itens', '🗂️', 0, 'tabela', '{"historico":true}', 1, datetime('now') WHERE NOT EXISTS (SELECT 1 FROM visoes WHERE fixa = 1);
     "#,
+    // 13 — o item vira "documento" no que o usuário lê (0.2.1): a visão fixa muda de nome se ainda tem o de origem
+    //      (as tabelas e o código continuam dizendo item)
+    r#"
+    UPDATE visoes SET nome = 'Todos os documentos' WHERE fixa = 1 AND nome = 'Todos os itens';
+    "#,
 ];
 
 // ---------- relações ----------
@@ -329,7 +334,7 @@ const MIGRACOES: &[&str] = &[
 fn resumo_item(conn: &Connection, id: i64) -> Res<(String, String)> {
     conn.query_row("SELECT COALESCE(codigo, ''), titulo FROM itens WHERE id = ?", [id], |r| Ok((r.get(0)?, r.get(1)?)))
         .optional()?
-        .ok_or(Erro::NaoEncontrado(format!("item {id}")))
+        .ok_or(Erro::NaoEncontrado(format!("documento {id}")))
 }
 
 /// Nome, espécie e config de uma propriedade.
@@ -373,14 +378,14 @@ fn normalizar_relacao(conn: &Connection, proprio: Option<&str>, v: &Value, um_so
     let mut cods: Vec<String> = vec![];
     for b in brutos {
         let id = match &b {
-            Value::Number(n) => n.as_i64().ok_or(Erro::Invalido("item inválido na relação".into()))?,
+            Value::Number(n) => n.as_i64().ok_or(Erro::Invalido("documento inválido na relação".into()))?,
             Value::String(s) if s.trim().is_empty() => continue,
             Value::String(s) => id_por_codigo(conn, s)?,
-            _ => return Err(Erro::Invalido("relação aceita códigos de item (#a3f9c21)".into())),
+            _ => return Err(Erro::Invalido("relação aceita códigos de documento (#a3f9c21)".into())),
         };
         let (cod, _) = resumo_item(conn, id)?;
         if Some(cod.as_str()) == proprio {
-            return Err(Erro::Invalido("um item não se relaciona com ele mesmo".into()));
+            return Err(Erro::Invalido("um documento não se relaciona com ele mesmo".into()));
         }
         if !cods.contains(&cod) {
             cods.push(cod);
@@ -449,7 +454,7 @@ pub fn ligar(conn: &Connection, de: i64, prop: i64, para: i64, desligar: bool, a
     let atual: Value = conn
         .query_row(&format!("SELECT json_extract(props, '$.\"{prop}\"') FROM itens WHERE id = ?"), [de], |r| r.get::<_, Option<String>>(0))
         .optional()?
-        .ok_or(Erro::NaoEncontrado(format!("item {de}")))?
+        .ok_or(Erro::NaoEncontrado(format!("documento {de}")))?
         .and_then(|s| serde_json::from_str(&s).ok())
         .unwrap_or(Value::Null);
     let mut cods = codigos_de(&atual);
@@ -580,7 +585,7 @@ pub const LAYOUTS: &[&str] = &["tabela", "lista", "kanban", "linha"];
 pub fn limpar_sementes(conn: &Connection) -> Res<()> {
     let itens: i64 = conn.query_row("SELECT COUNT(*) FROM itens", [], |r| r.get(0))?;
     if itens > 0 {
-        return Err(Erro::Invalido("a bancada já tem itens; os tipos não foram tirados".into()));
+        return Err(Erro::Invalido("a bancada já tem documentos; os tipos não foram tirados".into()));
     }
     let tx = conn.unchecked_transaction()?;
     tx.execute("DELETE FROM visoes WHERE fixa = 0", [])?;
@@ -666,7 +671,7 @@ pub fn atualizar_visao(conn: &Connection, id: i64, dados: &Value) -> Res<()> {
 pub fn apagar_visao(conn: &Connection, id: i64) -> Res<()> {
     existe(conn, "visoes", id)?;
     if conn.query_row("SELECT fixa FROM visoes WHERE id = ?", [id], |r| r.get::<_, bool>(0))? {
-        return Err(Erro::Invalido("Todos os itens é a visão fixa da bancada; não sai".into()));
+        return Err(Erro::Invalido("Todos os documentos é a visão fixa da bancada; não sai".into()));
     }
     conn.execute("DELETE FROM visoes WHERE id = ?", [id])?;
     Ok(())
@@ -689,7 +694,7 @@ pub fn id_por_codigo(conn: &Connection, codigo: &str) -> Res<i64> {
     let c = codigo.trim().trim_start_matches('#').to_lowercase();
     conn.query_row("SELECT id FROM itens WHERE codigo = ?", [&c], |r| r.get(0))
         .optional()?
-        .ok_or(Erro::NaoEncontrado(format!("item #{c}")))
+        .ok_or(Erro::NaoEncontrado(format!("documento #{c}")))
 }
 
 fn migrar(conn: &Connection) -> Res<()> {
@@ -1464,7 +1469,7 @@ pub fn ler_item(conn: &Connection, id: i64) -> Res<Item> {
             Ok(it)
         })
         .optional()?
-        .ok_or(Erro::NaoEncontrado(format!("item {id}")))?;
+        .ok_or(Erro::NaoEncontrado(format!("documento {id}")))?;
     let mut st = conn.prepare("SELECT id, texto, autor, criado_em, editado_em FROM notas WHERE item_id = ? AND apagado_em IS NULL ORDER BY criado_em DESC, id DESC")?;
     item.notas = Some(
         st.query_map([id], |r| Ok(Nota { id: r.get(0)?, texto: r.get(1)?, autor: r.get(2)?, criado_em: r.get(3)?, editado_em: r.get(4)? }))?
@@ -1591,7 +1596,7 @@ pub fn atualizar_item(conn: &Connection, id: i64, dados: &Value) -> Res<()> {
             Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
         })
         .optional()?
-        .ok_or(Erro::NaoEncontrado(format!("item {id}")))?;
+        .ok_or(Erro::NaoEncontrado(format!("documento {id}")))?;
     let quem = autor(dados);
     let tx = conn.unchecked_transaction()?;
     let mut eventos: Vec<String> = vec![];
@@ -1724,7 +1729,7 @@ pub fn apagar_de_vez(conn: &Connection, id: i64) -> Res<()> {
     let na_lixeira: bool = conn
         .query_row("SELECT apagado_em IS NOT NULL FROM itens WHERE id = ?", [id], |r| r.get(0))
         .optional()?
-        .ok_or(Erro::NaoEncontrado(format!("item {id}")))?;
+        .ok_or(Erro::NaoEncontrado(format!("documento {id}")))?;
     if !na_lixeira {
         return Err(Erro::Invalido("só apaga de vez o que já está na lixeira".into()));
     }
@@ -1950,7 +1955,7 @@ mod testes {
     fn visoes_semente_e_tipo_novo_ganha_visao() {
         let c = banco();
         let nomes: Vec<String> = listar_visoes(&c).unwrap().into_iter().map(|v| v.nome).collect();
-        assert_eq!(&nomes[..4], &["Todos os itens", "Hoje", "Caixa de entrada", "Quadro de tasks"]);
+        assert_eq!(&nomes[..4], &["Todos os documentos", "Hoje", "Caixa de entrada", "Quadro de tasks"]);
         let t = criar_tipo(&c, &json!({"nome": "Reunião"})).unwrap();
         assert!(listar_visoes(&c).unwrap().iter().any(|v| v.nome == "Reunião" && v.filtro["tipos"] == json!([t])));
         apagar_tipo(&c, t).unwrap();
@@ -1965,7 +1970,7 @@ mod testes {
         assert!(e["tipos"].as_array().unwrap().is_empty());
         assert_eq!(e["propriedades"].as_array().unwrap().len(), 1, "fica só o Status");
         let nomes: Vec<String> = listar_visoes(&c).unwrap().into_iter().map(|v| v.nome).collect();
-        assert_eq!(nomes, ["Todos os itens"]);
+        assert_eq!(nomes, ["Todos os documentos"]);
         // a fixa não sai nem filtra
         let fixa = listar_visoes(&c).unwrap()[0].id;
         assert!(apagar_visao(&c, fixa).is_err());
@@ -1976,7 +1981,7 @@ mod testes {
         let t = criar_tipo(&c, &json!({"nome": "Personagem", "icone": "🧙"})).unwrap();
         let id = criar_item(&c, &json!({"titulo": "Elara", "tipo_id": t})).unwrap();
         assert_eq!(ler_item(&c, id).unwrap().props["1"], json!(null), "sem modelo, nasce sem status");
-        assert!(limpar_sementes(&c).is_err(), "com itens não mexe");
+        assert!(limpar_sementes(&c).is_err(), "com documentos não mexe");
     }
 
     /// Migration fora de ordem passa num banco novo mas quebra um banco antigo (aconteceu em 2026-10-30).
@@ -2035,7 +2040,7 @@ mod testes {
         assert!(ops.as_array().unwrap().iter().any(|o| o["nome"] == "Fazendo" && o["cor"] == "orange"), "{ops}");
         assert!(mudar_opcao(&c, Some(1), 1, "Fazendo", &json!({"nome": "A fazer"})).is_err(), "nome repetido");
         mudar_opcao(&c, Some(1), 1, "Fazendo", &json!({"apagar": true})).unwrap();
-        assert!(ler_item(&c, a).unwrap().props.get("1").is_none(), "opção apagada sai do item");
+        assert!(ler_item(&c, a).unwrap().props.get("1").is_none(), "opção apagada sai do documento");
         assert_eq!(itens_com_valor(&c, 1).unwrap(), 0);
     }
 
@@ -2173,7 +2178,7 @@ mod testes {
         assert!(ler_item(&c, id).unwrap().notas.unwrap().iter().any(|n| n.id == nid));
 
         apagar_item(&c, id, "Paulo").unwrap();
-        assert!(listar_itens(&c, &Filtro::default()).unwrap().is_empty(), "item na lixeira some das listas");
+        assert!(listar_itens(&c, &Filtro::default()).unwrap().is_empty(), "documento na lixeira some das listas");
         assert!(ler_item(&c, id).unwrap().apagado_em.is_some());
         assert_eq!(lixeira(&c).unwrap()["itens"].as_array().unwrap().len(), 1);
         restaurar_item(&c, id, "Paulo").unwrap();

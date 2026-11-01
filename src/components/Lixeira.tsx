@@ -43,7 +43,7 @@ export function Lixeira({ esquema, ir }: { esquema: Esquema; ir: (r: Rota) => vo
               if (!esvaziar) { setEsvaziar(true); window.setTimeout(() => setEsvaziar(false), 4000); return; }
               try {
                 const r = await api.esvaziarLixeira();
-                avisar(`Lixeira esvaziada: ${r.itens} itens e ${r.notas} notas apagados de vez.`);
+                avisar(`Lixeira esvaziada: ${r.itens} documentos e ${r.notas} notas apagados de vez.`);
                 carregar();
               } catch (e) {
                 falhou(e);
@@ -59,7 +59,7 @@ export function Lixeira({ esquema, ir }: { esquema: Esquema; ir: (r: Rota) => vo
 
       {dados.itens.length > 0 && (
         <>
-          <div className="secao-titulo" style={{ marginTop: 10 }}>Itens</div>
+          <div className="secao-titulo" style={{ marginTop: 10 }}>Documentos</div>
           <div className="lista-compacta">
             {dados.itens.map((it) => {
               const t = esquema.tipos.find((x) => x.id === it.tipo_id);

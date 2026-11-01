@@ -62,9 +62,9 @@ pub fn criar(conn: &Connection, bancada: &Path, nome_bancada: &str, id: i64, aut
         let texto = [
             format!("# #{cod} — {titulo}"),
             String::new(),
-            format!("Esta pasta é o item **#{cod}** do atelier (tipo {tipo}, bancada {nome_bancada})."),
+            format!("Esta pasta é o documento **#{cod}** do atelier (tipo {tipo}, bancada {nome_bancada})."),
             "O registro vivo (status, propriedades, texto e linha do tempo) fica no atelier, não aqui.".into(),
-            format!("Use o MCP `atelier` para ler e registrar o andamento: `ler_item` com id \"{cod}\", `anotar`, `atualizar_item`."),
+            format!("Use o MCP `atelier` para ler e registrar o andamento: `ler_documento` com id \"{cod}\", `anotar`, `atualizar_documento`."),
             String::new(),
             "- `insumos/` — o que entra: pedido, prints, exports, planilhas, e-mails".into(),
             "- `artefatos/` — o que sai: scripts, documentos, entregas".into(),

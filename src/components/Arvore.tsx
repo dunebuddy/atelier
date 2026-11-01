@@ -65,7 +65,7 @@ export function ArvoreVisao({ visao, esquema, rota, ir, aoSair, aoMudarVisoes }:
           <span className="tipo-chip">{visao.icone}</span>
           <span className="rotulo">{visao.nome}</span>
         </button>
-        <button className="btn-icone" title="Árvore: o que aparece embaixo de cada item" onClick={pConfig.abrir}><ListTree size={15} /></button>
+        <button className="btn-icone" title="Árvore: o que aparece embaixo de cada documento" onClick={pConfig.abrir}><ListTree size={15} /></button>
         <button className="btn-icone" title="Recarregar" onClick={() => setRecarga((n) => n + 1)}><RefreshCw size={14} /></button>
       </div>
       {prop && (
@@ -75,7 +75,7 @@ export function ArvoreVisao({ visao, esquema, rota, ir, aoSair, aoMudarVisoes }:
       )}
       <div className="arv-lista">
         {itens === null && <div className="arv-vazio">Carregando…</div>}
-        {itens && raizes.length === 0 && <div className="arv-vazio">Nenhum item nesta visão.</div>}
+        {itens && raizes.length === 0 && <div className="arv-vazio">Nenhum documento nesta visão.</div>}
         {raizes.map((it) => (
           <No key={`${it.id}-${recarga}`} item={it} esquema={esquema} rota={rota} ir={ir} prop={prop?.id ?? null} sentido={config?.sentido ?? "aponta"} nivel={0} caminho={[it.id]} esconder={!!visao.filtro?.esconder_historico} />
         ))}
@@ -83,7 +83,7 @@ export function ArvoreVisao({ visao, esquema, rota, ir, aoSair, aoMudarVisoes }:
 
       {pConfig.ancora && (
         <Popover ancora={pConfig.ancora} aoFechar={pConfig.fechar} largura={290}>
-          <div className="menu-rotulo">Embaixo de cada item, mostrar</div>
+          <div className="menu-rotulo">Embaixo de cada documento, mostrar</div>
           <button className="menu-item" onClick={() => { gravar(null); pConfig.fechar(); }}>
             Nada (lista simples) {!prop && <span className="dir">✓</span>}
           </button>
@@ -93,7 +93,7 @@ export function ArvoreVisao({ visao, esquema, rota, ir, aoSair, aoMudarVisoes }:
               const ligado = prop?.id === p.id && config?.sentido === s;
               return (
                 <button key={`${p.id}${s}`} className="menu-item" onClick={() => { gravar({ prop: p.id, sentido: s, so_raizes: config?.so_raizes }); pConfig.fechar(); }}
-                  title={s === "aponta" ? `Os itens que estão no "${p.nome}" de cada um` : `Os itens que têm cada um no "${p.nome}" deles`}>
+                  title={s === "aponta" ? `Os documentos que estão no "${p.nome}" de cada um` : `Os documentos que têm cada um no "${p.nome}" deles`}>
                   {nome}
                   {s === "apontado" && <span className="dir" style={{ fontSize: 11 }}>{ligado ? "✓" : `inverso de ${p.nome}`}</span>}
                   {s === "aponta" && ligado && <span className="dir">✓</span>}

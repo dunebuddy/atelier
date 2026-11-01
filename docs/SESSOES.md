@@ -400,3 +400,18 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 - O navegador interno escondido não roda `requestAnimationFrame` nem IntersectionObserver, e o pdf.js precisa de
   quadro de animação para desenhar: o PDF não dá para testar desenhando ali. Conferido: os lugares das páginas e o
   observador; o desenho, só no app.
+
+## 2026-11-01 (noite) — 0.2.1, fim do roadmap
+
+- Item vira documento só no que se lê. A primeira tentativa (um tokenizador que trocava em literais) se perdeu e
+  mexeu em código (classes CSS, a chave `item:` dos workspaces, variáveis e tipos): desfeita. A que ficou troca linha
+  por linha, só em frases e texto de JSX, com exceções para SQL, seletores CSS, "Work item" e a pasta `itens/`, e
+  cada linha foi revisada. As migrações antigas não foram reescritas: a 13 renomeia a visão fixa.
+- Fim do roadmap liberado pelo Paulo: 0.1.7 a 0.2.1 no mesmo dia, cada uma com o CI conferido antes da próxima
+  (a 0.2.0 levou junto a parte de memória, que ficou pronta enquanto o CI da 0.1.9 rodava).
+
+### Ponto de parada
+- Roadmap concluído. Sobram as "Ideias, sem data" do ROADMAP.md e o que for chegando em PENDENCIAS.md.
+- A conferir no uso (não dá no teste sem janela): ícone e permissões na janela de verdade, a economia de memória do
+  ditado, a placa de vídeo no ditado (só na máquina com RTX), o PDF desenhando ao rolar e a ficha fixa com a janela
+  larga.

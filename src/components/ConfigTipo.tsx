@@ -64,12 +64,12 @@ export function ConfigTipo({
           onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
         />
       </div>
-      <button className="btn" onClick={() => ir({ v: "lista", tipo: tipo.id })}>Ver os itens de {tipo.nome} →</button>
+      <button className="btn" onClick={() => ir({ v: "lista", tipo: tipo.id })}>Ver os documentos de {tipo.nome} →</button>
 
       <h2>Propriedades</h2>
       <p className="dica">
         Propriedades são compartilhadas: a mesma “Frente” pode estar em Dívida e em Task, e o filtro pega as duas.
-        Tirar uma propriedade do tipo não apaga os valores dos itens.
+        Tirar uma propriedade do tipo não apaga os valores dos documentos.
       </p>
       {props.map((p, i) => (
         <div key={p.id}>
@@ -125,7 +125,7 @@ export function ConfigTipo({
           }
         }}
       >
-        <Trash2 size={14} /> {apagar ? `Clique de novo: apagar o tipo ${tipo.nome} (os itens ficam, sem tipo)` : `Apagar o tipo ${tipo.nome}`}
+        <Trash2 size={14} /> {apagar ? `Clique de novo: apagar o tipo ${tipo.nome} (os documentos ficam, sem tipo)` : `Apagar o tipo ${tipo.nome}`}
       </button>
 
       {emoji.ancora && (
@@ -336,7 +336,7 @@ function CartaoModelo({ esquema, tipo, modelo, aoMudarEsquema }: { esquema: Esqu
       </div>
       <div className="divisor" style={{ margin: "8px 0 12px" }} />
       <Suspense fallback={<div className="editor" />}>
-        <Editor key={modelo.id} valor={modelo.corpo} aoMudar={(corpo) => gravar({ corpo })} placeholder="Texto que o item já traz ao nascer…" />
+        <Editor key={modelo.id} valor={modelo.corpo} aoMudar={(corpo) => gravar({ corpo })} placeholder="Texto que o documento já traz ao nascer…" />
       </Suspense>
     </div>
   );

@@ -186,7 +186,7 @@ function BuscaRapida({ esquema, ir, aoFechar, inicial = "" }: { esquema: Esquema
           <Search size={17} />
           <input
             autoFocus
-            placeholder="Buscar itens ou tipos…"
+            placeholder="Buscar documentos ou tipos…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
@@ -207,7 +207,7 @@ function BuscaRapida({ esquema, ir, aoFechar, inicial = "" }: { esquema: Esquema
               {o.item && <BotaoWorkspace esquema={esquema} item={o.item} depois={aoFechar} />}
             </button>
           ))}
-          {opcoes.length === 0 && <div className="br-vazio">{b ? "Nada encontrado." : "Nenhum item ainda."}</div>}
+          {opcoes.length === 0 && <div className="br-vazio">{b ? "Nada encontrado." : "Nenhum documento ainda."}</div>}
         </div>
       </div>
     </div>

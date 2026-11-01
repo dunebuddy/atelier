@@ -188,7 +188,7 @@ function SecaoEstaBancada({ bancada, aoFechar }: { bancada: Bancada; aoFechar: (
   return (
     <>
       <h3>Bancada</h3>
-      <p className="dica">Os tipos, propriedades, visões e itens desta bancada ficam no banco dela, na pasta abaixo.</p>
+      <p className="dica">Os tipos, propriedades, visões e documentos desta bancada ficam no banco dela, na pasta abaixo.</p>
       <h4>Nome</h4>
       <input className="campo" style={{ maxWidth: 320 }} value={nome} onChange={(e) => setNome(e.target.value)} onBlur={gravarNome}
         onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />
@@ -199,7 +199,7 @@ function SecaoEstaBancada({ bancada, aoFechar }: { bancada: Bancada; aoFechar: (
       </div>
       <h4>Workspace da bancada</h4>
       <p className="dica">
-        O painel de trabalho da bancada inteira, fora de qualquer item. Terminal e agente abertos nele nascem na pasta da
+        O painel de trabalho da bancada inteira, fora de qualquer documento. Terminal e agente abertos nele nascem na pasta da
         bancada: é o lugar do agente que coordena tudo (o do bom dia, do ponto, das regras do dia).
       </p>
       <button className="btn primario" onClick={() => { abrirWorkspace(); aoFechar(); }}><LayoutPanelLeft size={14} /> Abrir o workspace da bancada</button>
@@ -332,7 +332,7 @@ function SecaoBancadas({ aoTrocar }: { aoTrocar: () => void }) {
             </button>
           </div>
         </label>
-        <p className="dica">A bancada nasce limpa: só a visão Todos os itens. Os tipos, propriedades e visões você cria.</p>
+        <p className="dica">A bancada nasce limpa: só a visão Todos os documentos. Os tipos, propriedades e visões você cria.</p>
         <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
           <button className="btn primario" onClick={criar} disabled={!nome.trim()}>
             <FolderPlus size={14} /> Criar e abrir
@@ -472,7 +472,7 @@ function SecaoIntegracoes() {
     <>
       <h3>Integrações</h3>
       <p className="dica">
-        Instala o servidor MCP do atelier nos agentes desta máquina. Com ele, o agente busca, lê, cria e anota itens na
+        Instala o servidor MCP do atelier nos agentes desta máquina. Com ele, o agente busca, lê, cria e anota documentos na
         bancada aberta (mesmo com o app fechado). Antes de mexer no arquivo de um agente, o atelier guarda uma cópia{" "}
         <code>.bak-atelier</code> ao lado.
       </p>

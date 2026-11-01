@@ -117,7 +117,7 @@ Um pacote só, porque tudo mexe no worker do ditado e na mesma tela de Configura
 - Fica de fora, de propósito: desmontar janelas escondidas (perderia a rolagem e o que estiver sendo editado; o
   ganho de memória não paga o risco no uso diário).
 
-## 0.2.1 · Item vira documento (pacote sozinho)
+## 0.2.1 · Item vira documento (pacote sozinho) · **saiu em 2026-11-01**
 
 Pedido do Paulo em 2026-11-01: a entidade central deixa de se chamar **item** e passa a se chamar **documento**. Nada
 muda no comportamento, só o nome: tela, mensagens, MCP (descrições e nomes das ferramentas, com os nomes antigos

@@ -152,7 +152,7 @@ function ConfigRelacao({ prop, aoMudarEsquema }: { prop: Propriedade; aoMudarEsq
   };
   return (
     <>
-      <div className="menu-rotulo">Do lado do item apontado, lê-se</div>
+      <div className="menu-rotulo">Do lado do documento apontado, lê-se</div>
       <input
         className="campo"
         placeholder={`${prop.nome} (de)`}
@@ -162,7 +162,7 @@ function ConfigRelacao({ prop, aoMudarEsquema }: { prop: Propriedade; aoMudarEsq
       />
       <label className="menu-item" style={{ cursor: "pointer" }}>
         <input type="checkbox" checked={!!prop.config?.um_so} onChange={(e) => gravar({ um_so: e.target.checked })} style={{ accentColor: "var(--acento)" }} />
-        Aponta para um item só
+        Aponta para um documento só
       </label>
     </>
   );

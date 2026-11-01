@@ -154,7 +154,7 @@ export function Sidebar({
       <span className="tipo-chip">{v.icone}</span>
       <span className="rotulo">{v.nome}</span>
       {contagens[v.id] != null && <span className="conta">{contagens[v.id]}</span>}
-      <span className="sb-expandir" role="button" title="Ver os itens aqui na barra" onClick={(e) => { e.stopPropagation(); setFocada(v.id); }}>
+      <span className="sb-expandir" role="button" title="Ver os documentos aqui na barra" onClick={(e) => { e.stopPropagation(); setFocada(v.id); }}>
         <ListTree size={13} />
       </span>
     </button>

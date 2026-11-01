@@ -169,7 +169,7 @@ export function Explorador({ raiz, arquivo, titulo }: { raiz: string; arquivo?: 
               {e.modificado && <span className="ex-meta">{dataHora(e.modificado)}</span>}
             </button>
           ))}
-          {entradas.length === 0 && <div className="vazio-grande">Pasta vazia. Arraste arquivos para a página do item.</div>}
+          {entradas.length === 0 && <div className="vazio-grande">Pasta vazia. Arraste arquivos para a página do documento.</div>}
         </div>
       )}
     </div>

@@ -21,6 +21,10 @@ total para o Claude via MCP**. Ele nasceu numa conversa de 2026-10-30, no posto 
 - O Paulo vai **moldando o sistema com o uso**. O modelo de dados tem de aceitar mudança (campos novos, tipos novos)
   sem dor: migrations versionadas desde o primeiro dia.
 - **Idioma:** português (interface, mensagens, docs, commits). Identificadores de código podem ser em inglês.
+- **Vocabulário (desde a 0.2.1):** a entidade central se chama **documento** em tudo o que o usuário lê (tela,
+  mensagens, MCP). No código, no banco (tabela `itens`, rota `{ v: "item" }`, `/api/itens`) e na pasta do disco
+  (`<bancada>/itens/`) continua **item**, de propósito: renomear isso não muda nada para o Paulo e quebraria dados.
+  As ferramentas do MCP se chamam `*_documento`; os nomes antigos (`ler_item`...) ainda são aceitos.
 - **Windows 11**, shell padrão PowerShell 7. A máquina tem Node 22, Bun 1.4, Rust/Cargo 1.96, git e gh (conta
   GitHub `dunebuddy`).
 

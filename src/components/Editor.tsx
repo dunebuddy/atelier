@@ -40,7 +40,7 @@ const Mencao = Extension.create<{ aoAbrir: (codigo: string) => void }>({
               if (!node.isText || !node.text) return;
               for (const m of node.text.matchAll(RE_MENCAO)) {
                 const ini = pos + (m.index ?? 0) + m[1].length;
-                decos.push(Decoration.inline(ini, ini + 1 + m[2].length, { class: "mencao", "data-codigo": m[2], title: "Ctrl+clique para abrir o item" }));
+                decos.push(Decoration.inline(ini, ini + 1 + m[2].length, { class: "mencao", "data-codigo": m[2], title: "Ctrl+clique para abrir o documento" }));
               }
             });
             return DecorationSet.create(state.doc, decos);
@@ -76,7 +76,7 @@ const COMANDOS: Cmd[] = [
     id: "agora", nome: "Data e hora de agora", dica: "30/10 18:55",
     faz: (e) => e.chain().focus().insertContent(new Date().toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).replace(",", "") + " ").run(),
   },
-  { id: "item", nome: "Citar outro item", dica: "#código", faz: (e) => e.chain().focus().insertContent("#").run() },
+  { id: "item", nome: "Citar outro documento", dica: "#código", faz: (e) => e.chain().focus().insertContent("#").run() },
 ];
 
 /** Só no texto de um item: pede a um agente para escrever ali (abre a caixinha; ver PromptAgente). */

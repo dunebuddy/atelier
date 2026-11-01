@@ -10,8 +10,8 @@ export interface DefAtalho {
 }
 
 export const ATALHOS: DefAtalho[] = [
-  { id: "busca", nome: "Buscar ou ir para um item", grupo: "Geral", padrao: "Ctrl+K" },
-  { id: "novo", nome: "Novo item", grupo: "Geral", padrao: "Ctrl+N" },
+  { id: "busca", nome: "Buscar ou ir para um documento", grupo: "Geral", padrao: "Ctrl+K" },
+  { id: "novo", nome: "Novo documento", grupo: "Geral", padrao: "Ctrl+N" },
   { id: "comando", nome: "Comando para o agente", grupo: "Geral", padrao: "Ctrl+J" },
   { id: "config", nome: "Configurações", grupo: "Geral", padrao: "Ctrl+," },
   { id: "atalhos", nome: "Lista de atalhos", grupo: "Geral", padrao: "Ctrl+/" },

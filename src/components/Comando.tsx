@@ -32,7 +32,7 @@ const LADOS = ["esquerda", "direita"];
 
 function descreverRota(r: Rota): string {
   switch (r.v) {
-    case "item": return `item (id ${r.id})`;
+    case "item": return `documento (id ${r.id})`;
     case "visao": return `visão (id ${r.id})`;
     case "terminal": return r.programa ? `agente ${r.programa} no terminal` : "terminal";
     case "arquivos": return `arquivo/pasta ${r.arquivo ?? r.raiz}`;
@@ -48,7 +48,7 @@ export function descreverTela(ws: W.Workspaces, bancadas: Bancadas | null, visoe
   const outras = bancadas?.bancadas.filter((b) => b.caminho !== bancadas.ativa?.caminho).map((b) => b.nome) ?? [];
   if (outras.length) l.push(`Outras bancadas: ${outras.join(", ")}.`);
   if (visoes?.length) l.push(`Visões no menu: ${visoes.map((v) => v.nome).join(", ")}.`);
-  const nomeWs = (k: string) => (k === W.GERAL ? "o da bancada" : `o do item "${ws.info[k]?.titulo ?? k}"`);
+  const nomeWs = (k: string) => (k === W.GERAL ? "o da bancada" : `o do documento "${ws.info[k]?.titulo ?? k}"`);
   l.push(`Workspace ativo: ${nomeWs(ws.ativo)}. Abertos: ${ws.abertos.map(nomeWs).join("; ")}.`);
   const e = ws.estados[ws.ativo];
   if (e) {

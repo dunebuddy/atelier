@@ -143,7 +143,7 @@ export function Exportar({ esquema, ids, nome, aoFechar }: {
       <div className="modal exportar">
         <div className="modal-cabeca">
           <FileDown size={17} />
-          <h3>Exportar {umSo ? "item" : `${ids.length} itens`}</h3>
+          <h3>Exportar {umSo ? "documento" : `${ids.length} documentos`}</h3>
           <span style={{ flex: 1 }} />
           <button className="btn-icone" onClick={aoFechar} title="Fechar"><X size={16} /></button>
         </div>
@@ -162,8 +162,8 @@ export function Exportar({ esquema, ids, nome, aoFechar }: {
             <div className="menu-rotulo">Como</div>
             <div className="filtro-chips">
               {([
-                ["relatorio", "Relatório: um bloco por item"],
-                ["tabela", "Tabela: uma linha por item"],
+                ["relatorio", "Relatório: um bloco por documento"],
+                ["tabela", "Tabela: uma linha por documento"],
                 ["lista", "Lista: só títulos e códigos"],
               ] as const).map(([id, nome]) => (
                 <button key={id} className={`chip${arranjo === id ? " ligado" : ""}`} disabled={tabular && id !== "tabela"} onClick={() => mudar({ arranjo: id })}>{nome}</button>
@@ -173,7 +173,7 @@ export function Exportar({ esquema, ids, nome, aoFechar }: {
           </>
         )}
 
-        <div className="menu-rotulo">O que vai de cada item</div>
+        <div className="menu-rotulo">O que vai de cada documento</div>
         <div className="filtro-chips">
           {caixa("titulo", "Título")}
           {caixa("codigo", "Código")}
@@ -182,7 +182,7 @@ export function Exportar({ esquema, ids, nome, aoFechar }: {
           {caixa("datas", "Criado e atualizado")}
           {caixa("corpo", "Texto", arranjo === "lista")}
           {caixa("apontado", "Apontado por", arranjo === "lista")}
-          {caixa("ligados", "Incluir os itens ligados")}
+          {caixa("ligados", "Incluir os documentos ligados")}
         </div>
 
         {disponiveis.length > 0 && arranjo !== "lista" && (
@@ -311,7 +311,7 @@ function montar(esquema: Esquema, itens: Item[], principais: number, props: Prop
     md.push(`| ${cabecalho.join(" | ")} |`, `|${cabecalho.map(() => " --- ").join("|")}|`, ...linhas.map((l) => `| ${l.map(cel).join(" | ")} |`), "");
   } else {
     itens.forEach((it, i) => {
-      if (i === principais && principais < itens.length) md.push("---", "", "# Itens ligados", "");
+      if (i === principais && principais < itens.length) md.push("---", "", "# Documentos ligados", "");
       md.push(...bloco(it));
     });
   }

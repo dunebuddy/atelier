@@ -26,7 +26,7 @@ pub struct Cli {
 pub const CLIS: &[Cli] = &[
     Cli {
         id: "claude-code", nome: "Claude Code", bins: &["claude"],
-        exec: "-p --allowedTools mcp__atelier__esquema,mcp__atelier__buscar,mcp__atelier__ler_item,mcp__atelier__linha_do_tempo",
+        exec: "-p --allowedTools mcp__atelier__esquema,mcp__atelier__buscar,mcp__atelier__ler_documento,mcp__atelier__linha_do_tempo",
         comando: "-p --allowedTools mcp__atelier",
     },
     Cli { id: "codex", nome: "Codex", bins: &["codex"], exec: "exec --skip-git-repo-check -", comando: "" },

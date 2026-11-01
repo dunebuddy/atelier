@@ -57,7 +57,7 @@ export function LinhaDoTempo({
         <div className="captura">
           <Inbox size={16} />
           <input
-            placeholder="O que chegou? Escreva e dê Enter: vira um item na caixa de entrada, para classificar depois."
+            placeholder="O que chegou? Escreva e dê Enter: vira um documento na caixa de entrada, para classificar depois."
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && capturarAgora()}
@@ -68,7 +68,7 @@ export function LinhaDoTempo({
 
       {eventos && eventos.length > 0 && (
         <div className="ldt-ferramentas">
-          <button className="btn" onClick={() => setRelatorio(montarRelatorio(esquema, eventos, de, ate))} title="O que aconteceu neste período, por item, em markdown">
+          <button className="btn" onClick={() => setRelatorio(montarRelatorio(esquema, eventos, de, ate))} title="O que aconteceu neste período, por documento, em markdown">
             <FileText size={14} /> Relatório
           </button>
         </div>
@@ -83,7 +83,7 @@ export function LinhaDoTempo({
         <section key={dia} className="ldt-dia">
           <h3 className="ldt-data serif">
             {diaPorExtenso(dia)}
-            <span className="ldt-conta">{lista.length} {lista.length === 1 ? "registro" : "registros"} · {new Set(lista.map((e) => e.item_id)).size} itens</span>
+            <span className="ldt-conta">{lista.length} {lista.length === 1 ? "registro" : "registros"} · {new Set(lista.map((e) => e.item_id)).size} documentos</span>
           </h3>
           <ol className="ldt-lista">
             {agrupar(lista).map((g) =>
@@ -106,9 +106,9 @@ export function montarRelatorio(esquema: Esquema, eventos: Evento[], de: string,
     porItem.get(e.item_id)!.push(e);
   }
   const frase = (t: string) =>
-    t === "Criado." ? "criou o item" : t === "Texto editado." ? "editou o texto" : t.replace(/\n+/g, " ");
+    t === "Criado." ? "criou o documento" : t === "Texto editado." ? "editou o texto" : t.replace(/\n+/g, " ");
   const linhas = [`# O que aconteceu — ${rotuloIntervalo(de, ate)}`, "", `_gerado pelo atelier em ${dataHora(new Date().toISOString())}_`, ""];
-  linhas.push(`${porItem.size} itens · ${eventos.length} registros`, "");
+  linhas.push(`${porItem.size} documentos · ${eventos.length} registros`, "");
   for (const lista of porItem.values()) {
     const e0 = lista[0];
     const tipo = esquema.tipos.find((t) => t.id === e0.tipo_id)?.nome;
@@ -207,7 +207,7 @@ function EventoLinha({ esquema, e, ir }: { esquema: Esquema; e: Evento; ir: (r: 
       <div className="ldt-corpo">
         <div className="ldt-linha1">
           <span className={`ldt-autor${agente ? " por-agente" : ""}`}>{e.autor}</span>
-          <button className="ldt-item" onClick={() => ir({ v: "item", id: e.item_id })} title="Abrir o item">
+          <button className="ldt-item" onClick={() => ir({ v: "item", id: e.item_id })} title="Abrir o documento">
             <span>{tipo?.icone ?? "·"}</span>
             <span className="id-item">#{e.codigo}</span>
             <span className="ldt-titulo">{e.titulo || "Sem título"}</span>
@@ -231,7 +231,7 @@ function O_que({ esquema, e, ir }: { esquema: Esquema; e: Evento; ir: (r: Rota) 
       </div>
     );
   }
-  if (t === "Criado.") return <div className="ldt-acao">criou o item</div>;
+  if (t === "Criado.") return <div className="ldt-acao">criou o documento</div>;
   if (t === "Texto editado.") return <div className="ldt-acao">editou o texto</div>;
   if (t === "Pasta desligada.") return <div className="ldt-acao">desligou a pasta</div>;
   const pasta = t.match(/^Pasta(?: criada)?: (.+)$/);

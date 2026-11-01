@@ -173,7 +173,7 @@ export function VisaoTela({
             <h1>{v.nome}</h1>
           )}
           <div className="vista-sub">
-            {v.layout === "linha" ? "Linha do tempo" : itens ? `${visiveis.length} ${visiveis.length === 1 ? "item" : "itens"}` : "…"}
+            {v.layout === "linha" ? "Linha do tempo" : itens ? `${visiveis.length} ${visiveis.length === 1 ? "documento" : "documentos"}` : "…"}
             {v.layout !== "linha" && escondidos > 0 && ` · ${escondidos} concluídos escondidos`}
           </div>
         </div>
@@ -227,13 +227,13 @@ export function VisaoTela({
           <button
             className={`btn${f.esconder_historico ? " com-filtro" : ""}`}
             onClick={() => mudar({ filtro: { ...f, esconder_historico: !f.esconder_historico } })}
-            title="Itens com status de histórico (feitos, descartados…). A escolha fica guardada nesta visão."
+            title="Documentos com status de histórico (feitos, descartados…). A escolha fica guardada nesta visão."
           >
             {f.esconder_historico ? <Eye size={14} /> : <EyeOff size={14} />} {f.esconder_historico ? `Mostrar concluídos (${escondidos})` : "Esconder concluídos"}
           </button>
         )}
         {v.layout !== "linha" && (
-          <button className="btn" onClick={() => setExportando(true)} disabled={!visiveis.length} title="Exportar os itens desta visão (Markdown, HTML, PDF, Excel, CSV)">
+          <button className="btn" onClick={() => setExportando(true)} disabled={!visiveis.length} title="Exportar os documentos desta visão (Markdown, HTML, PDF, Excel, CSV)">
             <FileDown size={14} /> Exportar
           </button>
         )}
@@ -356,7 +356,7 @@ export function VisaoTela({
           <button className="menu-item" style={{ color: "var(--t-red)" }} onClick={() => { pMenu.fechar(); aoApagar(); }}>
             <Trash2 size={14} /> Apagar esta visão
           </button>
-          <div className="menu-rotulo">Os itens não são apagados.</div>
+          <div className="menu-rotulo">Os documentos não são apagados.</div>
         </Popover>
       )}
 
@@ -469,7 +469,7 @@ function EditorFiltro({ esquema, filtro, aoMudar, ancora, aoFechar }: { esquema:
               <button className={`chip${fd?.modo === "sem" ? " ligado" : ""}`} onClick={() => mudarData(p.id, { modo: "sem" })}>Vazia</button>
               <button
                 className={`chip${livre ? " ligado" : ""}`}
-                title="Todos os itens ligados aqui já estão concluídos, ou não há nenhum. Ex.: em Bloqueado por, o que pode andar agora."
+                title="Todos os documentos ligados aqui já estão concluídos, ou não há nenhum. Ex.: em Bloqueado por, o que pode andar agora."
                 onClick={() => aoMudar({ ...f, livres: livre ? (f.livres ?? []).filter((x) => x !== p.id) : [...(f.livres ?? []), p.id] })}
               >
                 Tudo concluído

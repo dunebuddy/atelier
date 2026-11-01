@@ -457,7 +457,7 @@ async fn ligar(State(b): State<Banco>, Path(id): Path<i64>, Json(d): Json<Value>
         let para = match d.get("para") {
             Some(Value::Number(n)) => n.as_i64().ok_or(Erro::Invalido("para inválido".into()))?,
             Some(Value::String(s)) => db::id_por_codigo(c, s)?,
-            _ => return Err(Erro::Invalido("informe `para` (o outro item)".into())),
+            _ => return Err(Erro::Invalido("informe `para` (o outro documento)".into())),
         };
         let autor = d.get("autor").and_then(|v| v.as_str()).unwrap_or("Paulo");
         db::ligar(c, id, prop, para, d.get("desligar").and_then(|v| v.as_bool()).unwrap_or(false), autor)
@@ -811,7 +811,7 @@ async fn tela(State(b): State<Banco>, Json(d): Json<Value>) -> R {
             } else if sim("lixeira") == Some(true) {
                 ev["rota"] = json!({ "v": "lixeira" });
             } else {
-                return Err(Erro::Invalido("abrir: informe codigo (item), visao, tipo (a configuração dele), pasta (código do item), arquivo (caminho) ou lixeira: true".into()));
+                return Err(Erro::Invalido("abrir: informe codigo (documento), visao, tipo (a configuração dele), pasta (código do documento), arquivo (caminho) ou lixeira: true".into()));
             }
         }
         // workspace do item (codigo) ou o da bancada (sem codigo); fechar_workspace suspende (os terminais param)
@@ -966,13 +966,13 @@ async fn executar(State(b): State<Banco>, Json(d): Json<Value>) -> R {
 }
 
 /// O que o agente do Comando sabe de saída (o pedido e o estado da tela vêm junto, da tela).
-const COMANDO_INSTRUCOES: &str = "Você é o agente do app atelier (gestão pessoal do usuário: itens com propriedades, visões, \
+const COMANDO_INSTRUCOES: &str = "Você é o agente do app atelier (gestão pessoal do usuário: documentos com propriedades, visões, \
 bancadas). O usuário fala com você por uma caixa de comando do app, muitas vezes ditando por voz (pode vir com erros de \
 transcrição). Faça o que ele pede usando SÓ as ferramentas do MCP `atelier`: `bancadas`/`trocar_bancada` para mudar de \
-bancada; `buscar`/`ler_item`/`esquema` para achar as coisas; `criar_item`/`atualizar_item`/`anotar` para mudar; `tela` para \
-mostrar (abrir item, visão, a pasta do item em árvore, um arquivo; `lado: direita|esquerda` escolhe a metade do painel; \
-`workspace` abre o workspace de um item ou o da bancada). Quando ele disser \"abre\", \"mostra\", \"me dá uma olhada\", \
-abra na tela. Não mexa em arquivos fora das pastas dos itens e não rode comandos no computador. Não peça confirmação para \
+bancada; `buscar`/`ler_documento`/`esquema` para achar as coisas; `criar_documento`/`atualizar_documento`/`anotar` para mudar; `tela` para \
+mostrar (abrir documento, visão, a pasta do documento em árvore, um arquivo; `lado: direita|esquerda` escolhe a metade do painel; \
+`workspace` abre o workspace de um documento ou o da bancada). Quando ele disser \"abre\", \"mostra\", \"me dá uma olhada\", \
+abra na tela. Não mexa em arquivos fora das pastas dos documentos e não rode comandos no computador. Não peça confirmação para \
 coisas simples e reversíveis; para apagar, pergunte. Responda em português, curto (uma ou duas frases dizendo o que fez \
 ou o que não achou).";
 

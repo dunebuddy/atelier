@@ -39,7 +39,7 @@ function destacar(codigo: string) {
 /** Nome de um lugar do histórico quando a janela ainda não guardou o título dele. */
 function rotuloSimples(r: Rota): string {
   switch (r.v) {
-    case "item": return `Item ${r.id}`;
+    case "item": return `Documento ${r.id}`;
     case "visao": return "Visão";
     case "lixeira": return "Lixeira";
     case "terminal": return r.titulo ?? "terminal";

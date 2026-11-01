@@ -108,8 +108,8 @@ export function CaixaPrompt({ editor, pos, top, left, ctx, aoFechar }: {
     const antes = doc.textBetween(0, pos, "\n\n").slice(-6000);
     const depois = doc.textBetween(pos, doc.content.size, "\n\n").slice(0, 3000);
     const prompt = [
-      `Você está ajudando a escrever o item #${ctx.codigo} ("${ctx.titulo}") do atelier, o sistema de gestão do usuário.`,
-      `Se precisar de contexto, consulte pelo MCP do atelier (ler_item com o código ${ctx.codigo}, buscar, itens relacionados). Não altere nada pelo MCP.`,
+      `Você está ajudando a escrever o documento #${ctx.codigo} ("${ctx.titulo}") do atelier, o sistema de gestão do usuário.`,
+      `Se precisar de contexto, consulte pelo MCP do atelier (ler_documento com o código ${ctx.codigo}, buscar, documentos relacionados). Não altere nada pelo MCP.`,
       ``,
       `Pedido: ${pedido.trim()}`,
       ``,

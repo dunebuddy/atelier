@@ -92,7 +92,7 @@ export function BotaoTerminal() {
           </button>
           {info.outroItem && (
             <>
-              <div className="menu-rotulo menu-rotulo-nome" title="O item aberto na janela em foco não é o deste workspace">
+              <div className="menu-rotulo menu-rotulo-nome" title="O documento aberto na janela em foco não é o deste workspace">
                 Pasta deste item: {info.outroItem.codigo ? `#${info.outroItem.codigo} ` : ""}{info.outroItem.titulo}
               </div>
               <button className="menu-item" onClick={() => { pop.fechar(); naPastaDoItem(info.outroItem!.id, (p) => abrirTerminal(p)); }}>

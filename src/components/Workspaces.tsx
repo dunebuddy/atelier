@@ -49,7 +49,7 @@ export function SeletorWorkspace({ ws, trocar, fechar, esquecer }: {
                   <button className="btn-icone mini" title="Fechar (para os terminais; as janelas ficam guardadas)" onClick={(e) => { e.stopPropagation(); fechar(k); }}><Power size={12} /></button>
                 )}
                 {k !== GERAL && (
-                  <button className="btn-icone mini" title="Esquecer (some da lista; o workspace do item volta vazio)" onClick={(e) => { e.stopPropagation(); esquecer(k); }}><Trash2 size={12} /></button>
+                  <button className="btn-icone mini" title="Esquecer (some da lista; o workspace do documento volta vazio)" onClick={(e) => { e.stopPropagation(); esquecer(k); }}><Trash2 size={12} /></button>
                 )}
               </div>
             );
@@ -58,7 +58,7 @@ export function SeletorWorkspace({ ws, trocar, fechar, esquecer }: {
           <button className="menu-item" onClick={() => { pop.fechar(); verWorkspaces(); }}>
             <LayoutDashboard size={14} /> Ver todos <span className="dir"><kbd>Ctrl Shift O</kbd></span>
           </button>
-          <div className="menu-rotulo" style={{ textTransform: "none", letterSpacing: 0 }}>Todo item tem o seu: na página do item, “Workspace”.</div>
+          <div className="menu-rotulo" style={{ textTransform: "none", letterSpacing: 0 }}>Todo documento tem o seu: na página do documento, “Workspace”.</div>
         </Popover>
       )}
     </>
@@ -113,7 +113,7 @@ function IndicadorDisco({ ativo }: { ativo: string }) {
           <div className="menu-rotulo">Espaço em disco</div>
           {id != null && (
             <div className="bs-grupo">
-              <div className="bs-linha forte"><span>Só este item</span><span>{item ? tamanho(item.proprio) : "calculando…"}</span></div>
+              <div className="bs-linha forte"><span>Só este documento</span><span>{item ? tamanho(item.proprio) : "calculando…"}</span></div>
               <div className="bs-linha forte">
                 <span>Com os filhos{item ? ` (${item.filhos})` : ""}</span><span>{item ? tamanho(item.com_filhos) : "calculando…"}</span>
               </div>
@@ -155,7 +155,7 @@ export function BarraStatus({ ws }: { ws: Workspaces }) {
 
   return (
     <footer className="barra-status">
-      <button className="bs-ws" title="Workspace aberto agora (cada item tem o seu; o da bancada é o geral). Clique para ver todos (Ctrl+Shift+O)" onClick={() => window.dispatchEvent(new Event("atelier:ver-workspaces"))}>
+      <button className="bs-ws" title="Workspace aberto agora (cada documento tem o seu; o da bancada é o geral). Clique para ver todos (Ctrl+Shift+O)" onClick={() => window.dispatchEvent(new Event("atelier:ver-workspaces"))}>
         <LayoutPanelLeft size={12} /> <span className="rotulo-fraco">Workspace:</span> <span>{ws.info[ws.ativo]?.titulo}</span>
       </button>
       <IndicadorDisco ativo={ws.ativo} />
@@ -259,7 +259,7 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs }: {
       <div className="ws-geral-topo">
         <LayoutDashboard size={18} />
         <strong>Workspaces</strong>
-        <input autoFocus className="campo" placeholder="Filtrar pelo nome do item…" value={busca} onChange={(e) => { setBusca(e.target.value); setSel(0); }} />
+        <input autoFocus className="campo" placeholder="Filtrar pelo nome do documento…" value={busca} onChange={(e) => { setBusca(e.target.value); setSel(0); }} />
         {m && <span className="dica-inline">atelier: {mb(m.ram)} · CPU {m.cpu.toFixed(0)}%</span>}
         <span style={{ flex: 1 }} />
         <span className="dica-inline">← → ↑ ↓ escolhe · Enter vai · Esc fecha</span>

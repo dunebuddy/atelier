@@ -24,7 +24,7 @@ export function BotaoWorkspace({ esquema, item, tam = 12, classe = "botao-ws", d
     <span
       role="button"
       className={classe}
-      title="Abrir o workspace deste item (as janelas, terminais e agentes dele)"
+      title="Abrir o workspace deste documento (as janelas, terminais e agentes dele)"
       onClick={abrir}
       onMouseDown={(e) => e.stopPropagation()}
       onAuxClick={(e) => e.stopPropagation()}

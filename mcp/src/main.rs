@@ -95,23 +95,23 @@ fn nome_do_agente(params: &Value) -> String {
 }
 
 const INSTRUCOES: &str = "atelier é o sistema de gestão pessoal do usuário (frentes, tasks, dívidas, pendências, \
-desejos, notas). Tudo é um item com tipo e propriedades; tipos e propriedades são criados à vontade. \
-Ligações entre itens (pai, bloqueio...) não são fixas: são propriedades da espécie relacao, criadas pelo usuário. Antes de criar, \
+desejos, notas). Tudo é um documento com tipo e propriedades; tipos e propriedades são criados à vontade. \
+Ligações entre documentos (pai, bloqueio...) não são fixas: são propriedades da espécie relacao, criadas pelo usuário. Antes de criar, \
 use `buscar` para ver se já existe. Use `esquema` para conhecer os tipos, propriedades e opções. Registre o que \
-acontece com `anotar` (vira a linha do tempo do item). Os dados ficam na bancada aberta no app. \
-Cada item tem um código de 7 hexadecimais (ex.: #a3f9c21); use esse código para se referir a ele. \
+acontece com `anotar` (vira a linha do tempo do documento). Os dados ficam na bancada aberta no app. \
+Cada documento tem um código de 7 hexadecimais (ex.: #a3f9c21); use esse código para se referir a ele. \
 PADRÃO DE PASTAS: nunca crie pasta de trabalho por conta própria. Quando o trabalho precisar de arquivos, peça ao \
-atelier: `criar_pasta` (ou `criar_item` com `criar_pasta: true`). Ele cria `itens/<código>-<título>/` dentro da \
-bancada, com `insumos/` (o que entra), `artefatos/` (o que sai), `rascunho/` e um CLAUDE.md, e liga a pasta ao item. \
-Guarde os arquivos nessas subpastas e registre o andamento no item com `anotar`, não em arquivos soltos. \
-TELA: com o app aberto, `tela` mostra as coisas para o usuário (abrir item, visão, pasta, arquivo; metade esquerda ou \
+atelier: `criar_pasta` (ou `criar_documento` com `criar_pasta: true`). Ele cria `itens/<código>-<título>/` dentro da \
+bancada, com `insumos/` (o que entra), `artefatos/` (o que sai), `rascunho/` e um CLAUDE.md, e liga a pasta ao documento. \
+Guarde os arquivos nessas subpastas e registre o andamento no documento com `anotar`, não em arquivos soltos. \
+TELA: com o app aberto, `tela` mostra as coisas para o usuário (abrir documento, visão, pasta, arquivo; metade esquerda ou \
 direita; workspaces; terminal; tema...); `tela` com acao \"estado\" diz o que está aberto agora. \
 QUANDO NÃO DER: se o usuário pedir algo que estas ferramentas não fazem, NÃO improvise por fora (arquivos, comandos, \
 banco): chame `nao_consigo` com o pedido e o que faltou, e diga a ele que ficou anotado.";
 
 fn ferramentas() -> Value {
     #[allow(non_snake_case)]
-    let ID = json!({ "type": ["string", "integer"], "description": "código do item, ex.: \"a3f9c21\" (aparece como #a3f9c21)" });
+    let ID = json!({ "type": ["string", "integer"], "description": "código do documento, ex.: \"a3f9c21\" (aparece como #a3f9c21)" });
     let props = json!({
         "type": "object",
         "description": "Propriedades pelo NOME, ex.: {\"Status\": \"Em andamento\", \"Frente\": \"F2\", \"Tags\": [\"aws\"]}. Valor null apaga. Opção nova de seleção é criada sozinha.",
@@ -125,7 +125,7 @@ fn ferramentas() -> Value {
         },
         {
             "name": "buscar",
-            "description": "Busca itens por texto (título e corpo), tipo e propriedades. Por padrão esconde os itens com status de histórico (feitos, descartados).",
+            "description": "Busca documentos por texto (título e corpo), tipo e propriedades. Por padrão esconde os documentos com status de histórico (feitos, descartados).",
             "inputSchema": { "type": "object", "properties": {
                 "texto": { "type": "string" },
                 "tipo": { "type": "string", "description": "nome do tipo, ex.: Dívida" },
@@ -136,13 +136,13 @@ fn ferramentas() -> Value {
             } }
         },
         {
-            "name": "ler_item",
-            "description": "Lê um item inteiro: propriedades, corpo em markdown, pasta e linha do tempo. so_notas: true deixa na linha do tempo só o que alguém escreveu (sem as mudanças automáticas).",
+            "name": "ler_documento",
+            "description": "Lê um documento inteiro: propriedades, corpo em markdown, pasta e linha do tempo. so_notas: true deixa na linha do tempo só o que alguém escreveu (sem as mudanças automáticas).",
             "inputSchema": { "type": "object", "properties": { "id": ID, "so_notas": { "type": "boolean" } }, "required": ["id"] }
         },
         {
-            "name": "criar_item",
-            "description": "Cria um item. Sem `modelo`, usa o modelo padrão do tipo (que já traz propriedades e texto). Passe `modelo: \"\"` para criar em branco.",
+            "name": "criar_documento",
+            "description": "Cria um documento. Sem `modelo`, usa o modelo padrão do tipo (que já traz propriedades e texto). Passe `modelo: \"\"` para criar em branco.",
             "inputSchema": { "type": "object", "properties": {
                 "titulo": { "type": "string" },
                 "tipo": { "type": "string" },
@@ -154,8 +154,8 @@ fn ferramentas() -> Value {
             }, "required": ["titulo"] }
         },
         {
-            "name": "atualizar_item",
-            "description": "Atualiza só o que vier: título, tipo (o item pode mudar de tipo sem perder valores), corpo (substitui o markdown inteiro), propriedades, pasta. Mudança de status ou tipo vai sozinha para a linha do tempo.",
+            "name": "atualizar_documento",
+            "description": "Atualiza só o que vier: título, tipo (o documento pode mudar de tipo sem perder valores), corpo (substitui o markdown inteiro), propriedades, pasta. Mudança de status ou tipo vai sozinha para a linha do tempo.",
             "inputSchema": { "type": "object", "properties": {
                 "id": ID,
                 "titulo": { "type": "string" },
@@ -167,14 +167,14 @@ fn ferramentas() -> Value {
         },
         {
             "name": "anotar",
-            "description": "Acrescenta uma nota datada na linha do tempo do item (acompanhamento, decisão, o que foi feito).",
+            "description": "Acrescenta uma nota datada na linha do tempo do documento (acompanhamento, decisão, o que foi feito).",
             "inputSchema": { "type": "object", "properties": {
                 "id": ID, "texto": { "type": "string" }
             }, "required": ["id", "texto"] }
         },
         {
             "name": "relacionar",
-            "description": "Liga o item `id` ao item `para` numa propriedade de RELAÇÃO (espécie relacao, criada pelo usuário; veja em esquema quais existem, ex.: \"Pai\", \"Bloqueado por\"). O valor fica no item `id`; do lado do `para` aparece pelo nome inverso da propriedade. remover: true desliga. Também dá para mandar a lista inteira em atualizar_item: {\"Bloqueado por\": [\"#a3f9c21\"]}. Para só citar um item no texto ou numa nota, escreva o código com # (ex.: #a3f9c21): vira link e aparece em \"mencionado em\".",
+            "description": "Liga o documento `id` ao documento `para` numa propriedade de RELAÇÃO (espécie relacao, criada pelo usuário; veja em esquema quais existem, ex.: \"Pai\", \"Bloqueado por\"). O valor fica no documento `id`; do lado do `para` aparece pelo nome inverso da propriedade. remover: true desliga. Também dá para mandar a lista inteira em atualizar_item: {\"Bloqueado por\": [\"#a3f9c21\"]}. Para só citar um documento no texto ou numa nota, escreva o código com # (ex.: #a3f9c21): vira link e aparece em \"mencionado em\".",
             "inputSchema": { "type": "object", "properties": {
                 "id": ID, "para": ID,
                 "propriedade": { "type": "string", "description": "nome da propriedade de relação" },
@@ -183,13 +183,13 @@ fn ferramentas() -> Value {
         },
         {
             "name": "tela",
-            "description": "Mexe na tela do app atelier (precisa estar aberto). O painel de trabalho tem uma ou duas metades (esquerda/direita), cada uma com janelas em abas, tile ou fita; cada item tem um workspace (um painel só dele) e a bancada tem o seu. Ações: abrir (codigo = item; visao = nome; tipo = configuração do tipo; pasta = código do item, abre a árvore da pasta dele; arquivo = caminho absoluto; lixeira: true) · workspace (codigo = do item; sem codigo = o da bancada) · fechar_workspace · visao_geral (mostra todos os workspaces) · dividir · juntar · modo (modo: abas|tile|fita) · fechar (janela: atual|todas|parte do título) · focar (lado) · terminal (codigo = na pasta do item; bancada: true = na raiz; programa = id do agente, ex.: claude-code; shell = pwsh|cmd|wsl...) · explorador_sistema (abre a pasta no Explorer: codigo ou a bancada) · barra_lateral (mostrar) · tema (tema) · zoom (80-160) · configuracoes (secao: aparencia, bancadas, integracoes, editor, atalhos, automacao, bancada, tipos) · busca (texto: abre a busca rápida) · recarregar (depois de mudar coisas) · filtrar (texto, na visão aberta) · destacar (codigo) · estado (o que está aberto agora). Em abrir e terminal, lado: esquerda|direita escolhe a metade (a direita nasce se preciso) e ao_lado: true abre numa janela nova.",
+            "description": "Mexe na tela do app atelier (precisa estar aberto). O painel de trabalho tem uma ou duas metades (esquerda/direita), cada uma com janelas em abas, tile ou fita; cada documento tem um workspace (um painel só dele) e a bancada tem o seu. Ações: abrir (codigo = documento; visao = nome; tipo = configuração do tipo; pasta = código do documento, abre a árvore da pasta dele; arquivo = caminho absoluto; lixeira: true) · workspace (codigo = do documento; sem codigo = o da bancada) · fechar_workspace · visao_geral (mostra todos os workspaces) · dividir · juntar · modo (modo: abas|tile|fita) · fechar (janela: atual|todas|parte do título) · focar (lado) · terminal (codigo = na pasta do documento; bancada: true = na raiz; programa = id do agente, ex.: claude-code; shell = pwsh|cmd|wsl...) · explorador_sistema (abre a pasta no Explorer: codigo ou a bancada) · barra_lateral (mostrar) · tema (tema) · zoom (80-160) · configuracoes (secao: aparencia, bancadas, integracoes, editor, atalhos, automacao, bancada, tipos) · busca (texto: abre a busca rápida) · recarregar (depois de mudar coisas) · filtrar (texto, na visão aberta) · destacar (codigo) · estado (o que está aberto agora). Em abrir e terminal, lado: esquerda|direita escolhe a metade (a direita nasce se preciso) e ao_lado: true abre numa janela nova.",
             "inputSchema": { "type": "object", "properties": {
                 "acao": { "type": "string", "enum": ["abrir", "workspace", "fechar_workspace", "visao_geral", "dividir", "juntar", "modo", "fechar", "focar", "terminal", "explorador_sistema", "barra_lateral", "tema", "zoom", "configuracoes", "busca", "recarregar", "filtrar", "destacar", "estado"] },
-                "codigo": { "type": "string", "description": "código do item" },
+                "codigo": { "type": "string", "description": "código do documento" },
                 "visao": { "type": "string" },
                 "tipo": { "type": "string" },
-                "pasta": { "type": "string", "description": "abrir: código do item cuja pasta abre em árvore" },
+                "pasta": { "type": "string", "description": "abrir: código do documento cuja pasta abre em árvore" },
                 "arquivo": { "type": "string", "description": "abrir: caminho absoluto de um arquivo" },
                 "lixeira": { "type": "boolean" },
                 "lado": { "type": "string", "enum": ["esquerda", "direita"] },
@@ -223,7 +223,7 @@ fn ferramentas() -> Value {
         },
         {
             "name": "criar_visao",
-            "description": "Cria uma visão (uma lista salva no menu): nome, layout (tabela, lista, kanban, linha), tipos (nomes), filtros (propriedade → valores aceitos; numa relação, o código do item: {\"Pai\": [\"#abc1234\"]} = filhos dele), livres (relações em que tudo o que está ligado já foi concluído, ou não há nada: livres [\"Bloqueado por\"] = pode andar agora), sem_tipo (só itens sem tipo), texto, agrupar_por (kanban: nome da propriedade), grupo (pasta no menu), icone (emoji), ordenar ({propriedade, crescente}; null volta à ordem padrão), colunas (nomes das propriedades na ordem em que aparecem na tabela; [] volta ao padrão), larguras (coluna → px; Título, Tipo e Atualizado também; {} volta ao automático).",
+            "description": "Cria uma visão (uma lista salva no menu): nome, layout (tabela, lista, kanban, linha), tipos (nomes), filtros (propriedade → valores aceitos; numa relação, o código do documento: {\"Pai\": [\"#abc1234\"]} = filhos dele), livres (relações em que tudo o que está ligado já foi concluído, ou não há nada: livres [\"Bloqueado por\"] = pode andar agora), sem_tipo (só documentos sem tipo), texto, agrupar_por (kanban: nome da propriedade), grupo (pasta no menu), icone (emoji), ordenar ({propriedade, crescente}; null volta à ordem padrão), colunas (nomes das propriedades na ordem em que aparecem na tabela; [] volta ao padrão), larguras (coluna → px; Título, Tipo e Atualizado também; {} volta ao automático).",
             "inputSchema": { "type": "object", "properties": {
                 "nome": { "type": "string" },
                 "layout": { "type": "string", "enum": ["tabela", "lista", "kanban", "linha"] },
@@ -242,7 +242,7 @@ fn ferramentas() -> Value {
         },
         {
             "name": "atualizar_visao",
-            "description": "Muda uma visão (pelo nome): os mesmos campos de criar_visao, mais novo_nome. O filtro vindo substitui o antigo; agrupar_por, ordenar, colunas e larguras mudam só o que vier. A visão Todos os itens não aceita filtro.",
+            "description": "Muda uma visão (pelo nome): os mesmos campos de criar_visao, mais novo_nome. O filtro vindo substitui o antigo; agrupar_por, ordenar, colunas e larguras mudam só o que vier. A visão Todos os documentos não aceita filtro.",
             "inputSchema": { "type": "object", "properties": {
                 "nome": { "type": "string" }, "novo_nome": { "type": "string" },
                 "layout": { "type": "string", "enum": ["tabela", "lista", "kanban", "linha"] },
@@ -258,22 +258,22 @@ fn ferramentas() -> Value {
         },
         {
             "name": "apagar_visao",
-            "description": "Tira uma visão do menu (os itens não são tocados). Confirme com o usuário antes.",
+            "description": "Tira uma visão do menu (os documentos não são tocados). Confirme com o usuário antes.",
             "inputSchema": { "type": "object", "properties": { "nome": { "type": "string" } }, "required": ["nome"] }
         },
         {
-            "name": "apagar_item",
-            "description": "Move o item para a lixeira (dá para restaurar). Confirme com o usuário antes.",
+            "name": "apagar_documento",
+            "description": "Move o documento para a lixeira (dá para restaurar). Confirme com o usuário antes.",
             "inputSchema": { "type": "object", "properties": { "id": ID }, "required": ["id"] }
         },
         {
-            "name": "restaurar_item",
-            "description": "Tira o item da lixeira.",
+            "name": "restaurar_documento",
+            "description": "Tira o documento da lixeira.",
             "inputSchema": { "type": "object", "properties": { "id": ID }, "required": ["id"] }
         },
         {
             "name": "espaco_em_disco",
-            "description": "Quanto ocupa no disco: com id (código do item), a pasta do workspace dele e a dele somada à dos descendentes (Pai → Filhos, a árvore inteira); sem id, a pasta da bancada inteira. Pasta dentro de outra não conta duas vezes.",
+            "description": "Quanto ocupa no disco: com id (código do documento), a pasta do workspace dele e a dele somada à dos descendentes (Pai → Filhos, a árvore inteira); sem id, a pasta da bancada inteira. Pasta dentro de outra não conta duas vezes.",
             "inputSchema": { "type": "object", "properties": { "id": ID } }
         },
         {
@@ -285,7 +285,7 @@ fn ferramentas() -> Value {
         },
         {
             "name": "linha_do_tempo",
-            "description": "O que aconteceu num período, com data e hora de cada coisa: itens criados, notas, mudanças de status, propriedades, título, pasta e texto, com quem fez (Paulo ou o agente). Responde a \"no que trabalhei hoje/ontem/nesta semana?\". Sem datas = hoje.",
+            "description": "O que aconteceu num período, com data e hora de cada coisa: documentos criados, notas, mudanças de status, propriedades, título, pasta e texto, com quem fez (Paulo ou o agente). Responde a \"no que trabalhei hoje/ontem/nesta semana?\". Sem datas = hoje.",
             "inputSchema": { "type": "object", "properties": {
                 "de": { "type": "string", "description": "AAAA-MM-DD (padrão: hoje)" },
                 "ate": { "type": "string", "description": "AAAA-MM-DD (padrão: igual a `de`)" },
@@ -308,7 +308,7 @@ fn ferramentas() -> Value {
         },
         {
             "name": "criar_propriedade",
-            "description": "Cria uma propriedade (compartilhada entre tipos) e, se quiser, já coloca em tipos. Espécies: texto, numero (inteiro, casas, formato), data (hora), checkbox (sim/não), url, email, telefone, selecao, multisselecao, status, links (vários links com rótulo), criado_em e atualizado_em (automáticas); texto/numero/data/email/telefone/url com lista: true guardam vários valores; relacao (aponta para outros itens; `inverso` é como se lê do outro lado, ex.: \"Bloqueado por\" ↔ \"Bloqueia\"; `um_so` aceita um item só, ex.: \"Pai\").",
+            "description": "Cria uma propriedade (compartilhada entre tipos) e, se quiser, já coloca em tipos. Espécies: texto, numero (inteiro, casas, formato), data (hora), checkbox (sim/não), url, email, telefone, selecao, multisselecao, status, links (vários links com rótulo), criado_em e atualizado_em (automáticas); texto/numero/data/email/telefone/url com lista: true guardam vários valores; relacao (aponta para outros documentos; `inverso` é como se lê do outro lado, ex.: \"Bloqueado por\" ↔ \"Bloqueia\"; `um_so` aceita um documento só, ex.: \"Pai\").",
             "inputSchema": { "type": "object", "properties": {
                 "nome": { "type": "string" },
                 "especie": { "type": "string" },
@@ -319,7 +319,7 @@ fn ferramentas() -> Value {
                 "casas": { "type": "integer", "description": "numero: casas decimais" },
                 "formato": { "type": "string", "enum": ["numero", "percentual", "moeda"], "description": "numero: como mostrar" },
                 "hora": { "type": "boolean", "description": "data: com hora (AAAA-MM-DDTHH:MM)" },
-                "um_so": { "type": "boolean", "description": "relacao: aceita um item só" },
+                "um_so": { "type": "boolean", "description": "relacao: aceita um documento só" },
                 "tipos": { "type": "array", "items": { "type": "string" }, "description": "nomes dos tipos que passam a ter a propriedade" }
             }, "required": ["nome", "especie"] }
         },
@@ -340,7 +340,7 @@ fn ferramentas() -> Value {
         },
         {
             "name": "apagar_propriedade",
-            "description": "Apaga uma propriedade de vez (sai de todos os tipos e os valores dos itens somem). Sem confirmado, só diz quantos itens têm valor nela: mostre ao usuário e só chame de novo com confirmado: true se ele aceitar.",
+            "description": "Apaga uma propriedade de vez (sai de todos os tipos e os valores dos documentos somem). Sem confirmado, só diz quantos documentos têm valor nela: mostre ao usuário e só chame de novo com confirmado: true se ele aceitar.",
             "inputSchema": { "type": "object", "properties": {
                 "propriedade": { "type": "string" }, "confirmado": { "type": "boolean" }
             }, "required": ["propriedade"] }
@@ -354,14 +354,14 @@ fn ferramentas() -> Value {
         },
         {
             "name": "apagar_tipo",
-            "description": "Apaga um tipo (os itens dele ficam, sem tipo; a visão só dele some). Sem confirmado, só diz quantos itens são do tipo: mostre ao usuário e só chame de novo com confirmado: true se ele aceitar.",
+            "description": "Apaga um tipo (os documentos dele ficam, sem tipo; a visão só dele some). Sem confirmado, só diz quantos documentos são do tipo: mostre ao usuário e só chame de novo com confirmado: true se ele aceitar.",
             "inputSchema": { "type": "object", "properties": {
                 "tipo": { "type": "string" }, "confirmado": { "type": "boolean" }
             }, "required": ["tipo"] }
         },
         {
             "name": "mudar_opcao",
-            "description": "Mexe numa opção de seleção ou status: novo_nome (os itens com o nome antigo passam a ter o novo), cor, historico (true = conta como concluído) ou apagar: true (os itens perdem esse valor). Com tipo, mexe na lista daquele tipo (status é sempre por tipo).",
+            "description": "Mexe numa opção de seleção ou status: novo_nome (os documentos com o nome antigo passam a ter o novo), cor, historico (true = conta como concluído) ou apagar: true (os documentos perdem esse valor). Com tipo, mexe na lista daquele tipo (status é sempre por tipo).",
             "inputSchema": { "type": "object", "properties": {
                 "propriedade": { "type": "string" }, "opcao": { "type": "string" }, "tipo": { "type": "string" },
                 "novo_nome": { "type": "string" }, "cor": { "type": "string", "enum": ["gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"] },
@@ -370,7 +370,7 @@ fn ferramentas() -> Value {
         },
         {
             "name": "criar_bancada",
-            "description": "Cria uma bancada nova, limpa (só a visão Todos os itens). pasta padrão: ~/atelier/bancadas/<nome>. abrir: true já troca para ela.",
+            "description": "Cria uma bancada nova, limpa (só a visão Todos os documentos). pasta padrão: ~/atelier/bancadas/<nome>. abrir: true já troca para ela.",
             "inputSchema": { "type": "object", "properties": {
                 "nome": { "type": "string" }, "pasta": { "type": "string" }, "abrir": { "type": "boolean" }
             }, "required": ["nome"] }
@@ -658,7 +658,7 @@ fn id_de(conn: &Connection, a: &Value) -> Result<i64, String> {
     match a.get("id") {
         Some(Value::Number(n)) => n.as_i64().ok_or("id inválido".into()),
         Some(Value::String(c)) => db::id_por_codigo(conn, c).map_err(|e| e.to_string()),
-        _ => Err("informe o id (código do item)".into()),
+        _ => Err("informe o id (código do documento)".into()),
     }
 }
 
@@ -667,6 +667,15 @@ fn s<'a>(a: &'a Value, campo: &str) -> Option<&'a str> {
 }
 
 fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
+    // 0.2.1: item virou "documento"; os nomes antigos das ferramentas continuam valendo (agentes com o nome guardado)
+    let nome = match nome {
+        "ler_item" => "ler_documento",
+        "criar_item" => "criar_documento",
+        "atualizar_item" => "atualizar_documento",
+        "apagar_item" => "apagar_documento",
+        "restaurar_item" => "restaurar_documento",
+        outro => outro,
+    };
     match nome {
         "bancadas" => {
             let cfg = bancada::carregar();
@@ -812,7 +821,7 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
                 .collect();
             Ok(json!({ "encontrados": itens.len(), "total_sem_filtro_de_historico": total, "itens": itens }))
         }
-        "ler_item" => {
+        "ler_documento" => {
             let id = id_de(&conn, a)?;
             let mut it = db::ler_item(&conn, id).map_err(e)?;
             if a.get("so_notas").and_then(|v| v.as_bool()) == Some(true) {
@@ -822,7 +831,7 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
             }
             Ok(mapa.humano(&it))
         }
-        "criar_item" => {
+        "criar_documento" => {
             let tipo_id = s(a, "tipo").map(|t| mapa.tipo_id(t)).transpose()?;
             let mut dados = json!({ "titulo": s(a, "titulo").unwrap_or(""), "tipo_id": tipo_id, "autor": autor });
             match s(a, "modelo") {
@@ -854,7 +863,7 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
             }
             Ok(mapa.humano(&db::ler_item(&conn, id).map_err(e)?))
         }
-        "atualizar_item" => {
+        "atualizar_documento" => {
             let id = id_de(&conn, a)?;
             let atual = db::ler_item(&conn, id).map_err(e)?;
             let mut dados = json!({ "autor": autor });
@@ -985,7 +994,7 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
             let n = db::itens_com_valor(&conn, pid).map_err(e)?;
             if a.get("confirmado").and_then(|v| v.as_bool()) != Some(true) {
                 return Ok(json!({ "apagado": false, "itens_com_valor": n,
-                    "aviso": format!("{n} itens têm valor nela e vão perdê-lo. Confirme com o usuário e chame de novo com confirmado: true.") }));
+                    "aviso": format!("{n} documentos têm valor nela e vão perdê-lo. Confirme com o usuário e chame de novo com confirmado: true.") }));
             }
             db::apagar_propriedade(&conn, pid).map_err(e)?;
             Ok(json!({ "apagado": true, "itens_que_perderam_valor": n }))
@@ -1007,7 +1016,7 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
             let n: i64 = conn.query_row("SELECT COUNT(*) FROM itens WHERE tipo_id = ? AND apagado_em IS NULL", [tid], |r| r.get(0)).map_err(|x| x.to_string())?;
             if a.get("confirmado").and_then(|v| v.as_bool()) != Some(true) {
                 return Ok(json!({ "apagado": false, "itens_do_tipo": n,
-                    "aviso": format!("{n} itens são deste tipo e vão ficar sem tipo. Confirme com o usuário e chame de novo com confirmado: true.") }));
+                    "aviso": format!("{n} documentos são deste tipo e vão ficar sem tipo. Confirme com o usuário e chame de novo com confirmado: true.") }));
             }
             db::apagar_tipo(&conn, tid).map_err(e)?;
             Ok(json!({ "apagado": true, "itens_sem_tipo_agora": n }))
@@ -1089,13 +1098,13 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
             let _ = post_api("/api/tela", &json!({ "acao": "recarregar" }));
             Ok(json!({ "ok": true }))
         }
-        "apagar_item" => {
+        "apagar_documento" => {
             let id = id_de(&conn, a)?;
             db::apagar_item(&conn, id, autor).map_err(e)?;
             let _ = post_api("/api/tela", &json!({ "acao": "recarregar" }));
             Ok(json!({ "ok": true, "na_lixeira": true }))
         }
-        "restaurar_item" => {
+        "restaurar_documento" => {
             let id = id_de(&conn, a)?;
             db::restaurar_item(&conn, id, autor).map_err(e)?;
             let _ = post_api("/api/tela", &json!({ "acao": "recarregar" }));

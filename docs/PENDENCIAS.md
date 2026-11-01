@@ -47,6 +47,14 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.1** (2026-11-01, item vira documento):
+  - em tudo o que o usuário lê, a entidade central se chama **documento**: tela, avisos, mensagens de erro, ajuda,
+    exportação, linha do tempo, o CLAUDE.md das pastas novas e as instruções do MCP e do Comando;
+  - a visão fixa passa a se chamar **Todos os documentos** (migração 13, só se ainda tinha o nome de origem);
+  - MCP: `ler_documento`, `criar_documento`, `atualizar_documento`, `apagar_documento` e `restaurar_documento`; os
+    nomes antigos (`ler_item`...) continuam aceitos;
+  - de propósito, continua **item** no código, no banco (tabela `itens`), nas rotas e na pasta do disco
+    (`<bancada>/itens/`): mudar isso não muda nada para o Paulo e quebraria dados e agentes (regra no CLAUDE.md).
 - **0.2.0, parte 2** (2026-11-01, memória e desempenho; saiu junto na 0.2.0):
   - PDF: um lugar do tamanho certo para cada página (sem o limite de 300) e só as que estão à vista, com uma página
     de folga, são desenhadas; a que sai de vista solta o desenho (IntersectionObserver na vista);

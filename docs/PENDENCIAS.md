@@ -106,6 +106,11 @@ Como usar:
      da bancada;
   4. (mudança de regra, só com o ok dele) no workspace da bancada, as ferramentas usarem a pasta do item da janela em
      foco.
+  - **Decidido (Paulo):** em todo lugar que um item aparece numa lista, ao lado da ação de abrir, uma ação **"Abrir
+    workspace"** (ícone pequeno, aparece no hover): linhas da tabela e da lista, cartões do quadro, linha do tempo,
+    busca rápida (Ctrl+K), chips de relação, e a **árvore da barra lateral** (os itens e filhos de uma visão, ex.:
+    Projeto). Usa `abrirWorkspace({ id, titulo, icone })` de `src/components/Workspaces.tsx`. Arquivos: `Layouts.tsx`,
+    `Arvore.tsx`, `BarraTitulo.tsx` (BuscaRapida), `Valor.tsx` (chips), `Visao.tsx`/linha do tempo.
 - **Ficha do item: coluna fixa à direita com rolagem própria** (2026-11-01, Paulo gostou da ficha). Hoje ela gruda no
   topo ao rolar (sticky), mas quando é mais alta que a tela o fim dela só aparece quando a página chega ao fim — numa
   página longa, demora. Quero: a página do item em duas colunas, cada uma com a sua barra de rolagem (texto à esquerda,

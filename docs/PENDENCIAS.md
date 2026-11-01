@@ -57,6 +57,15 @@ Como usar:
   Mais longe: rodar o ditado no núcleo Rust lendo o arquivo do disco (como o Handy); exige toolchain MSVC/clang.
 
 ### Melhorias pedidas
+- **Ditado: escolher onde o modelo roda, RAM (CPU) ou VRAM (placa de vídeo)** (2026-11-01, Paulo). Em
+  Configurações → Ditado, uma opção "Processador (RAM)" / "Placa de vídeo (VRAM)". Hoje tudo roda na CPU via WASM
+  (`src/ditado.worker.ts`: `backend: "wasm"` no Parakeet, `device: "wasm"` no Whisper). Na GPU seria WebGPU
+  (`backend: "webgpu"` / `device: "webgpu"`). Cuidados:
+  - o Parakeet em 8 bits dá resultado errado no WebGPU: na GPU precisa do encoder fp16/fp32 (download de 1,2–2,4 GB),
+    então a escolha muda o arquivo a baixar; mostrar isso na tela;
+  - detectar a placa (`navigator.gpu.requestAdapter()`, nome/memória quando disponível) e avisar quando a placa é
+    integrada (ex.: a Intel UHD 770 desta máquina usa a própria RAM como VRAM: não economiza nada);
+  - se o WebGPU falhar ao carregar, cair para a CPU sozinho e avisar.
 - **Título e × fixos nas janelas que sobem (modais)** (2026-11-01, Paulo): nas Configurações (ex.: Integrações), ao
   rolar, o título da seção e o × somem junto. Deixar o cabeçalho (título + ×) fixo no alto e só o conteúdo rolar,
   em todos os modais (Configurações do app e da bancada, Atalhos, Exportar, Comando...). Onde mexer: `.config-corpo`

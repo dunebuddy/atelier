@@ -65,6 +65,8 @@ Mexe nas mesmas listas (tabela, lista, quadro, árvore, busca, chips); vem depoi
 
 - **Atualizar com o MCP aberto sem erro** (o instalador renomeia o `atelier-mcp.exe` em uso em vez de sobrescrever;
   ver `PENDENCIAS.md`).
+- **A ordem escolhida se mantém:** clicar no cabeçalho grava a ordem na visão (igual ao botão "Ordem") e o
+  desempate é fixo (título, código), para o item mexido não pular. Sem ordem escolhida, segue "o que mexeu sobe".
 - **"Abrir workspace"** ao lado de "abrir" em todo lugar onde um item aparece (já decidido pelo Paulo).
 - **Deixar claro em qual workspace se está** (menu do terminal/explorador dizendo de qual pasta é; destaque do
   workspace atual). Decidir com o Paulo quais das ideias anotadas.

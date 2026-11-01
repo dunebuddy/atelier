@@ -31,6 +31,8 @@ Como usar:
   o código), para nada pular quando muda; (3) decidir com o Paulo a ordem **padrão** de visão sem ordem escolhida:
   hoje "última atualização" (o que mexeu sobe), alternativa "criação" (fica parado). Conferir no app dele qual
   visão era e se a ordem estava no cabeçalho ou no botão.
+  **Decidido (Paulo, 2026-11-01):** visão sem ordem escolhida continua por última atualização (o que mexeu sobe);
+  o que precisa é a ordem escolhida se manter. Vai na 0.1.7.
 - **Atualizar dá erro quando o MCP está aberto** (2026-11-01, Paulo: "o instalador não tá matando o MCP"). O
   `atelier-mcp.exe` não é processo do atelier: é aberto pelo Claude Code (e outros agentes) a cada sessão com o MCP
   ligado. Com ele rodando, o instalador NSIS não consegue sobrescrever o arquivo e dá erro. Matar o processo

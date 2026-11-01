@@ -63,6 +63,8 @@ Junto (decisão do Paulo, 2026-11-01), correções do painel:
 
 Mexe nas mesmas listas (tabela, lista, quadro, árvore, busca, chips); vem depois da 0.1.5 para não brigar com ela.
 
+- **Atualizar com o MCP aberto sem erro** (o instalador renomeia o `atelier-mcp.exe` em uso em vez de sobrescrever;
+  ver `PENDENCIAS.md`).
 - **"Abrir workspace"** ao lado de "abrir" em todo lugar onde um item aparece (já decidido pelo Paulo).
 - **Deixar claro em qual workspace se está** (menu do terminal/explorador dizendo de qual pasta é; destaque do
   workspace atual). Decidir com o Paulo quais das ideias anotadas.

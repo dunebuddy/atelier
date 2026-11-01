@@ -308,3 +308,21 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 - **Instalar o MCP no Claude Code real** (Integrações → Claude Code → Instalar) e marcar "Comando"; testar o botão ✨.
 - Microfone na janela real (WebView2 pode pedir permissão na primeira vez): ainda não testado fora do navegador.
 - Ler `~/atelier/pedidos-ao-atelier.md` de tempos em tempos e virar recurso.
+- **Recursos (levantamento + o que era seguro):** a barra de status somava working set (páginas compartilhadas dos
+  6 processos do WebView2 contadas várias vezes): agora soma memória privada no Windows (~500 MB viraram ~125–190 MB
+  reais, quase tudo é o piso do WebView2). sysinfo mede só os processos do app. Terminal: sem órfão quando a abertura
+  falha, PTY fechado antes do kill, `wait` no filho, sessão só é esquecida se for do mesmo pid. `/api/arquivo` em fluxo.
+  Front: worker do pdf.js destruído ao fechar o PDF (vazava um por documento); janelas e workspaces escondidos não
+  fazem polling nem ouvem focus (`src/visivel.ts`), o que também corrigiu soltar arquivo copiar para todos os itens
+  montados e o filtro do agente valer para todas as visões; barra de status e contagem da lateral param com o app
+  escondido; visão não redesenha sem mudança; ditado troca de modelo com Worker novo; lazy load do editor, xterm,
+  Configurações, Exportar e marked (chunk principal 1,27 MB → 0,42 MB).
+
+### Para conversar (recursos)
+- Desmontar janelas que não são terminal em workspaces escondidos e abas inativas (ganho alto; perde rolagem e estado
+  local ao voltar).
+- PDF: desenhar só as páginas à vista (hoje até 300 canvases).
+- WebView2 em modo de pouca memória quando vai para a bandeja (`SetMemoryUsageTargetLevel`); flags como `--disable-gpu`
+  (o processo de GPU tem ~74 MB, mas o desenho piora).
+- Terminal: matar a árvore inteira (Job Object), para agentes netos morrerem junto com o shell e com o app.
+- Podar o histórico dos workspaces guardados (hoje até 50 passos por janela, para sempre).

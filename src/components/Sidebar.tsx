@@ -67,7 +67,8 @@ export function Sidebar({
       }
     };
     contar();
-    const t = window.setInterval(contar, 30000);
+    // escondido (minimizado, na bandeja) não conta; ao voltar, o focus conta de novo
+    const t = window.setInterval(() => { if (!document.hidden) contar(); }, 30000);
     window.addEventListener("focus", contar);
     return () => { window.clearInterval(t); window.removeEventListener("focus", contar); };
   }, [visoes, esquema]);

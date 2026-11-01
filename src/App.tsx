@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, BASE, Bancadas, Esquema, Preferencias, TemaArquivo, Visao } from "./api";
 import { aplicarTema } from "./tema";
 import { BarraTitulo } from "./components/BarraTitulo";
-import { Configuracoes, SecaoConfig } from "./components/Configuracoes";
+import type { SecaoConfig } from "./components/Configuracoes";
 import { abrirTerminal, definirPastaDoWorkspace, EscolherAgente } from "./components/Terminal";
 import { ComandoAgente, descreverTela, PedidoTela } from "./components/Comando";
 import { AvisoAtualizacao } from "./components/Atualizacao";
@@ -16,6 +16,9 @@ import { avisar, falhou, guardar, ler, Rota, Tema } from "./ui";
 import * as W from "./workspaces";
 import { bate, definirAtalhos } from "./atalhos";
 import { BarraStatus, SeletorWorkspace, VisaoGeralWorkspaces } from "./components/Workspaces";
+
+// só carrega quando abre (é grande e quase nunca está na tela)
+const Configuracoes = lazy(() => import("./components/Configuracoes").then((m) => ({ default: m.Configuracoes })));
 
 const VAZIO: EstadoPainel = P.inicial({ v: "inicio" });
 
@@ -502,27 +505,29 @@ export default function App() {
           {/* os workspaces abertos ficam montados por trás: trocar não mata terminal nem agente */}
           {ws.abertos.filter((k) => ws.estados[k]).map((k) => (
             <div key={k} className="workspace" style={{ display: k === ws.ativo ? undefined : "none" }}>
-              <PainelTrabalho estado={ws.estados[k]} mudar={mudarDe(k)} ctx={ctx} />
+              <PainelTrabalho estado={ws.estados[k]} mudar={mudarDe(k)} ctx={ctx} ativo={k === ws.ativo} />
             </div>
           ))}
         </main>
       </div>
       {config && (
-        <Configuracoes
-          inicial={config}
-          tema={tema}
-          temas={temas}
-          recarregarTemas={carregarTemas}
-          setTema={setTema}
-          esquema={esquema}
-          irTipo={(id) => { setConfig(null); ir({ v: "tipo", id }); }}
-          aoMudarEsquema={aoMudarEsquema}
-          aoFechar={() => { setConfig(null); carregarBancadas(); }}
-          aoTrocarBancada={aposTrocarBancada}
-          prefs={prefs}
-          mudarPrefs={mudarPrefs}
-          bancada={bancadas?.ativa ?? null}
-        />
+        <Suspense fallback={null}>
+          <Configuracoes
+            inicial={config}
+            tema={tema}
+            temas={temas}
+            recarregarTemas={carregarTemas}
+            setTema={setTema}
+            esquema={esquema}
+            irTipo={(id) => { setConfig(null); ir({ v: "tipo", id }); }}
+            aoMudarEsquema={aoMudarEsquema}
+            aoFechar={() => { setConfig(null); carregarBancadas(); }}
+            aoTrocarBancada={aposTrocarBancada}
+            prefs={prefs}
+            mudarPrefs={mudarPrefs}
+            bancada={bancadas?.ativa ?? null}
+          />
+        </Suspense>
       )}
       <ComandoAgente descricao={descricaoTela} />
       <BarraStatus ws={ws} />

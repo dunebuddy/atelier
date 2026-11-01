@@ -135,7 +135,8 @@ export function ComandoAgente({ descricao }: { descricao: string }) {
     if (!pedido || trabalhando || !agente) return;
     const nome = agentes?.find((a) => a.id === agente)?.nome ?? agente;
     const anteriores = conversa.filter((t) => t.resposta).slice(-6).map((t) => ({ pedido: t.pedido, resposta: t.resposta! }));
-    setConversa((c) => [...c, { pedido, agente: nome }]);
+    // na memória também só as últimas 30 (o que fica gravado já era cortado assim)
+    setConversa((c) => [...c, { pedido, agente: nome }].slice(-30));
     setTexto("");
     const ctl = new AbortController();
     setTrabalhando({ desde: Date.now(), ctl });

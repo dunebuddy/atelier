@@ -82,7 +82,8 @@ export function BarraStatus({ ws }: { ws: Workspaces }) {
     let vivo = true;
     const medir = () => fetch(`${BASE}/sistema`).then((r) => r.json()).then((d) => vivo && !d.erro && setM(d)).catch(() => {});
     medir();
-    const t = window.setInterval(medir, 3000);
+    // app minimizado ou na bandeja: ninguém está olhando, não mede
+    const t = window.setInterval(() => { if (!document.hidden) medir(); }, 3000);
     return () => { vivo = false; window.clearInterval(t); };
   }, []);
   if (!m) return <footer className="barra-status" />;
@@ -171,7 +172,8 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs }: {
     let vivo = true;
     const medir = () => fetch(`${BASE}/sistema`).then((r) => r.json()).then((d) => vivo && !d.erro && setM(d)).catch(() => {});
     medir();
-    const t = window.setInterval(medir, 2000);
+    // app minimizado ou na bandeja: ninguém está olhando, não mede
+    const t = window.setInterval(() => { if (!document.hidden) medir(); }, 2000);
     return () => { vivo = false; window.clearInterval(t); };
   }, []);
   useEffect(() => setSel((s) => Math.min(s, Math.max(0, ordem.length - 1))), [ordem.length]);

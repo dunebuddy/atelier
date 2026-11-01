@@ -123,17 +123,19 @@ async fn sessao(socket: WebSocket, num: Option<u64>, agente: Option<std::path::P
         }
     };
     drop(par.slave);
-    if let (Some(n), Some(pid)) = (num, filho.process_id()) {
+    // sem leitor ou escritor não há terminal: mata o shell em vez de deixá-lo órfão
+    let (mut leitor, mut escritor) = match (par.master.try_clone_reader(), par.master.take_writer()) {
+        (Ok(l), Ok(w)) => (l, w),
+        _ => {
+            let _ = filho.kill();
+            let _ = saida.send(Message::Text("\r\nnão consegui ligar o terminal\r\n".into())).await;
+            return;
+        }
+    };
+    let pid = filho.process_id();
+    if let (Some(n), Some(pid)) = (num, pid) {
         crate::sistema::registrar_sessao(n, pid);
     }
-    let mut leitor = match par.master.try_clone_reader() {
-        Ok(l) => l,
-        Err(_) => return,
-    };
-    let mut escritor = match par.master.take_writer() {
-        Ok(w) => w,
-        Err(_) => return,
-    };
     let mestre = par.master;
 
     // PTY → tela (thread própria: a leitura bloqueia)
@@ -184,9 +186,14 @@ async fn sessao(socket: WebSocket, num: Option<u64>, agente: Option<std::path::P
             _ => {}
         }
     }
+    // fecha o pseudoterminal antes (o que roda dentro dele, como um agente, recebe o fim junto com o shell), mata e
+    // espera o shell (sem esperar, ele fica como zumbi no Linux)
+    drop(escritor);
+    drop(mestre);
     let _ = filho.kill();
+    let _ = tokio::task::spawn_blocking(move || filho.wait()).await;
     envio.abort();
-    if let Some(n) = num {
-        crate::sistema::esquecer_sessao(n);
+    if let (Some(n), Some(pid)) = (num, pid) {
+        crate::sistema::esquecer_sessao(n, pid);
     }
 }

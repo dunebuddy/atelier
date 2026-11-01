@@ -51,6 +51,8 @@ type Resposta =
 
 let worker: Worker | null = null;
 let fila: Promise<unknown> = Promise.resolve();
+/** o modelo que este Worker já carregou: a memória do WASM não volta ao trocar, então outro modelo pede Worker novo */
+let modeloNoWorker: string | null = null;
 
 // O modelo não fica na memória o tempo todo: depois de N minutos sem uso (Configurações → Ditado; padrão 5), o
 // Worker inteiro é encerrado e a memória volta. A barra de status mostra enquanto ele está carregado.
@@ -83,14 +85,24 @@ export function descarregar() {
   window.clearTimeout(relogio);
   worker?.terminate();
   worker = null;
+  modeloNoWorker = null;
   fila = Promise.resolve();
   estado = null;
   avisarMudanca();
 }
 let ouvinteProgresso: ((p: { arquivo: string; feito: number; total: number }) => void) | null = null;
 
-function pedir<T>(msg: unknown, transferir: Transferable[] = []): Promise<T> {
+function pedir<T>(msg: { t: string; modelo: ModeloDitado; [k: string]: unknown }, transferir: Transferable[] = []): Promise<T> {
   const vez = fila.then(() => new Promise<T>((ok, erro) => {
+    // trocar de modelo: encerra o Worker do anterior (na vez dele na fila, sem cortar um pedido no meio)
+    if (msg.t !== "apagar") {
+      if (worker && modeloNoWorker && modeloNoWorker !== msg.modelo.id) {
+        worker.terminate();
+        worker = null;
+        if (estado?.modelo.id === modeloNoWorker) { estado = null; avisarMudanca(); }
+      }
+      modeloNoWorker = msg.modelo.id;
+    }
     worker ??= new Worker(new URL("./ditado.worker.ts", import.meta.url), { type: "module" });
     worker.onmessage = (e: MessageEvent<Resposta>) => {
       const d = e.data;
@@ -126,7 +138,7 @@ export async function baixar(m: ModeloDitado, progresso?: (fracao: number) => vo
 export async function apagar(m: ModeloDitado) {
   if (estado?.modelo.id === m.id) descarregar();
   await pedir({ t: "apagar", modelo: m });
-  if (!estado) { worker?.terminate(); worker = null; }
+  if (!estado) { worker?.terminate(); worker = null; modeloNoWorker = null; }
   guardar("ditado.baixados", baixados().filter((x) => x !== m.id));
   if (modeloEscolhido() === m.id) guardar("ditado.modelo", "");
   avisarMudanca();

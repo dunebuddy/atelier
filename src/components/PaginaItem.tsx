@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Bot, Check, Copy, FileDown, LayoutDashboard, PanelRight, FolderOpen, FolderPlus, History, Layers, Pencil, RotateCcw, Send, Trash2, X } from "lucide-react";
-import { Exportar } from "./Exportar";
 import { abrirWorkspace } from "./Workspaces";
 import { api, Esquema, Item, Nota, Propriedade, propsDoTipo, Valor } from "../api";
-import { avisar, falhou, Rota } from "../ui";
+import { avisar, falhou, lerBase64, Rota } from "../ui";
+import { useAoReaparecer, useVisivel } from "../visivel";
 import { dataHora } from "../visao";
-import { Editor, lerBase64 } from "./Editor";
 import { Historico } from "./Historico";
 import { abrirCodigo, ComMencoes } from "./Mencoes";
 import { abrirTerminalEmbutido, MenuPasta } from "./MenuPasta";
@@ -15,6 +14,10 @@ import { abrirExplorador } from "./Explorador";
 import { Popover, usePopover } from "./Popover";
 import { AdicionarProp, BotaoAdicionarProp, MenuProp } from "./Propriedades";
 import { IconeEspecie, valorDe, ValorProp } from "./Valor";
+
+// pesados e nem sempre na tela: só carregam quando aparecem pela primeira vez
+const Editor = lazy(() => import("./Editor").then((m) => ({ default: m.Editor })));
+const Exportar = lazy(() => import("./Exportar").then((m) => ({ default: m.Exportar })));
 
 export function PaginaItem({
   esquema, id, ir, aoMudarEsquema, aoCarregar,
@@ -46,9 +49,19 @@ export function PaginaItem({
   useEffect(() => {
     setItem(null);
     carregar();
+  }, [carregar]);
+
+  // relê ao voltar para o app e ao reaparecer (aba, workspace); escondida, fica quieta
+  const visivel = useVisivel();
+  const visivelRef = useRef(visivel);
+  visivelRef.current = visivel;
+  useEffect(() => {
+    if (!visivel) return;
     window.addEventListener("focus", carregar);
     return () => window.removeEventListener("focus", carregar);
-  }, [carregar]);
+  }, [visivel, carregar]);
+  // num vai-e-volta rápido o texto digitado pode ainda não ter sido gravado (o editor espera meio segundo): não relê
+  useAoReaparecer(visivel, (ms) => { if (ms > 1000) carregar(); });
 
   // arrastar arquivos do sistema para cima da página: copia para insumos/ (só no app; o navegador não dá o caminho)
   const itemRef = useRef<Item | null>(null);
@@ -59,6 +72,8 @@ export function PaginaItem({
     import("@tauri-apps/api/webview")
       .then(async ({ getCurrentWebview }) => {
         const f = await getCurrentWebview().onDragDropEvent(async (ev) => {
+          // o evento chega em todas as páginas montadas: só a que está à vista recebe o arquivo
+          if (!visivelRef.current) { setArrastando(false); return; }
           const p = ev.payload;
           if (p.type === "enter" || p.type === "over") setArrastando(true);
           else if (p.type === "leave") setArrastando(false);
@@ -257,7 +272,11 @@ export function PaginaItem({
             <button className="btn" onClick={() => setExportando(true)} title="Markdown, HTML, PDF, Excel ou CSV, com os campos que você escolher">
               <FileDown size={14} /> Exportar
             </button>
-            {exportando && <Exportar esquema={esquema} ids={[item.id]} nome={item.titulo || item.codigo} aoFechar={() => setExportando(false)} />}
+            {exportando && (
+              <Suspense fallback={null}>
+                <Exportar esquema={esquema} ids={[item.id]} nome={item.titulo || item.codigo} aoFechar={() => setExportando(false)} />
+              </Suspense>
+            )}
           </span>
         </div>
         <textarea
@@ -279,29 +298,31 @@ export function PaginaItem({
 
       <div className="pagina-grade">
         <div className="pagina-texto">
-          <Editor
-            key={item.id}
-            valor={item.corpo ?? ""}
-            aoMudar={(corpo) => salvar({ corpo })}
-            aoMencao={(c) => abrirCodigo(c, ir)}
-            prompt={{ itemId: item.id, codigo: item.codigo, titulo: item.titulo }}
-            aoColarArquivo={async (f) => {
-              try {
-                const agora = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, "");
-                const ext = (f.type.split("/")[1] ?? "bin").replace("jpeg", "jpg").replace(/[^a-z0-9]/g, "");
-                const nome = f.name && !/^image\.\w+$/.test(f.name) ? f.name : `colado-${agora}.${ext}`;
-                const r = await api.colarArquivo(item.id, nome, await lerBase64(f));
-                avisar(`Guardado em insumos/: ${r.caminho.split(/[\\/]/).pop()}`);
-                setRecargaArquivos((n) => n + 1);
-                if (!item.pasta) carregar();
-                return r.caminho;
-              } catch (e) {
-                falhou(e);
-                return null;
-              }
-            }}
-            placeholder="Escreva aqui… (markdown: ## título, - lista, [ ] tarefa; cite outro item com #código)"
-          />
+          <Suspense fallback={<div className="editor" />}>
+            <Editor
+              key={item.id}
+              valor={item.corpo ?? ""}
+              aoMudar={(corpo) => salvar({ corpo })}
+              aoMencao={(c) => abrirCodigo(c, ir)}
+              prompt={{ itemId: item.id, codigo: item.codigo, titulo: item.titulo }}
+              aoColarArquivo={async (f) => {
+                try {
+                  const agora = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, "");
+                  const ext = (f.type.split("/")[1] ?? "bin").replace("jpeg", "jpg").replace(/[^a-z0-9]/g, "");
+                  const nome = f.name && !/^image\.\w+$/.test(f.name) ? f.name : `colado-${agora}.${ext}`;
+                  const r = await api.colarArquivo(item.id, nome, await lerBase64(f));
+                  avisar(`Guardado em insumos/: ${r.caminho.split(/[\\/]/).pop()}`);
+                  setRecargaArquivos((n) => n + 1);
+                  if (!item.pasta) carregar();
+                  return r.caminho;
+                } catch (e) {
+                  falhou(e);
+                  return null;
+                }
+              }}
+              placeholder="Escreva aqui… (markdown: ## título, - lista, [ ] tarefa; cite outro item com #código)"
+            />
+          </Suspense>
 
           <div className="secao-titulo">Linha do tempo</div>
           <div className="nova-nota">

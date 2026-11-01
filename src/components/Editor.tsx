@@ -86,16 +86,6 @@ function sem_acento(s: string) {
   return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
-/** Arquivo do clipboard → base64 (sem o prefixo data:). */
-export function lerBase64(f: File): Promise<string> {
-  return new Promise((ok, erro) => {
-    const r = new FileReader();
-    r.onload = () => ok(String(r.result).split(",")[1] ?? "");
-    r.onerror = () => erro(r.error);
-    r.readAsDataURL(f);
-  });
-}
-
 /** Markdown com edição ao vivo: digita `## `, `- [ ] `, `**negrito**` e vira formatação na hora. */
 export function Editor({
   valor, aoMudar, placeholder, aoMencao, aoColarArquivo, prompt,

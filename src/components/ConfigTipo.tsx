@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { ArrowDown, ArrowUp, Plus, Star, Trash2 } from "lucide-react";
 import { api, CORES, Cor, ESPECIES, Esquema, Modelo, Opcao, opcoesDe, Propriedade, propsDoTipo, Tipo } from "../api";
 import { EMOJIS, falhou, Rota } from "../ui";
-import { Editor } from "./Editor";
 import { Popover, usePopover } from "./Popover";
 import { AdicionarProp, BotaoAdicionarProp, MenuProp } from "./Propriedades";
 import { Etiqueta, IconeEspecie, ValorProp } from "./Valor";
+
+// o editor (tiptap) é pesado: só carrega quando aparece
+const Editor = lazy(() => import("./Editor").then((m) => ({ default: m.Editor })));
 
 export function ConfigTipo({
   esquema, id, ir, aoMudarEsquema,
@@ -320,7 +322,9 @@ function CartaoModelo({ esquema, tipo, modelo, aoMudarEsquema }: { esquema: Esqu
         ))}
       </div>
       <div className="divisor" style={{ margin: "8px 0 12px" }} />
-      <Editor key={modelo.id} valor={modelo.corpo} aoMudar={(corpo) => gravar({ corpo })} placeholder="Texto que o item já traz ao nascer…" />
+      <Suspense fallback={<div className="editor" />}>
+        <Editor key={modelo.id} valor={modelo.corpo} aoMudar={(corpo) => gravar({ corpo })} placeholder="Texto que o item já traz ao nascer…" />
+      </Suspense>
     </div>
   );
 }

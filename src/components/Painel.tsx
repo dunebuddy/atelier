@@ -13,6 +13,7 @@ import { Lixeira } from "./Lixeira";
 import { PaginaItem } from "./PaginaItem";
 import { BotaoTerminal, TerminalJanela } from "./Terminal";
 import { VisaoTela } from "./Visao";
+import { VisivelContext } from "../visivel";
 
 export interface Contexto {
   esquema: Esquema;
@@ -42,7 +43,8 @@ function IconeJanela({ j }: { j: Janela }) {
   return <span className="j-emoji">{j.icone ?? "·"}</span>;
 }
 
-export function PainelTrabalho({ estado, mudar, ctx }: { estado: EstadoPainel; mudar: Mudar; ctx: Contexto }) {
+/** `ativo`: é o workspace que está na tela (os outros ficam montados por trás). */
+export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPainel; mudar: Mudar; ctx: Contexto; ativo: boolean }) {
   const caixa = useRef<HTMLDivElement>(null);
   const [tam, setTam] = useState({ w: 0, h: 0 });
   const [rolagem, setRolagem] = useState<number[]>([0, 0]);
@@ -243,7 +245,10 @@ export function PainelTrabalho({ estado, mudar, ctx }: { estado: EstadoPainel; m
               </div>
             )}
             <div className="janela-corpo">
-              <Conteudo j={j} ctx={ctx} visivel={l.visivel} mudar={mudar} />
+              {/* o terminal segue o lugar da janela; o resto também para quando o workspace está escondido */}
+              <VisivelContext.Provider value={ativo && l.visivel}>
+                <Conteudo j={j} ctx={ctx} visivel={l.visivel} mudar={mudar} />
+              </VisivelContext.Provider>
             </div>
           </section>
         );

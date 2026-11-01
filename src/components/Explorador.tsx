@@ -3,9 +3,9 @@ import {
   ArrowLeft, ArrowUp, ChevronDown, ChevronRight, Code2, Eye, File, FileSpreadsheet, FileText, Film, Folder, FolderOpen, Image, Music, Pencil,
   RefreshCw, Save, Table,
 } from "lucide-react";
-import { marked } from "marked";
 import { api, BASE, Entrada } from "../api";
 import { abrir, avisar, falhou } from "../ui";
+import { useAoReaparecer, useVisivel } from "../visivel";
 import { dataHora } from "../visao";
 import { MenuPasta } from "./MenuPasta";
 import { DocumentoWord, Planilha } from "./Documentos";
@@ -41,11 +41,14 @@ function Icone({ especie }: { especie: string }) {
  */
 export function ArvoreArquivos({ raiz, titulo }: { raiz: string; titulo?: string }) {
   const [recarga, setRecarga] = useState(0);
-  // o agente pode criar arquivos enquanto você olha: relê de tempos em tempos
+  // o agente pode criar arquivos enquanto você olha: relê de tempos em tempos (só com a janela à vista)
+  const visivel = useVisivel();
   useEffect(() => {
+    if (!visivel) return;
     const t = window.setInterval(() => setRecarga((n) => n + 1), 5000);
     return () => window.clearInterval(t);
-  }, []);
+  }, [visivel]);
+  useAoReaparecer(visivel, () => setRecarga((n) => n + 1));
   return (
     <div className="explorador">
       <div className="ex-cabeca">
@@ -103,20 +106,26 @@ export function Explorador({ raiz, arquivo, titulo }: { raiz: string; arquivo?: 
     () => ({ raiz, titulo, dir: arquivo ? pai(arquivo) : raiz, arquivo: arquivo ?? null }),
   );
   const [entradas, setEntradas] = useState<Entrada[]>([]);
-  const [recarga, setRecarga] = useState(0);
 
   const dir = estado?.dir;
   useEffect(() => {
     if (!dir) return;
     api.explorar(dir).then((r) => setEntradas(r.entradas)).catch((e) => { setEntradas([]); falhou(e); });
-  }, [dir, recarga]);
-
-  // o agente pode criar arquivos enquanto você olha: relê a pasta de tempos em tempos
-  useEffect(() => {
-    if (!dir) return;
-    const t = window.setInterval(() => setRecarga((n) => n + 1), 5000);
-    return () => window.clearInterval(t);
   }, [dir]);
+
+  // o agente pode criar arquivos enquanto você olha: relê a pasta de tempos em tempos, em silêncio (o erro já
+  // apareceu no carregamento). Com um arquivo aberto a lista nem aparece (a prévia vigia o arquivo dela).
+  const listando = useVisivel() && !estado.arquivo;
+  const reler = useCallback(() => {
+    if (dir) api.explorar(dir).then((r) => setEntradas(r.entradas)).catch(() => setEntradas([]));
+  }, [dir]);
+  useEffect(() => {
+    if (!listando) return;
+    const t = window.setInterval(reler, 5000);
+    return () => window.clearInterval(t);
+  }, [listando, reler]);
+  // voltou para a lista (fechou o arquivo, a janela reapareceu): relê na hora
+  useAoReaparecer(listando, reler);
 
   const sep = separador(estado.raiz);
   const relativo = estado.dir.startsWith(estado.raiz) ? estado.dir.slice(estado.raiz.length).split(/[\\/]/).filter(Boolean) : [];
@@ -179,6 +188,7 @@ function Previa({ caminho, aoVoltar }: { caminho: string; aoVoltar: () => void }
   const modRef = useRef<string | null>(null);
   const [auto, setAuto] = useState<{ auto_salvar: string; atraso_ms: number }>({ auto_salvar: "desligado", atraso_ms: 1000 });
   useEffect(() => { api.preferencias().then((p) => setAuto(p.editor)).catch(() => {}); }, []);
+  const visivel = useVisivel();
 
   const ehTexto = info && ["texto", "markdown", "html"].includes(info.especie);
   const carregar = useCallback(async () => {
@@ -197,18 +207,29 @@ function Previa({ caminho, aoVoltar }: { caminho: string; aoVoltar: () => void }
 
   // mudou fora (o agente editou)? recarrega sozinho, a não ser que você esteja com edição pendente
   const pendente = editado != null && editado !== texto;
-  useEffect(() => {
-    const t = window.setInterval(async () => {
-      try {
-        const i = await api.infoArquivo(caminho);
-        if (i.modificado !== modRef.current) {
-          if (pendente) setMudouFora(true);
-          else carregar();
-        }
-      } catch { /* arquivo sumiu */ }
-    }, 2500);
-    return () => window.clearInterval(t);
+  const verificar = useCallback(async () => {
+    try {
+      const i = await api.infoArquivo(caminho);
+      if (i.modificado !== modRef.current) {
+        if (pendente) setMudouFora(true);
+        else carregar();
+      }
+    } catch { /* arquivo sumiu */ }
   }, [caminho, pendente, carregar]);
+  // escondida, não vigia; ao reaparecer confere na hora
+  useEffect(() => {
+    if (!visivel) return;
+    const t = window.setInterval(verificar, 2500);
+    return () => window.clearInterval(t);
+  }, [visivel, verificar]);
+  useAoReaparecer(visivel, verificar);
+
+  // o marked só é baixado quando aparece um Markdown
+  const [md, setMd] = useState<typeof import("marked") | null>(null);
+  const ehMarkdown = info?.especie === "markdown";
+  useEffect(() => {
+    if (ehMarkdown && !md) import("marked").then(setMd).catch(falhou);
+  }, [ehMarkdown, md]);
 
   const salvar = useCallback(async () => {
     if (editado == null) return;
@@ -308,7 +329,7 @@ function Previa({ caminho, aoVoltar }: { caminho: string; aoVoltar: () => void }
         ) : info.especie === "documento" && ext === "docx" ? (
           <DocumentoWord key={versao} url={urlDo(caminho) + `&v=${versao}`} />
         ) : info.especie === "markdown" && texto != null ? (
-          <Moldura html={marked.parse(editado ?? texto, { async: false }) as string} />
+          md && <Moldura html={md.marked.parse(editado ?? texto, { async: false }) as string} />
         ) : info.especie === "html" ? (
           <iframe key={versao} className="ex-moldura" src={urlDo(caminho) + `&v=${versao}`} sandbox="allow-scripts allow-popups" title="HTML" />
         ) : info.especie === "pdf" ? (
@@ -357,12 +378,17 @@ function Pdf({ url }: { url: string }) {
 
   useEffect(() => {
     let cancelado = false;
+    // cada documento sobe um worker do pdf.js: destruir a tarefa solta o documento e o worker
+    let tarefa: { destroy: () => Promise<void> } | null = null;
     (async () => {
       try {
         const pdfjs = await import("pdfjs-dist");
         const worker = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
         pdfjs.GlobalWorkerOptions.workerSrc = worker;
-        const doc = await pdfjs.getDocument({ url }).promise;
+        if (cancelado) return;
+        const t = pdfjs.getDocument({ url });
+        tarefa = t;
+        const doc = await t.promise;
         if (cancelado) return;
         setPaginas(doc.numPages);
         const alvo = caixa.current!;
@@ -386,7 +412,10 @@ function Pdf({ url }: { url: string }) {
         if (!cancelado) setErro(String(e));
       }
     })();
-    return () => { cancelado = true; };
+    return () => {
+      cancelado = true;
+      tarefa?.destroy().catch(() => {});
+    };
   }, [url]);
 
   if (erro) return <div className="vazio-grande">Não consegui mostrar o PDF ({erro}).</div>;

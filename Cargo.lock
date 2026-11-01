@@ -233,6 +233,7 @@ dependencies = [
  "serde_json",
  "sysinfo",
  "tokio",
+ "tokio-util",
  "toml 0.8.2",
  "toml_edit 0.22.27",
  "tower-http",

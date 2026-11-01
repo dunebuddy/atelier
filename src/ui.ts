@@ -31,6 +31,16 @@ export function falhou(e: unknown) {
   avisar(e instanceof Error ? e.message : String(e));
 }
 
+/** Arquivo do clipboard → base64 (sem o prefixo data:). */
+export function lerBase64(f: File): Promise<string> {
+  return new Promise((ok, erro) => {
+    const r = new FileReader();
+    r.onload = () => ok(String(r.result).split(",")[1] ?? "");
+    r.onerror = () => erro(r.error);
+    r.readAsDataURL(f);
+  });
+}
+
 export function ler<T>(chave: string, padrao: T): T {
   try {
     const s = localStorage.getItem("atelier." + chave);

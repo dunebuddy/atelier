@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity, ArrowUpDown, FileDown, ChevronLeft, ChevronRight, Columns3, Eye, EyeOff, Filter, Layers, List, MoreHorizontal, Search,
   SlidersHorizontal, Table2, Trash2,
@@ -7,10 +7,13 @@ import { api, Esquema, FiltroData, FiltroVisao, Item, Layout, opcoesDe, Propried
 import { EMOJIS, falhou, Rota } from "../ui";
 import { datasDo, PERIODOS, rotuloIntervalo } from "../visao";
 import { Kanban, ListaCompacta, Tabela } from "./Layouts";
-import { Exportar } from "./Exportar";
 import { LinhaDoTempo } from "./LinhaDoTempo";
 import { Popover, usePopover } from "./Popover";
 import { Etiqueta, IconeEspecie, valorDe } from "./Valor";
+import { useAoReaparecer, useVisivel } from "../visivel";
+
+// só carrega quando o Paulo pede para exportar
+const Exportar = lazy(() => import("./Exportar").then((m) => ({ default: m.Exportar })));
 
 const LAYOUTS: { id: Layout; nome: string; icone: React.ReactNode }[] = [
   { id: "tabela", nome: "Tabela", icone: <Table2 size={15} /> },
@@ -77,27 +80,35 @@ export function VisaoTela({
   useEffect(() => setDesloca(0), [visao.id, periodo]);
 
   const carregar = useCallback(() => setRecarga((n) => n + 1), []);
+  // a releitura de 15 s quase sempre traz o mesmo: só troca a lista (e redesenha) se algo mudou. Compara com a lista
+  // da tela (não com a última lida), porque o quadro e a tabela também mexem nela por conta própria.
   useEffect(() => {
     if (v.layout === "linha") return;
     const t = window.setTimeout(() => {
-      api.itensDaVisao(f, datas, busca).then(setItens).catch(falhou);
+      api.itensDaVisao(f, datas, busca)
+        .then((novo) => setItens((atual) => (atual && JSON.stringify(atual) === JSON.stringify(novo) ? atual : novo)))
+        .catch(falhou);
     }, busca ? 200 : 0);
     return () => window.clearTimeout(t);
   }, [JSON.stringify(f), datas?.de, datas?.ate, busca, v.layout, recarga]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // o agente pode pedir para filtrar a visão aberta (MCP: tela filtrar)
+  // o agente pode pedir para filtrar a visão aberta (MCP: tela filtrar): só a que está à vista
+  const visivel = useVisivel();
   useEffect(() => {
+    if (!visivel) return;
     const f = (e: Event) => setBusca((e as CustomEvent<{ texto: string }>).detail.texto);
     window.addEventListener("atelier:filtrar", f);
     return () => window.removeEventListener("atelier:filtrar", f);
-  }, []);
+  }, [visivel]);
 
-  // o agente pode mudar as coisas por fora: relê ao voltar para a janela e a cada 15 s
+  // o agente pode mudar as coisas por fora: relê ao voltar para a janela e a cada 15 s (escondida, só ao reaparecer)
   useEffect(() => {
+    if (!visivel) return;
     window.addEventListener("focus", carregar);
     const t = window.setInterval(carregar, 15000);
     return () => { window.removeEventListener("focus", carregar); window.clearInterval(t); };
-  }, [carregar]);
+  }, [visivel, carregar]);
+  useAoReaparecer(visivel, carregar);
 
   const ordenar = v.config?.ordenar;
   const visiveis = useMemo(() => {
@@ -227,7 +238,11 @@ export function VisaoTela({
         )
       )}
 
-      {exportando && <Exportar esquema={esquema} ids={visiveis.map((i) => i.id)} nome={v.nome} aoFechar={() => setExportando(false)} />}
+      {exportando && (
+        <Suspense fallback={null}>
+          <Exportar esquema={esquema} ids={visiveis.map((i) => i.id)} nome={v.nome} aoFechar={() => setExportando(false)} />
+        </Suspense>
+      )}
       {pFiltro.ancora && <EditorFiltro esquema={esquema} filtro={f} aoMudar={(nf) => mudar({ filtro: nf })} ancora={pFiltro.ancora} aoFechar={pFiltro.fechar} />}
 
       {pAgrupar.ancora && (

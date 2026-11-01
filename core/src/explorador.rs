@@ -103,18 +103,23 @@ pub async fn arquivo(State(b): State<Banco>, Query(q): Query<HashMap<String, Str
         Ok(x) => x,
         Err(e) => return e.into_response(),
     };
-    match tokio::fs::read(&p).await {
-        Ok(bytes) => {
+    // em fluxo: um vídeo ou PDF grande não entra inteiro na memória
+    match tokio::fs::File::open(&p).await {
+        Ok(f) => {
+            let tamanho = f.metadata().await.map(|m| m.len()).ok();
             let tipo = if tipo.starts_with("text/") || tipo == "application/json" { format!("{tipo}; charset=utf-8") } else { tipo };
             let mut resp = Response::builder()
                 .status(StatusCode::OK)
                 .header(header::CONTENT_TYPE, &tipo)
                 .header(header::CACHE_CONTROL, "no-store")
                 .header("X-Content-Type-Options", "nosniff");
+            if let Some(n) = tamanho {
+                resp = resp.header(header::CONTENT_LENGTH, n);
+            }
             if tipo.contains("html") || tipo.contains("svg") {
                 resp = resp.header(header::CONTENT_SECURITY_POLICY, "sandbox allow-scripts allow-popups; default-src * data: blob: 'unsafe-inline' 'unsafe-eval'");
             }
-            resp.body(Body::from(bytes)).unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+            resp.body(Body::from_stream(tokio_util::io::ReaderStream::new(f))).unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
         }
         Err(e) => Erro::Invalido(format!("não li o arquivo: {e}")).into_response(),
     }

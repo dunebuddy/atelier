@@ -68,12 +68,13 @@ Mexe nas mesmas listas (tabela, lista, quadro, árvore, busca, chips); vem depoi
 - **A ordem escolhida se mantém:** clicar no cabeçalho grava a ordem na visão (igual ao botão "Ordem") e o
   desempate é fixo (título, código), para o item mexido não pular. Sem ordem escolhida, segue "o que mexeu sobe".
 - **"Abrir workspace"** ao lado de "abrir" em todo lugar onde um item aparece (já decidido pelo Paulo).
-- **Deixar claro em qual workspace se está** (menu do terminal/explorador dizendo de qual pasta é; destaque do
-  workspace atual). Decidir com o Paulo quais das ideias anotadas.
+- **Deixar claro em qual workspace se está** (decidido pelo Paulo: só o menu do terminal e do explorador dizendo de qual
+  pasta é, "Pasta do workspace: bancada MDB", e oferecendo "Pasta deste item" quando o item da janela é outro).
 - **Barra lateral: arrastar visões e grupos** com eventos de ponteiro (o arrastar HTML5 não funciona no app instalado).
 - **Espaço em disco:** quanto o workspace ocupa (só ele e com os filhos) e quanto a bancada inteira ocupa.
-- **Modo fita: trocar de janela** sem a fita pular de um jeito ruim (a descrição do Paulo ficou pela metade:
-  completar com ele antes de começar).
+- **Modo fita navegando como o Niri** (Paulo: "TUDO está errado, navegar nela não é natural como na fita do Niri";
+  incomodam a janela grande sumir, a janela entrar encostada na borda e o pulo sem animação): rolagem animada; se a
+  janela nova e a de antes cabem juntas, as duas ficam à vista; se não cabem, a nova vem para o centro.
 
 ## 0.1.8 · Esquema completo pelo MCP + propriedades
 

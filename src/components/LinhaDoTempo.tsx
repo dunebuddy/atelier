@@ -86,9 +86,11 @@ export function LinhaDoTempo({
             <span className="ldt-conta">{lista.length} {lista.length === 1 ? "registro" : "registros"} · {new Set(lista.map((e) => e.item_id)).size} itens</span>
           </h3>
           <ol className="ldt-lista">
-            {lista.map((e) => (
-              <EventoLinha key={e.id} esquema={esquema} e={e} ir={ir} />
-            ))}
+            {agrupar(lista).map((g) =>
+              g.length === 1
+                ? <EventoLinha key={g[0].id} esquema={esquema} e={g[0]} ir={ir} />
+                : <GrupoDeEventos key={g[0].id} esquema={esquema} grupo={g} ir={ir} />,
+            )}
           </ol>
         </section>
       ))}
@@ -144,6 +146,50 @@ function Relatorio({ texto, nome, aoFechar }: { texto: string; nome: string; aoF
         </div>
       </div>
     </div>
+  );
+}
+
+/** A nota foi gravada pelo atelier (o mesmo critério do núcleo: `db::nota_automatica`)? */
+function automatica(t: string) {
+  if (["Criado.", "Texto editado.", "Pasta desligada."].includes(t)) return true;
+  if (/^(Ligado|Desligado|Pasta|Pasta criada): /.test(t)) return true;
+  const m = t.match(/^([^:\n]{1,60}): ([^\n]*)$/);
+  return !!m && m[2].includes(" → ");
+}
+
+/** Chave do "mesmo acontecimento": mesmo item, mesma pessoa, mesmo segundo e mesmo tipo de mudança. */
+const chaveDoGrupo = (e: Evento) => `${e.item_id}|${e.autor}|${e.criado_em.slice(0, 19)}|${e.texto.split(/[:#]/)[0]}`;
+
+/** Junta os eventos automáticos que são o mesmo acontecimento (ex.: 12 "Ligado: Filhos…" de uma vez), mesmo que
+ *  venham intercalados com outros do mesmo segundo; o grupo fica onde aparece o primeiro. */
+function agrupar(lista: Evento[]): Evento[][] {
+  const grupos: Evento[][] = [];
+  const porChave = new Map<string, Evento[]>();
+  for (const e of lista) {
+    const k = automatica(e.texto) ? chaveDoGrupo(e) : null;
+    const g = k ? porChave.get(k) : undefined;
+    if (g) g.push(e);
+    else {
+      const novo = [e];
+      grupos.push(novo);
+      if (k) porChave.set(k, novo);
+    }
+  }
+  return grupos;
+}
+
+function GrupoDeEventos({ esquema, grupo, ir }: { esquema: Esquema; grupo: Evento[]; ir: (r: Rota) => void }) {
+  const [aberto, setAberto] = useState(false);
+  if (aberto) return <>{grupo.map((e) => <EventoLinha key={e.id} esquema={esquema} e={e} ir={ir} />)}</>;
+  return (
+    <>
+      <EventoLinha esquema={esquema} e={grupo[0]} ir={ir} />
+      <li className="ldt-mais">
+        <button className="btn" onClick={() => setAberto(true)} title="Mostrar todos deste mesmo momento">
+          +{grupo.length - 1} {grupo[0].texto.split(/[:#]/)[0].toLowerCase()} no mesmo instante
+        </button>
+      </li>
+    </>
   );
 }
 

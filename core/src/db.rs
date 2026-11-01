@@ -1035,6 +1035,113 @@ pub fn atualizar_propriedade(conn: &Connection, id: i64, dados: &Value) -> Res<(
     Ok(())
 }
 
+/// Mexe numa opção de seleção/status: renomear (os itens que tinham o nome antigo passam a ter o novo), cor,
+/// histórico (conta como concluído) ou apagar (os itens perdem esse valor). Com `tipo_id`, vale a lista do tipo (se
+/// ele tiver lista própria; status sempre tem); sem, a lista da propriedade.
+pub fn mudar_opcao(conn: &Connection, tipo_id: Option<i64>, prop_id: i64, nome: &str, mudanca: &Value) -> Res<()> {
+    let do_tipo: Option<Value> = match tipo_id {
+        Some(t) => conn
+            .query_row("SELECT opcoes FROM tipo_propriedades WHERE tipo_id = ? AND propriedade_id = ?", params![t, prop_id], |r| r.get::<_, Option<String>>(0))
+            .optional()?
+            .flatten()
+            .and_then(|s| serde_json::from_str(&s).ok()),
+        None => None,
+    };
+    let (mut lista, no_tipo) = match do_tipo {
+        Some(v) => (v, true),
+        None => (json_col(conn.query_row("SELECT opcoes FROM propriedades WHERE id = ?", [prop_id], |r| r.get(0))?), false),
+    };
+    let ops = lista.as_array_mut().ok_or(Erro::Invalido("essa propriedade não tem opções".into()))?;
+    let i = ops
+        .iter()
+        .position(|o| o["nome"].as_str().is_some_and(|n| n.eq_ignore_ascii_case(nome.trim())))
+        .ok_or_else(|| Erro::NaoEncontrado(format!("opção \"{nome}\"")))?;
+    let antigo = ops[i]["nome"].as_str().unwrap_or("").to_string();
+    let novo_nome = mudanca.get("nome").and_then(|v| v.as_str()).map(str::trim).filter(|s| !s.is_empty()).map(String::from);
+    let apagar = mudanca.get("apagar").and_then(|v| v.as_bool()).unwrap_or(false);
+    if let Some(n) = &novo_nome {
+        if ops.iter().enumerate().any(|(k, o)| k != i && o["nome"].as_str().is_some_and(|x| x.eq_ignore_ascii_case(n))) {
+            return Err(Erro::Invalido(format!("já existe a opção \"{n}\"")));
+        }
+    }
+    if apagar {
+        ops.remove(i);
+    } else {
+        if let Some(n) = &novo_nome {
+            ops[i]["nome"] = json!(n);
+        }
+        if let Some(c) = mudanca.get("cor").and_then(|v| v.as_str()) {
+            ops[i]["cor"] = json!(c);
+        }
+        if let Some(h) = mudanca.get("historico").and_then(|v| v.as_bool()) {
+            if h {
+                ops[i]["historico"] = json!(true);
+            } else if let Some(o) = ops[i].as_object_mut() {
+                o.remove("historico");
+            }
+        }
+    }
+    let tx = conn.unchecked_transaction()?;
+    let txt = lista.to_string();
+    if no_tipo {
+        tx.execute("UPDATE tipo_propriedades SET opcoes = ? WHERE tipo_id = ? AND propriedade_id = ?", params![txt, tipo_id, prop_id])?;
+    } else {
+        tx.execute("UPDATE propriedades SET opcoes = ? WHERE id = ?", params![txt, prop_id])?;
+    }
+    // os itens acompanham: valor simples ou dentro de uma lista (multisseleção); a lista do tipo vale só para ele
+    if apagar || novo_nome.is_some() {
+        let mut st = tx.prepare(&format!("SELECT id, tipo_id, props FROM itens WHERE json_extract(props, '$.\"{prop_id}\"') IS NOT NULL"))?;
+        let linhas: Vec<(i64, Option<i64>, String)> = st
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
+            .collect::<Result<_, _>>()?;
+        drop(st);
+        let chave = prop_id.to_string();
+        for (id, t, props) in linhas {
+            if no_tipo && t != tipo_id {
+                continue;
+            }
+            let mut v: Value = serde_json::from_str(&props).unwrap_or(json!({}));
+            let novo = match &v[&chave] {
+                Value::String(x) if x == &antigo => novo_nome.as_ref().map(|n| json!(n)).unwrap_or(Value::Null),
+                Value::Array(l) => json!(l
+                    .iter()
+                    .filter_map(|x| if x.as_str() == Some(antigo.as_str()) { novo_nome.as_ref().map(|n| json!(n)) } else { Some(x.clone()) })
+                    .collect::<Vec<_>>()),
+                outro => outro.clone(),
+            };
+            if novo.is_null() || novo.as_array().is_some_and(|l| l.is_empty()) {
+                if let Some(o) = v.as_object_mut() {
+                    o.remove(&chave);
+                }
+            } else {
+                v[&chave] = novo;
+            }
+            tx.execute("UPDATE itens SET props = ? WHERE id = ?", params![v.to_string(), id])?;
+        }
+    }
+    tx.commit()?;
+    Ok(())
+}
+
+/// A nota foi gravada pelo próprio atelier (criação, mudança de propriedade, ligação, pasta, texto editado), e não
+/// escrita por alguém com "anotar"? É o que a linha do tempo agrupa e o `so_notas` do MCP tira.
+pub fn nota_automatica(texto: &str) -> bool {
+    let t = texto.trim();
+    t == "Criado." || t == "Texto editado." || t == "Pasta desligada."
+        || t.starts_with("Ligado: ") || t.starts_with("Desligado: ")
+        || t.starts_with("Pasta: ") || t.starts_with("Pasta criada: ")
+        || t.split_once(": ").is_some_and(|(campo, resto)| !campo.contains('\n') && campo.len() <= 60 && resto.contains(" → ") && !resto.contains('\n'))
+}
+
+/// Quantos itens (fora da lixeira) têm valor nesta propriedade: para avisar antes de apagar.
+pub fn itens_com_valor(conn: &Connection, prop_id: i64) -> Res<i64> {
+    Ok(conn.query_row(
+        &format!("SELECT COUNT(*) FROM itens WHERE apagado_em IS NULL AND json_extract(props, '$.\"{prop_id}\"') IS NOT NULL"),
+        [],
+        |r| r.get(0),
+    )?)
+}
+
 pub fn apagar_propriedade(conn: &Connection, id: i64) -> Res<()> {
     existe(conn, "propriedades", id)?;
     let tx = conn.unchecked_transaction()?;
@@ -1910,6 +2017,21 @@ mod testes {
         assert_eq!(tit(vec![(3, Some((None, Some("2026-11-06".into()))))]), ["semana que vem", "vencida"]);
         assert_eq!(tit(vec![(3, None)]), ["sem prazo"]);
         assert!(listar_visoes(&c).unwrap().iter().any(|v| v.nome == "Vence em breve"));
+    }
+
+    #[test]
+    fn opcao_renomeada_acompanha_os_itens() {
+        let c = banco();
+        // tipo 1 (semente) tem Status 1 com lista própria ("A fazer", "Em andamento", "Feita"...)
+        let a = criar_item(&c, &json!({"titulo": "a", "tipo_id": 1, "modelo_id": null, "props": {"1": "Em andamento"}})).unwrap();
+        mudar_opcao(&c, Some(1), 1, "em andamento", &json!({"nome": "Fazendo", "cor": "orange"})).unwrap();
+        assert_eq!(ler_item(&c, a).unwrap().props["1"], "Fazendo");
+        let ops = esquema(&c).unwrap()["tipos"][0]["propriedades"][0]["opcoes"].clone();
+        assert!(ops.as_array().unwrap().iter().any(|o| o["nome"] == "Fazendo" && o["cor"] == "orange"), "{ops}");
+        assert!(mudar_opcao(&c, Some(1), 1, "Fazendo", &json!({"nome": "A fazer"})).is_err(), "nome repetido");
+        mudar_opcao(&c, Some(1), 1, "Fazendo", &json!({"apagar": true})).unwrap();
+        assert!(ler_item(&c, a).unwrap().props.get("1").is_none(), "opção apagada sai do item");
+        assert_eq!(itens_com_valor(&c, 1).unwrap(), 0);
     }
 
     #[test]

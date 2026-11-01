@@ -206,6 +206,13 @@ function ConfigGeral({ prop, aoMudarEsquema }: { prop: Propriedade; aoMudarEsque
         </>
       )}
       {prop.especie === "data" && caixa("Com hora", !!c.hora, (v) => gravar({ hora: v }))}
+      {(prop.especie === "texto" || prop.especie === "numero") && (
+        <label className="menu-item" style={{ flexDirection: "column", alignItems: "stretch", gap: 4 }} title="Guarde só o número (de um chamado, card...) e o valor vira link. {valor} marca onde ele entra.">
+          <span>Molde de link (o valor vira link)</span>
+          <input className="campo" placeholder="https://exemplo.com/item/{valor}" defaultValue={c.molde ?? ""}
+            onBlur={(e) => { const v = e.target.value.trim() || null; if (v !== (c.molde ?? null)) gravar({ molde: v }); }} />
+        </label>
+      )}
       {LISTAVEIS.includes(prop.especie) && caixa("Aceita vários valores (lista)", !!c.lista, (v) => gravar({ lista: v }))}
       {caixa("Quebrar linha na tabela (em vez de cortar em …)", !!c.quebrar, (v) => gravar({ quebrar: v }))}
     </>

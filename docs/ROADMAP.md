@@ -76,7 +76,7 @@ Mexe nas mesmas listas (tabela, lista, quadro, árvore, busca, chips); vem depoi
   incomodam a janela grande sumir, a janela entrar encostada na borda e o pulo sem animação): rolagem animada; se a
   janela nova e a de antes cabem juntas, as duas ficam à vista; se não cabem, a nova vem para o centro.
 
-## 0.1.8 · Esquema completo pelo MCP + propriedades
+## 0.1.8 · Esquema completo pelo MCP + propriedades · **saiu em 2026-11-01**
 
 Para o agente parar de "sofrer" e para o uso com sistemas da empresa.
 

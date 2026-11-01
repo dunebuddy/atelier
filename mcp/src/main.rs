@@ -137,8 +137,8 @@ fn ferramentas() -> Value {
         },
         {
             "name": "ler_item",
-            "description": "Lê um item inteiro: propriedades, corpo em markdown, pasta e linha do tempo.",
-            "inputSchema": { "type": "object", "properties": { "id": ID }, "required": ["id"] }
+            "description": "Lê um item inteiro: propriedades, corpo em markdown, pasta e linha do tempo. so_notas: true deixa na linha do tempo só o que alguém escreveu (sem as mudanças automáticas).",
+            "inputSchema": { "type": "object", "properties": { "id": ID, "so_notas": { "type": "boolean" } }, "required": ["id"] }
         },
         {
             "name": "criar_item",
@@ -290,7 +290,8 @@ fn ferramentas() -> Value {
                 "de": { "type": "string", "description": "AAAA-MM-DD (padrão: hoje)" },
                 "ate": { "type": "string", "description": "AAAA-MM-DD (padrão: igual a `de`)" },
                 "tipo": { "type": "string" },
-                "filtros": { "type": "object", "additionalProperties": true }
+                "filtros": { "type": "object", "additionalProperties": true },
+                "so_notas": { "type": "boolean", "description": "só o que alguém escreveu (anotar), sem as mudanças automáticas" }
             } }
         },
         {
@@ -328,6 +329,51 @@ fn ferramentas() -> Value {
             "inputSchema": { "type": "object", "properties": {
                 "propriedade": { "type": "string" }, "tipo": { "type": "string" }, "remover": { "type": "boolean" }
             }, "required": ["propriedade", "tipo"] }
+        },
+        {
+            "name": "mudar_propriedade",
+            "description": "Renomeia uma propriedade (novo_nome) ou muda a config dela (ex.: molde de link: {\"molde\": \"https://exemplo/{valor}\"} numa propriedade de texto ou número mostra o valor como link).",
+            "inputSchema": { "type": "object", "properties": {
+                "propriedade": { "type": "string" }, "novo_nome": { "type": "string" },
+                "config": { "type": "object", "description": "chaves a mudar na config; null tira a chave" }
+            }, "required": ["propriedade"] }
+        },
+        {
+            "name": "apagar_propriedade",
+            "description": "Apaga uma propriedade de vez (sai de todos os tipos e os valores dos itens somem). Sem confirmado, só diz quantos itens têm valor nela: mostre ao usuário e só chame de novo com confirmado: true se ele aceitar.",
+            "inputSchema": { "type": "object", "properties": {
+                "propriedade": { "type": "string" }, "confirmado": { "type": "boolean" }
+            }, "required": ["propriedade"] }
+        },
+        {
+            "name": "mudar_tipo",
+            "description": "Renomeia um tipo (novo_nome) e/ou troca o ícone (emoji).",
+            "inputSchema": { "type": "object", "properties": {
+                "tipo": { "type": "string" }, "novo_nome": { "type": "string" }, "icone": { "type": "string" }
+            }, "required": ["tipo"] }
+        },
+        {
+            "name": "apagar_tipo",
+            "description": "Apaga um tipo (os itens dele ficam, sem tipo; a visão só dele some). Sem confirmado, só diz quantos itens são do tipo: mostre ao usuário e só chame de novo com confirmado: true se ele aceitar.",
+            "inputSchema": { "type": "object", "properties": {
+                "tipo": { "type": "string" }, "confirmado": { "type": "boolean" }
+            }, "required": ["tipo"] }
+        },
+        {
+            "name": "mudar_opcao",
+            "description": "Mexe numa opção de seleção ou status: novo_nome (os itens com o nome antigo passam a ter o novo), cor, historico (true = conta como concluído) ou apagar: true (os itens perdem esse valor). Com tipo, mexe na lista daquele tipo (status é sempre por tipo).",
+            "inputSchema": { "type": "object", "properties": {
+                "propriedade": { "type": "string" }, "opcao": { "type": "string" }, "tipo": { "type": "string" },
+                "novo_nome": { "type": "string" }, "cor": { "type": "string", "enum": ["gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"] },
+                "historico": { "type": "boolean" }, "apagar": { "type": "boolean" }
+            }, "required": ["propriedade", "opcao"] }
+        },
+        {
+            "name": "criar_bancada",
+            "description": "Cria uma bancada nova, limpa (só a visão Todos os itens). pasta padrão: ~/atelier/bancadas/<nome>. abrir: true já troca para ela.",
+            "inputSchema": { "type": "object", "properties": {
+                "nome": { "type": "string" }, "pasta": { "type": "string" }, "abrir": { "type": "boolean" }
+            }, "required": ["nome"] }
         }
     ])
 }
@@ -649,6 +695,30 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
             }
             return Ok(json!({ "ok": true, "aberta": b.nome }));
         }
+        "criar_bancada" => {
+            let nome = s(a, "nome").map(str::trim).filter(|n| !n.is_empty()).ok_or("informe o nome da bancada")?;
+            let pasta = s(a, "pasta").map(String::from).unwrap_or_else(|| {
+                bancada::pasta_atelier().join("bancadas").join(atelier_core::pastas::slug(nome)).to_string_lossy().to_string()
+            });
+            let abrir = a.get("abrir").and_then(|v| v.as_bool()).unwrap_or(false);
+            // com o app aberto, pela API (a tela acompanha); fechado, direto na config
+            if let Ok(r) = post_api("/api/bancadas", &json!({ "nome": nome, "caminho": pasta, "ativar": abrir })) {
+                if r.get("caminho").is_some() {
+                    return Ok(json!({ "ok": true, "bancada": r, "aberta": abrir }));
+                }
+                if let Some(erro) = r.get("erro") {
+                    return Err(erro.as_str().unwrap_or("não criei a bancada").to_string());
+                }
+            }
+            let mut cfg = bancada::carregar();
+            let nova = cfg.acrescentar(nome, &pasta).map_err(|x| x.to_string())?;
+            db::abrir(&bancada::banco_da(&nova.caminho)).map_err(|x| x.to_string())?;
+            if abrir {
+                cfg.ativa = Some(nova.caminho.clone());
+            }
+            bancada::salvar(&cfg).map_err(|x| x.to_string())?;
+            return Ok(json!({ "ok": true, "bancada": { "nome": nova.nome, "caminho": nova.caminho }, "aberta": abrir }));
+        }
         "nao_consigo" => {
             let pedido = s(a, "pedido").unwrap_or("");
             let motivo = s(a, "motivo").unwrap_or("");
@@ -744,7 +814,13 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
         }
         "ler_item" => {
             let id = id_de(&conn, a)?;
-            Ok(mapa.humano(&db::ler_item(&conn, id).map_err(e)?))
+            let mut it = db::ler_item(&conn, id).map_err(e)?;
+            if a.get("so_notas").and_then(|v| v.as_bool()) == Some(true) {
+                if let Some(n) = it.notas.as_mut() {
+                    n.retain(|x| !db::nota_automatica(&x.texto));
+                }
+            }
+            Ok(mapa.humano(&it))
         }
         "criar_item" => {
             let tipo_id = s(a, "tipo").map(|t| mapa.tipo_id(t)).transpose()?;
@@ -828,9 +904,11 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
                 }
             }
             let filtro = db::Filtro { tipo_id: s(a, "tipo").map(|t| mapa.tipo_id(t)).transpose()?, props, ..Default::default() };
+            let so_notas = a.get("so_notas").and_then(|v| v.as_bool()) == Some(true);
             let ev = db::linha_do_tempo(&conn, &de, &ate, &filtro).map_err(e)?;
             let eventos: Vec<Value> = ev
                 .iter()
+                .filter(|x| !so_notas || !db::nota_automatica(&x.texto))
                 .map(|x| json!({
                     "quando": x.criado_em, "quem": x.autor, "o_que": x.texto,
                     "item": format!("#{} {}", x.codigo, x.titulo), "tipo": mapa.tipo_nome(x.tipo_id),
@@ -880,6 +958,71 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
                 em.push(t.to_string());
             }
             Ok(json!({ "ok": true, "id": pid, "nos_tipos": em }))
+        }
+        "mudar_propriedade" => {
+            let p = mapa.prop(s(a, "propriedade").unwrap_or(""))?.clone();
+            let pid = p["id"].as_i64().unwrap_or(0);
+            let mut d = json!({});
+            if let Some(n) = s(a, "novo_nome") {
+                d["nome"] = json!(n);
+            }
+            if let Some(c) = a.get("config").and_then(|v| v.as_object()) {
+                let mut cfg = p["config"].as_object().cloned().unwrap_or_default();
+                for (k, v) in c {
+                    if v.is_null() {
+                        cfg.remove(k);
+                    } else {
+                        cfg.insert(k.clone(), v.clone());
+                    }
+                }
+                d["config"] = Value::Object(cfg);
+            }
+            db::atualizar_propriedade(&conn, pid, &d).map_err(e)?;
+            Ok(json!({ "ok": true }))
+        }
+        "apagar_propriedade" => {
+            let pid = mapa.prop(s(a, "propriedade").unwrap_or(""))?["id"].as_i64().unwrap_or(0);
+            let n = db::itens_com_valor(&conn, pid).map_err(e)?;
+            if a.get("confirmado").and_then(|v| v.as_bool()) != Some(true) {
+                return Ok(json!({ "apagado": false, "itens_com_valor": n,
+                    "aviso": format!("{n} itens têm valor nela e vão perdê-lo. Confirme com o usuário e chame de novo com confirmado: true.") }));
+            }
+            db::apagar_propriedade(&conn, pid).map_err(e)?;
+            Ok(json!({ "apagado": true, "itens_que_perderam_valor": n }))
+        }
+        "mudar_tipo" => {
+            let tid = mapa.tipo_id(s(a, "tipo").unwrap_or(""))?;
+            let mut d = json!({});
+            if let Some(n) = s(a, "novo_nome") {
+                d["nome"] = json!(n);
+            }
+            if let Some(i) = s(a, "icone") {
+                d["icone"] = json!(i);
+            }
+            db::atualizar_tipo(&conn, tid, &d).map_err(e)?;
+            Ok(json!({ "ok": true }))
+        }
+        "apagar_tipo" => {
+            let tid = mapa.tipo_id(s(a, "tipo").unwrap_or(""))?;
+            let n: i64 = conn.query_row("SELECT COUNT(*) FROM itens WHERE tipo_id = ? AND apagado_em IS NULL", [tid], |r| r.get(0)).map_err(|x| x.to_string())?;
+            if a.get("confirmado").and_then(|v| v.as_bool()) != Some(true) {
+                return Ok(json!({ "apagado": false, "itens_do_tipo": n,
+                    "aviso": format!("{n} itens são deste tipo e vão ficar sem tipo. Confirme com o usuário e chame de novo com confirmado: true.") }));
+            }
+            db::apagar_tipo(&conn, tid).map_err(e)?;
+            Ok(json!({ "apagado": true, "itens_sem_tipo_agora": n }))
+        }
+        "mudar_opcao" => {
+            let pid = mapa.prop(s(a, "propriedade").unwrap_or(""))?["id"].as_i64().unwrap_or(0);
+            let tid = s(a, "tipo").map(|t| mapa.tipo_id(t)).transpose()?;
+            let mut d = json!({});
+            for (de, para) in [("novo_nome", "nome"), ("cor", "cor"), ("historico", "historico"), ("apagar", "apagar")] {
+                if let Some(v) = a.get(de) {
+                    d[para] = v.clone();
+                }
+            }
+            db::mudar_opcao(&conn, tid, pid, s(a, "opcao").unwrap_or(""), &d).map_err(e)?;
+            Ok(json!({ "ok": true }))
         }
         "ligar_propriedade" => {
             let pid = mapa.prop(s(a, "propriedade").unwrap_or(""))?["id"].as_i64().unwrap_or(0);

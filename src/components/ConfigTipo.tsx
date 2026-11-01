@@ -162,6 +162,15 @@ function EditorOpcoes({ esquema, tipo, prop, aoMudarEsquema }: { esquema: Esquem
   const nova = usePopover();
   const [nome, setNome] = useState("");
 
+  // renomear e apagar passam pelo núcleo, para os itens que usam a opção acompanharem
+  const mudar = async (de: Opcao, d: { nome?: string; cor?: string; historico?: boolean; apagar?: boolean }) => {
+    try {
+      await api.mudarOpcao(prop.id, { tipo_id: proprias || prop.especie === "status" ? tipo.id : null, opcao: de.nome, ...d });
+      await aoMudarEsquema();
+    } catch (e) {
+      falhou(e);
+    }
+  };
   const gravar = async (lista: Opcao[]) => {
     try {
       if (proprias || prop.especie === "status") await api.porPropNoTipo(tipo.id, prop.id, { opcoes: lista });
@@ -207,8 +216,12 @@ function EditorOpcoes({ esquema, tipo, prop, aoMudarEsquema }: { esquema: Esquem
           opcao={opcoes[editar.i]}
           status={prop.especie === "status"}
           aoFechar={() => setEditar(null)}
-          aoGravar={(o) => gravar(opcoes.map((x, k) => (k === editar.i ? o : x)))}
-          aoApagar={() => { gravar(opcoes.filter((_, k) => k !== editar.i)); setEditar(null); }}
+          aoGravar={(o) => {
+            const de = opcoes[editar.i];
+            if (o.nome !== de.nome) mudar(de, { nome: o.nome, cor: o.cor, historico: !!o.historico });
+            else gravar(opcoes.map((x, k) => (k === editar.i ? o : x)));
+          }}
+          aoApagar={() => { mudar(opcoes[editar.i], { apagar: true }); setEditar(null); }}
         />
       )}
     </div>

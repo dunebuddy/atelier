@@ -65,16 +65,6 @@ Como usar:
   direita e sempre à vista enquanto a página rola. Onde: `src/components/PaginaItem.tsx` e o estilo da ficha em
   `src/styles.css`. Conferir junto: num print, o texto da página parecia cortado na beirada encostada na ficha
   ("sa-", "sh ."), talvez a ficha por cima do texto.
-- **MCP: apagar propriedade (e o resto do esquema)** (2026-11-01, uso real: o agente tirou "Projeto" dos tipos mas não
-  conseguiu apagá-la, e ela ficou sobrando na bancada). Hoje o MCP cria tipo/propriedade e liga/desliga propriedade de
-  tipo (`ligar_propriedade` com `remover`), mas não apaga nem renomeia. Acrescentar: `apagar_propriedade` (avisar
-  quantos itens têm valor nela e pedir confirmação ao usuário antes, como em `apagar_visao`), `renomear_propriedade`,
-  `apagar_tipo` e `renomear_tipo`, usando as funções que a tela já usa (`db::apagar_propriedade`, `db::apagar_tipo`...).
-  Conferir também o que mais a tela faz e o MCP não (opções de seleção: renomear, mudar cor, apagar; modelos).
-- **MCP: criar bancada** (2026-11-01, primeiro uso real do Paulo, pedindo pelo agente do `daily-work`). O MCP lista e
-  troca de bancada, mas não cria. Acrescentar `criar_bancada { nome, pasta? }` (pasta padrão: `~/atelier/bancadas/<slug>`),
-  usando a rota que já existe (`POST /api/bancadas`, que nasce limpa), com `abrir: true` opcional; sem o app aberto,
-  criar direto (`bancada::Config::acrescentar` + `db::abrir`).
 - **Ditado: escolher onde o modelo roda, RAM (CPU) ou VRAM (placa de vídeo)** (2026-11-01, Paulo). Em
   Configurações → Ditado, uma opção "Processador (RAM)" / "Placa de vídeo (VRAM)". Hoje tudo roda na CPU via WASM
   (`src/ditado.worker.ts`: `backend: "wasm"` no Parakeet, `device: "wasm"` no Whisper). Na GPU seria WebGPU
@@ -97,14 +87,6 @@ Como usar:
 - **Toast padrão:** o aviso de versão nova é o modelo; os outros avisos do app (`avisar`) devem seguir o mesmo visual.
 
 ### Pedidos do agente (de `pedidos-ao-atelier.md`, triados com o Paulo em 2026-11-01)
-- **Linha do tempo com menos ruído.** Eventos automáticos no mesmo segundo e do mesmo tipo (ex.: 12 "Ligado: Filhos…"
-  de uma vez) viram uma linha só, que abre ao clicar. Duplicado de verdade: criar a pasta grava "Pasta criada: …"
-  (`core/src/pastas.rs`) e a mudança da propriedade grava "Pasta: …" (`db.rs`); ficar só com um. No MCP,
-  `linha_do_tempo`/`ler_item` ganham `so_notas` (só o que alguém escreveu com anotar).
-- **Propriedade com molde de link.** Guardar só o número de um chamado ou card (ex.: `17329`) e o app mostrar o link
-  clicável a partir de um molde configurado na propriedade (`https://…/{valor}`). Vale para texto e número;
-  editar continua editando só o número. Serve para os sistemas da empresa sem pôr nome nem endereço deles no código:
-  o molde fica na propriedade, no banco do Paulo.
 
 ### Recursos (mudam comportamento: precisam do ok do Paulo antes)
 - Desmontar janelas que não são terminal em workspaces escondidos e abas inativas (ganho alto de memória; perde a
@@ -133,6 +115,17 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.1.8** (2026-11-01, esquema completo pelo MCP + propriedades):
+  - MCP: `mudar_propriedade` (renomear, config), `apagar_propriedade` e `apagar_tipo` (primeiro dizem quantos itens
+    são afetados; só apagam com `confirmado: true`), `mudar_tipo` (nome, ícone), `mudar_opcao` (renomear, cor,
+    histórico, apagar) e `criar_bancada` (pela API com o app aberto, direto na config com ele fechado);
+  - renomear ou apagar uma opção (na tela ou no MCP) atualiza os itens que a usavam (`db::mudar_opcao`; antes o
+    item ficava com o nome antigo);
+  - molde de link em texto e número (`config.molde`, `{valor}` marca onde entra): o valor aparece cru e sublinhado
+    com o botão de abrir; configura no menu da propriedade ou pelo MCP;
+  - linha do tempo: eventos automáticos do mesmo acontecimento (mesmo item, pessoa, segundo e tipo) viram uma linha
+    "+N … no mesmo instante", que abre ao clicar; criar pasta não anota mais "Pasta criada" em dobro com "Pasta:";
+    MCP `linha_do_tempo` e `ler_item` com `so_notas` (`db::nota_automatica`).
 - **0.1.7** (2026-11-01, workspaces e navegação):
   - atualizar com o MCP aberto não dá mais erro: o instalador renomeia o `atelier-mcp.exe` em uso para
     `atelier-mcp.antigo-N.exe` e põe o novo no lugar (`src-tauri/windows/ganchos.nsh`); as sobras saem ao abrir o app,

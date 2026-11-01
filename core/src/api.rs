@@ -89,6 +89,7 @@ pub fn rotas(banco: Banco) -> Router {
         .route("/api/tipos/{id}/propriedades/{pid}", axum::routing::put(tipo_poe_prop).delete(tipo_tira_prop))
         .route("/api/propriedades", post(criar_prop))
         .route("/api/propriedades/{id}", patch(atualizar_prop).delete(apagar_prop))
+        .route("/api/propriedades/{id}/opcao", post(mudar_opcao))
         .route("/api/modelos", post(criar_modelo))
         .route("/api/modelos/{id}", patch(atualizar_modelo).delete(apagar_modelo))
         .route("/api/itens", get(listar).post(criar_item))
@@ -261,6 +262,14 @@ async fn tamanho_bancada(State(b): State<Banco>) -> R {
         .await
         .map_err(|e| Erro::Invalido(e.to_string()))?;
     Ok(Json(json!({ "bytes": n })))
+}
+
+/// Renomear (os itens acompanham), mudar cor ou histórico, ou apagar uma opção: `{ tipo_id?, opcao, nome?, cor?,
+/// historico?, apagar? }`.
+async fn mudar_opcao(State(b): State<Banco>, Path(id): Path<i64>, Json(d): Json<Value>) -> R {
+    let opcao = d.get("opcao").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    com(&b, |c| db::mudar_opcao(c, d.get("tipo_id").and_then(|v| v.as_i64()), id, &opcao, &d))?;
+    Ok(Json(json!({ "ok": true })))
 }
 
 async fn esquema(State(b): State<Banco>) -> R {

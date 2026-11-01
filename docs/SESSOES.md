@@ -374,3 +374,8 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 - 0.1.7 commitada, **sem tag**: gerar a versão com o ok do Paulo.
 - Próximo pacote: **0.1.8 · Esquema completo pelo MCP + propriedades**.
 
+## 2026-11-01 (noite) — 0.1.8
+
+- O Paulo liberou executar o roadmap inteiro sozinho (versão, push, CI, próxima), com a 0.2.2 (item vira documento)
+  no fim. Pendências triadas: tudo tem lugar no roadmap; ideias antigas em "Ideias, sem data".
+- 0.1.8 testada sem janela, com o MCP apontado para o teste (`ATELIER_HOME=%TEMP%/atelier-teste`, `ATELIER_PORTA=7488`).

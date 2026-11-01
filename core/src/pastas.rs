@@ -75,8 +75,8 @@ pub fn criar(conn: &Connection, bancada: &Path, nome_bancada: &str, id: i64, aut
         std::fs::write(&leia, texto).map_err(|e| Erro::Invalido(format!("não gravei {leia:?}: {e}")))?;
     }
     let caminho = dir.to_string_lossy().to_string();
+    // a mudança da propriedade já anota "Pasta: …" na linha do tempo (antes saía "Pasta criada" também, em dobro)
     db::atualizar_item(conn, id, &json!({ "pasta": caminho, "autor": autor }))?;
-    db::anotar(conn, id, &format!("Pasta criada: {caminho}"), autor)?;
     Ok(caminho)
 }
 

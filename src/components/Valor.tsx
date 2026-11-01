@@ -6,7 +6,7 @@ import {
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   acrescentarOpcao, api, ConfigProp, Cor, corAleatoria, LISTAVEIS, Especie, Esquema, Item, Link as LinkItem, Opcao, opcoesDe, Propriedade, Valor,
-} from "../api";
+ linkDoMolde } from "../api";
 import { abrir } from "../ui";
 import { lembrarResumo, useResumos } from "../resumos";
 import { Popover, usePopover } from "./Popover";
@@ -155,6 +155,23 @@ export function ValorProp({
       let mostra = valor == null || valor === "" ? vazio : <span className={corta}>{textoSimples(valor, prop)}</span>;
       if (prop.especie === "data" && typeof valor === "string") mostra = <span className={`data ${urgencia(valor)} ${corta}`}>{textoSimples(valor, prop)}</span>;
       if (prop.especie === "numero" && typeof valor === "number") mostra = <span className={corta} style={{ fontVariantNumeric: "tabular-nums" }}>{textoSimples(valor, prop)}</span>;
+      // texto ou número com molde de link: mostra o valor cru (número de chamado não leva ponto de milhar) e abre o link
+      const link = (prop.especie === "texto" || prop.especie === "numero") && !Array.isArray(valor) ? linkDoMolde(prop.config, valor) : null;
+      if (link) {
+        mostra = (
+          <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+            <span className={corta} style={{ textDecoration: "underline", textUnderlineOffset: 2 }}>{String(valor)}</span>
+            <button
+              className="btn-icone"
+              style={{ width: 22, height: 22, flexShrink: 0 }}
+              title={`Abrir ${link}`}
+              onClick={(e) => { e.stopPropagation(); openUrl(link).catch(() => window.open(link)); }}
+            >
+              <ExternalLink size={13} />
+            </button>
+          </span>
+        );
+      }
       if (prop.especie === "url" && typeof valor === "string" && valor) {
         mostra = (
           <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>

@@ -1089,3 +1089,6 @@ button.mencao:hover { text-decoration: underline; text-underline-offset: 2px; }
 body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grabbing !important; }
 /* espaço em disco do workspace, ao lado do nome dele na barra de status */
 .bs-disco { gap: 5px; margin-left: 4px; }
+/* linha do tempo: eventos automáticos do mesmo instante agrupados (abre ao clicar) */
+.ldt-mais { list-style: none; margin: -4px 0 10px 98px; }
+.ldt-mais .btn { font-size: 12px; padding: 2px 8px; color: var(--texto-3); }

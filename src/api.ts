@@ -52,6 +52,16 @@ export interface ConfigProp {
   hora?: boolean;
   /** na tabela, o valor quebra linha em vez de cortar em "…" (desligado por padrão) */
   quebrar?: boolean;
+  /** texto ou número que vira link: o valor entra no lugar de {valor} (ex.: https://chamados/{valor}) */
+  molde?: string | null;
+}
+
+/** O link de um valor pelo molde da propriedade, ou null. */
+export function linkDoMolde(c: ConfigProp | undefined, valor: unknown): string | null {
+  const molde = c?.molde?.trim();
+  if (!molde || valor == null || valor === "") return null;
+  const v = encodeURIComponent(String(valor).trim().replace(/^#/, ""));
+  return molde.includes("{valor}") ? molde.split("{valor}").join(v) : molde + v;
 }
 
 /** Espécies que aceitam vários valores (config.lista). */
@@ -280,6 +290,9 @@ export const api = {
 
   /** itens que passam no filtro de uma visão (período já resolvido em datas) */
   /** quanto o workspace do item ocupa no disco (só ele e com os descendentes) */
+  /** renomear (os itens acompanham), cor, histórico ou apagar uma opção de seleção/status */
+  mudarOpcao: (prop: number, d: { tipo_id?: number | null; opcao: string; nome?: string; cor?: string; historico?: boolean; apagar?: boolean }) =>
+    req("POST", `/propriedades/${prop}/opcao`, d),
   tamanhoDoItem: (id: number) => req<{ proprio: number; com_filhos: number; filhos: number }>("GET", `/itens/${id}/tamanho`),
   tamanhoDaBancada: () => req<{ bytes: number }>("GET", "/bancadas/tamanho"),
   itensDaVisao: (f: FiltroVisao, periodo: { de: string; ate: string } | null, q?: string) =>

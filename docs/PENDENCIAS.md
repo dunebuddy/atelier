@@ -85,6 +85,16 @@ Como usar:
   (mesmo pedido, mesma tabela).
 
 ### Melhorias pedidas
+- **Modo fita: trocar de janela fica ruim** (2026-11-01, Paulo: "não gostei de como ficou o modo de fita quando eu
+  passo pro outro, se tiver mais de um, ou se tiver um grande, aí quando eu clico no outro…"; a frase ficou pela
+  metade: **completar com ele o que acontece e o que ele esperava**). Como funciona hoje (`rolagemPara` em
+  `src/painel.ts`, chamado por `Painel.tsx` a cada mudança): a fita rola **o mínimo** para a janela clicada caber
+  inteira; ela encosta na borda por onde entrou e a vizinha grande fica cortada pela metade (`clipPath`). Suspeitas do
+  que incomoda: (1) janela inteira (1/1) seguida de outra: clicar na outra empurra a fita toda e a de antes some de
+  vez, sem dar para ver as duas; (2) a nova janela entra na borda e não no centro, e o resto da fita fica cortado de
+  um jeito arbitrário; (3) a rolagem é um salto sem animação. Possíveis caminhos, a decidir com ele: centralizar a
+  janela ativa (como o Niri com `center-focused-column`), rolar com animação, e encolher sozinha a janela inteira
+  quando outra entra ao lado.
 - **Reordenar as colunas da tabela** (2026-11-01, Paulo: **relativamente prioritária**). Escolher a ordem: "essa
   coluna primeiro, depois essa", e a ordem fica guardada. Hoje a visão já guarda quais colunas aparecem
   (`config.colunas` em `Visao.tsx`), mas ao marcar ou desmarcar no menu "Propriedades visíveis" a lista volta para a

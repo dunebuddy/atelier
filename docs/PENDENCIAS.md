@@ -99,6 +99,14 @@ Como usar:
   vários chips seguem a regra dos "+N". Onde: `ChipItem`/`ValorRelacao` em `src/components/Valor.tsx` e `.celula` em
   `src/styles.css`.
 
+- **Filtrar por status de histórico mostra lista vazia** (2026-11-01, Paulo, visão Task da MDB). A task "Preparação:
+  inventário da conta…" (#e1a0ca6) está "Feito", e "Feito" é status de histórico no tipo Task, então a visão a esconde
+  (11 de 12 aparecem; não é paginação, não há limite). Até aí é a regra. O bug: com o filtro Status = Feito, a lista
+  fica vazia, porque `Visao.tsx` (`visiveis`, ~linha 115) esconde o histórico mesmo quando o filtro pede um status de
+  histórico. Corrigir: se o filtro escolhe valores de histórico numa propriedade status, esses itens aparecem (ou o
+  filtro liga o histórico sozinho). E deixar mais visível que há itens escondidos (hoje só "· 1 no histórico" no
+  subtítulo e o botão "Histórico (1)").
+
 ### Melhorias pedidas
 - **"Apontado por" com contagem e grupo clicável que vira visão** (2026-11-01, Paulo). Em `Relacoes.tsx`, cada grupo
   (o nome inverso da propriedade de relação: "Filhos" de Pai, "Gerou" de Nasceu de, "Itens do projeto" de Projeto, e

@@ -44,5 +44,8 @@ total para o Claude via MCP**. Ele nasceu numa conversa de 2026-10-30, no posto 
 - 2026-10-30: pasta criada com o contexto e os requisitos. **Nenhum código ainda.** Próximo passo: o primeiro Claude
   aberto aqui monta o esqueleto (Tauri + SQLite + servidor HTTP/MCP embutido) e a primeira fatia (item + tabela +
   página com markdown + MCP de leitura e escrita).
+- **Desde a 0.1.3 o Paulo usa o atelier no dia a dia.** Todo pedido, bug ou ideia entra primeiro em
+  [`docs/PENDENCIAS.md`](docs/PENDENCIAS.md); cada versão é montada escolhendo itens de lá com ele. Commit e push sem
+  tag, à vontade; tag (versão) só com o ok dele.
 - Mantenha um registro curto em `docs/SESSOES.md` (o que foi feito, o que ficou, ponto de parada), para o próximo
   Claude retomar.

@@ -16,6 +16,13 @@ Como usar:
 ## Caixa de entrada
 
 ### Bugs
+- **REGRA (prioridade alta, Paulo 2026-11-01): tudo o que for feito pelo MCP aparece na tela sozinho, sempre.** Nada
+  de trocar de bancada ou reabrir para ver. Não depender de cada ferramenta lembrar de avisar: o núcleo do app percebe
+  qualquer escrita no banco feita por outro processo (o MCP fala direto com o SQLite) e avisa a tela. Como: o núcleo
+  consulta `PRAGMA data_version` da conexão dele a cada ~1 s (barato; o número muda quando outra conexão grava) e,
+  quando muda, manda `{"acao": "mudou"}` pelo websocket da tela; a tela recarrega esquema, visões, contagens e as
+  páginas visíveis (as escondidas recarregam ao reaparecer, como já fazem). Também vale para troca de bancada e para
+  o `config.toml` mudado por fora (bancadas). Depois disso, o `recarregar` explícito do MCP vira só reforço.
 - **Tela não mostra tipos e propriedades criados pelo agente** (2026-11-01, uso real: bancada MDB). No banco e na API
   estão lá (6 tipos, 13 propriedades), mas a tela só carrega o esquema ao abrir e ao trocar de bancada. Corrigir: o
   MCP chama `tela` → `recarregar` depois de `criar_tipo`, `criar_propriedade`, `ligar_propriedade` (e dos futuros

@@ -66,6 +66,11 @@ Como usar:
   - detectar a placa (`navigator.gpu.requestAdapter()`, nome/memória quando disponível) e avisar quando a placa é
     integrada (ex.: a Intel UHD 770 desta máquina usa a própria RAM como VRAM: não economiza nada);
   - se o WebGPU falhar ao carregar, cair para a CPU sozinho e avisar.
+  - **Decisão do Paulo:** a opção é um menu. Se a máquina não tem placa dedicada com VRAM própria (ex.: só a Intel
+    UHD 770 daqui), "Placa de vídeo (VRAM)" aparece **desabilitada**, com o motivo, e fica só RAM. Na máquina dele com
+    RTX, a opção fica disponível. A detecção tem de ser confiável: nome do adaptador (`requestAdapter().info`) e, se
+    der, a memória dedicada lida pelo núcleo (no Windows, `HardwareInformation.qwMemorySize` do registro ou DXGI);
+    placa integrada (Intel UHD/Iris, AMD Radeon integrada) conta como sem VRAM.
 - **Título e × fixos nas janelas que sobem (modais)** (2026-11-01, Paulo): nas Configurações (ex.: Integrações), ao
   rolar, o título da seção e o × somem junto. Deixar o cabeçalho (título + ×) fixo no alto e só o conteúdo rolar,
   em todos os modais (Configurações do app e da bancada, Atalhos, Exportar, Comando...). Onde mexer: `.config-corpo`

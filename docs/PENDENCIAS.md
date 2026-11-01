@@ -8,6 +8,8 @@ Como usar:
 - Item novo entra em **Caixa de entrada**, com data e de onde veio.
 - Na hora de montar uma versão, os itens escolhidos vão para **Próxima versão**; o resto fica.
 - Quando sai a versão, os itens dela vão para **Feito**, com o número da versão.
+- Os itens são agrupados em pacotes e ordenados em [`ROADMAP.md`](ROADMAP.md); item novo entra aqui e, na triagem,
+  ganha lugar num pacote de lá.
 
 ## Próxima versão
 
@@ -16,6 +18,14 @@ Como usar:
 ## Caixa de entrada
 
 ### Bugs
+- **Servidor local sem conferir `Host` e `Origin` nas rotas HTTP** (2026-11-01, achado ao montar o roadmap;
+  segurança). Os websockets (`terminal.rs`, `tela_eventos`) recusam origem fora de `ORIGENS`, mas as rotas HTTP de
+  `api.rs` só têm CORS, que barra *ler* a resposta, não *enviar* o pedido. Riscos: (1) POST sem corpo, que não passa
+  por preflight, vindo de qualquer página aberta no navegador (backup, restaurar item/nota/versão); (2) DNS
+  rebinding: um domínio de fora que passa a apontar para 127.0.0.1 fica "da mesma origem" e fala com a API toda,
+  inclusive `/api/executar` e `/api/comando` (rodam agente). Correção: um middleware no `Router` que aceita só `Host`
+  `localhost`, `127.0.0.1` ou `[::1]` na porta do app e devolve 403 quando vem `Origin` fora de `ORIGENS` (pedido sem
+  `Origin`, como o do MCP, passa). Teste no núcleo para os três casos.
 - **Ícone velho na barra do sistema depois de atualizar para a 0.1.3** (2026-11-01, Paulo). Não corrigir sem montar
   a versão. O que já se sabe:
   - O executável instalado tem o ícone novo (extraído do `atelier.exe` e conferido) e o menu Iniciar mostra o novo.

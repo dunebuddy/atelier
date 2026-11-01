@@ -3,8 +3,33 @@ use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{Emitter, Manager, WindowEvent};
 
+/// Esconde na bandeja e pede ao WebView2 para soltar memória enquanto ninguém olha.
+fn esconder(app: &tauri::AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.hide();
+        #[cfg(windows)]
+        memoria_da_tela(&w, true);
+    }
+}
+
+/// WebView2 em modo de pouca memória (escondido na bandeja) ou normal. Ao voltar, a tela pode levar um instante.
+#[cfg(windows)]
+fn memoria_da_tela(janela: &tauri::WebviewWindow, baixa: bool) {
+    use webview2_com::Microsoft::Web::WebView2::Win32::*;
+    use windows::core::Interface;
+    let _ = janela.with_webview(move |w| unsafe {
+        let Ok(core) = w.controller().CoreWebView2() else { return };
+        if let Ok(c19) = core.cast::<ICoreWebView2_19>() {
+            let nivel = if baixa { COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW } else { COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL };
+            let _ = c19.SetMemoryUsageTargetLevel(nivel);
+        }
+    });
+}
+
 fn trazer_para_frente(app: &tauri::AppHandle) {
     if let Some(w) = app.get_webview_window("main") {
+        #[cfg(windows)]
+        memoria_da_tela(&w, false);
         let _ = w.show();
         let _ = w.unminimize();
         let _ = w.set_focus();
@@ -111,6 +136,10 @@ pub fn run() {
             if let Some(w) = app.get_webview_window("main") {
                 ajustar_janela(&w);
             }
+            // aberto pelo sistema no início da sessão com "iniciar escondido": vai direto para a bandeja
+            if std::env::args().any(|a| a == "--escondido") {
+                esconder(app.handle());
+            }
             // o instalador renomeia o MCP que estava em uso (windows/ganchos.nsh); o que ninguém usa mais sai aqui
             if let Some(pasta) = std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.to_path_buf())) {
                 for f in std::fs::read_dir(pasta).into_iter().flatten().flatten() {
@@ -153,14 +182,22 @@ pub fn run() {
             }
             Ok(())
         })
-        .on_window_event(|janela, ev| {
-            // "fechar vai para a bandeja" (Configurações → Automação): o × só esconde; sair é pelo menu da bandeja
-            if let WindowEvent::CloseRequested { api, .. } = ev {
+        .on_window_event(|janela, ev| match ev {
+            // "fechar vai para a bandeja" (Configurações → Geral): o × só esconde; sair é pelo menu da bandeja
+            WindowEvent::CloseRequested { api, .. } => {
                 if bancada::carregar().preferencias.captura.bandeja {
                     api.prevent_close();
-                    let _ = janela.hide();
+                    esconder(janela.app_handle());
                 }
             }
+            // "minimizar vai para a bandeja": minimizada, some da barra de tarefas
+            WindowEvent::Resized(_) => {
+                if janela.is_minimized().unwrap_or(false) && bancada::carregar().preferencias.janela.minimizar_bandeja {
+                    // esconde ainda minimizada (sem piscar); trazer_para_frente mostra e restaura
+                    esconder(janela.app_handle());
+                }
+            }
+            _ => {}
         })
         .run(tauri::generate_context!())
         .expect("erro ao rodar o atelier");

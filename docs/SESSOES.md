@@ -379,3 +379,11 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 - O Paulo liberou executar o roadmap inteiro sozinho (versão, push, CI, próxima), com a 0.2.2 (item vira documento)
   no fim. Pendências triadas: tudo tem lugar no roadmap; ideias antigas em "Ideias, sem data".
 - 0.1.8 testada sem janela, com o MCP apontado para o teste (`ATELIER_HOME=%TEMP%/atelier-teste`, `ATELIER_PORTA=7488`).
+
+## 2026-11-01 (noite) — 0.1.9
+
+- **Lição:** o TypeScript não pega gancho do React depois de um `return` antecipado; quebrou a página do item no
+  teste (tela em branco). Sempre abrir uma página de item, uma visão e as Configurações no teste sem janela antes de
+  soltar a versão, e olhar o console (`read_console_messages`).
+- A ficha só fica à direita com a janela larga (> 860 px de container); o navegador interno é estreito, então ali
+  ela aparece empilhada, como manda a regra.

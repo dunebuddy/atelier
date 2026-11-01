@@ -1037,14 +1037,19 @@ async fn mudar_preferencias(State(b): State<Banco>, Json(d): Json<Value>) -> R {
     }
     // zoom, backup, captura, lixeira: mescla só o que veio
     let mut atual = serde_json::to_value(&cfg.preferencias).map_err(|e| Erro::Invalido(e.to_string()))?;
-    for chave in ["zoom", "backup", "captura", "lixeira", "editor", "agentes", "atualizacao", "atalhos"] {
+    for chave in ["zoom", "backup", "captura", "lixeira", "editor", "agentes", "atualizacao", "atalhos", "janela"] {
         match (d.get(chave), atual.get_mut(chave)) {
             (Some(Value::Object(novo)), Some(Value::Object(velho))) => velho.extend(novo.clone()),
             (Some(v), Some(velho)) if !v.is_object() => *velho = v.clone(),
             _ => {}
         }
     }
+    let antes = cfg.preferencias.janela.clone();
     cfg.preferencias = serde_json::from_value(atual).map_err(|e| Erro::Invalido(format!("preferência inválida: {e}")))?;
+    let j = &cfg.preferencias.janela;
+    if (j.iniciar_com_sistema, j.iniciar_escondido) != (antes.iniciar_com_sistema, antes.iniciar_escondido) {
+        crate::arvore::iniciar_com_sistema(j.iniciar_com_sistema, j.iniciar_escondido).map_err(Erro::Invalido)?;
+    }
     bancada::salvar(&cfg)?;
     Ok(Json(json!(cfg.preferencias)))
 }

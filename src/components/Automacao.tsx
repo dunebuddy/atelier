@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { DatabaseBackup, FolderOpen, Keyboard, PanelBottomClose, Trash2 } from "lucide-react";
+import { DatabaseBackup, EyeOff, FolderOpen, Keyboard, Minimize2, PanelBottomClose, Power, Trash2 } from "lucide-react";
 import { api, Preferencias } from "../api";
 import { avisar, falhou } from "../ui";
 import { dataHora } from "../visao";
@@ -63,18 +63,6 @@ export function SecaoAutomacao({ prefs, mudar }: { prefs: Preferencias; mudar: (
 
       <div className="auto-bloco">
         <div className="auto-cabeca">
-          <PanelBottomClose size={16} />
-          <strong>Fechar vai para a bandeja</strong>
-          <Interruptor ligado={c.bandeja} aoMudar={(v) => mudar({ captura: { ...c, bandeja: v } })} />
-        </div>
-        <p className="dica">
-          O × da janela esconde o atelier no ícone da bandeja (perto do relógio), com os terminais rodando. Para sair de
-          verdade: botão direito no ícone → Sair. Clique no ícone traz a janela de volta.
-        </p>
-      </div>
-
-      <div className="auto-bloco">
-        <div className="auto-cabeca">
           <Trash2 size={16} />
           <strong>Esvaziar a lixeira sozinha</strong>
           <Interruptor ligado={l.ativo} aoMudar={(v) => mudar({ lixeira: { ...l, ativo: v } })} />
@@ -93,5 +81,36 @@ export function Interruptor({ ligado, aoMudar }: { ligado: boolean; aoMudar: (v:
     <button className={`interruptor${ligado ? " ligado" : ""}`} role="switch" aria-checked={ligado} onClick={() => aoMudar(!ligado)} title={ligado ? "Ligado" : "Desligado"}>
       <span />
     </button>
+  );
+}
+
+/** Configurações → Geral: como o atelier se comporta no sistema (bandeja, início com o sistema). */
+export function SecaoGeral({ prefs, mudar }: { prefs: Preferencias; mudar: (d: Partial<Preferencias>) => void }) {
+  const c = prefs.captura;
+  const j = prefs.janela ?? { minimizar_bandeja: false, iniciar_com_sistema: false, iniciar_escondido: false };
+  const bloco = (icone: React.ReactNode, titulo: string, ligado: boolean, aoMudar: (v: boolean) => void, dica: string) => (
+    <div className="auto-bloco">
+      <div className="auto-cabeca">
+        {icone}
+        <strong>{titulo}</strong>
+        <Interruptor ligado={ligado} aoMudar={aoMudar} />
+      </div>
+      <p className="dica">{dica}</p>
+    </div>
+  );
+  return (
+    <>
+      <h3>Janela e sistema</h3>
+      <p className="dica">Como o atelier se comporta no Windows: bandeja (o ícone perto do relógio) e início com o sistema.</p>
+      {bloco(<PanelBottomClose size={16} />, "Fechar (×) vai para a bandeja", c.bandeja, (v) => mudar({ captura: { ...c, bandeja: v } }),
+        "O × esconde o atelier na bandeja, com os terminais rodando. Para sair de verdade: botão direito no ícone → Sair. Clique no ícone traz a janela de volta.")}
+      {bloco(<Minimize2 size={16} />, "Minimizar vai para a bandeja", j.minimizar_bandeja, (v) => mudar({ janela: { ...j, minimizar_bandeja: v } }),
+        "Minimizar esconde o atelier na bandeja (some da barra de tarefas). Desligado, minimiza como qualquer janela.")}
+      {bloco(<Power size={16} />, "Iniciar com o sistema", j.iniciar_com_sistema, (v) => mudar({ janela: { ...j, iniciar_com_sistema: v } }),
+        "Abre o atelier quando você entra no Windows.")}
+      {j.iniciar_com_sistema && bloco(<EyeOff size={16} />, "Iniciar escondido na bandeja", j.iniciar_escondido, (v) => mudar({ janela: { ...j, iniciar_escondido: v } }),
+        "Ao iniciar com o sistema, o atelier já vai direto para a bandeja, sem abrir a janela.")}
+      <p className="dica">Escondido na bandeja, a tela usa menos memória; ao voltar, pode levar um instante para redesenhar.</p>
+    </>
   );
 }

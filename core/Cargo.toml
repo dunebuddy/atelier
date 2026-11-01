@@ -21,3 +21,7 @@ futures-util = { version = "0.3", default-features = false, features = ["sink", 
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 rust_xlsxwriter = "0.79"
 sysinfo = { version = "0.40.1", default-features = false, features = ["system"] }
+
+[target.'cfg(windows)'.dependencies]
+# terminal que mata a árvore inteira (Job Object) e iniciar com o sistema (chave Run); a mesma versão do Tauri
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_System_JobObjects", "Win32_System_Threading", "Win32_System_Registry", "Win32_Security"] }

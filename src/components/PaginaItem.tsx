@@ -114,6 +114,10 @@ export function PaginaItem({
     return () => window.removeEventListener("resize", ajustar);
   }, [item?.titulo]);
 
+  // arrastar o nome de uma propriedade na ficha (ganchos antes do retorno antecipado: o React exige a mesma ordem)
+  const [arrastandoProp, setArrastandoProp] = useState<number | null>(null);
+  const [sobreProp, setSobreProp] = useState<number | null>(null);
+  const acabouDeArrastar = useRef(false);
   if (!item) return null;
 
   const tipo = esquema.tipos.find((t) => t.id === item.tipo_id);
@@ -162,9 +166,52 @@ export function PaginaItem({
     }
   };
 
+  // arrastar o nome de uma propriedade muda a ordem dela no tipo (vale para todos os itens dele); eventos de ponteiro
+  const pegarProp = (p: Propriedade) => (e: React.PointerEvent) => {
+    if (e.button !== 0 || !tipo) return;
+    const y0 = e.clientY;
+    let ativo = false;
+    let alvo: number | null = null;
+    const mover = (ev: PointerEvent) => {
+      if (!ativo && Math.abs(ev.clientY - y0) < 6) return;
+      if (!ativo) { ativo = true; setArrastandoProp(p.id); document.body.classList.add("arrastando-visao"); }
+      const el = document.elementFromPoint(ev.clientX, ev.clientY)?.closest<HTMLElement>("[data-prop-ficha]");
+      alvo = el ? Number(el.dataset.propFicha) : null;
+      setSobreProp(alvo);
+    };
+    const fim = async () => {
+      window.removeEventListener("pointermove", mover);
+      window.removeEventListener("pointerup", fim);
+      document.body.classList.remove("arrastando-visao");
+      setArrastandoProp(null);
+      setSobreProp(null);
+      if (!ativo) return;
+      acabouDeArrastar.current = true;
+      setTimeout(() => (acabouDeArrastar.current = false), 0);
+      if (alvo == null || alvo === p.id) return;
+      const ids = props.map((x) => x.id).filter((id) => id !== p.id);
+      ids.splice(Math.max(0, ids.indexOf(alvo)), 0, p.id);
+      try {
+        await Promise.all(ids.map((id, i) => api.porPropNoTipo(tipo.id, id, { ordem: i + 1 })));
+        await aoMudarEsquema();
+      } catch (er) {
+        falhou(er);
+      }
+    };
+    window.addEventListener("pointermove", mover);
+    window.addEventListener("pointerup", fim);
+  };
+
   const linhaProp = (p: Propriedade, fora = false) => (
     <div key={p.id} style={{ display: "contents" }}>
-      <div className="prop-nome" style={fora ? { opacity: 0.6 } : undefined} onClick={(e) => setMenuProp({ ancora: e.currentTarget, prop: p })}>
+      <div
+        className={`prop-nome${sobreProp === p.id ? " soltar-antes" : ""}${arrastandoProp === p.id ? " arrastando" : ""}`}
+        style={fora ? { opacity: 0.6 } : undefined}
+        data-prop-ficha={fora ? undefined : p.id}
+        onPointerDown={fora ? undefined : pegarProp(p)}
+        title={fora ? undefined : "Clique: opções · arraste para mudar a ordem (vale para o tipo todo)"}
+        onClick={(e) => { if (!acabouDeArrastar.current) setMenuProp({ ancora: e.currentTarget, prop: p }); }}
+      >
         <IconeEspecie especie={p.especie} /> {p.nome}
       </div>
       <ValorProp

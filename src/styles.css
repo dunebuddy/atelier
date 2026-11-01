@@ -151,7 +151,10 @@ kbd {
 /* ---------- moldura ---------- */
 
 .app { display: flex; flex-direction: column; height: 100%; }
-.corpo-app { flex: 1; display: flex; min-height: 0; padding: 0 8px 8px 0; }
+/* sem folga embaixo: os painéis encostam na barra de status, que é uma faixa própria (linha fina em cima) com a
+   pílula no meio da altura; com a barra lateral escondida, a folga da esquerda é a mesma da direita */
+.corpo-app { flex: 1; display: flex; min-height: 0; padding: 0 8px 0 0; }
+.corpo-app.sem-barra { padding-left: 8px; }
 
 .barra-titulo {
   height: 46px; flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding-left: 12px;
@@ -285,7 +288,7 @@ body.redimensionando .sidebar { transition: none; }
 .ws-titulo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
 .ws-ponto { width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--texto-3); flex-shrink: 0; }
 .ws-ponto.vivo { background: var(--t-green); border-color: var(--t-green); }
-.barra-status { height: 24px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 11.5px; color: var(--texto-3); }
+.barra-status { height: 26px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 11.5px; color: var(--texto-3); border-top: 1px solid var(--borda); margin-top: 8px; }
 .bs-ws { display: flex; align-items: center; gap: 5px; height: 18px; padding: 0 6px; border-radius: 6px; color: var(--texto-3); font-size: 11.5px; line-height: 1; min-width: 0; }
 .bs-ws:hover { background: var(--hover); color: var(--texto); }
 .bs-ws span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -462,7 +465,8 @@ body.redimensionando .sidebar { transition: none; }
 .larguras button { font-size: 10.5px; padding: 1px 4px; border-radius: 5px; color: var(--texto-3); font-variant-numeric: tabular-nums; }
 .larguras button:hover { background: var(--hover); color: var(--texto); }
 .larguras button.ativo { color: var(--acento); background: var(--acento-suave); }
-.janela-corpo { flex: 1; min-height: 0; overflow: auto; position: relative; container: janela / inline-size; }
+/* container de tamanho (largura e altura): a página se ajusta à janela, e a ficha sabe a altura dela (cqh) */
+.janela-corpo { flex: 1; min-height: 0; overflow: auto; position: relative; container: janela / size; }
 .janela-terminal { position: absolute; inset: 0; padding: 6px 4px 4px 10px; background: var(--bg-fundo); }
 .janela-corpo > .explorador { position: absolute; inset: 0; margin: 0; border-radius: 0; box-shadow: none; }
 .soltar-metade {
@@ -590,8 +594,11 @@ tr:hover .celula .vazio, .prop-valor .vazio { opacity: 1; }
 
 .pagina-grade { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 40px; align-items: start; }
 .pagina-texto { min-width: 0; }
+/* janela larga: a ficha fica à direita, sempre à vista enquanto o texto rola, e rola sozinha quando é mais alta que
+   a janela (antes o fim dela só aparecia quando a página chegava ao fim) */
 .ficha {
   position: sticky; top: 20px; background: var(--bg-fundo); border: 1px solid var(--borda); border-radius: 14px; padding: 14px 12px 10px;
+  max-height: calc(100cqh - 40px); overflow-y: auto; overscroll-behavior: contain;
 }
 .ficha-titulo { font-size: 10.5px; font-weight: 650; color: var(--texto-3); text-transform: uppercase; letter-spacing: .08em; padding: 0 6px 8px; }
 .ficha .props { display: grid; grid-template-columns: 112px minmax(0, 1fr); row-gap: 2px; }
@@ -628,7 +635,7 @@ tr:hover .celula .vazio, .prop-valor .vazio { opacity: 1; }
 /* a página se ajusta à largura da janela (fita de 1/3, tile...), não à da tela */
 @container janela (max-width: 860px) {
   .pagina-grade { grid-template-columns: 1fr; gap: 24px; }
-  .ficha { position: static; order: -1; }
+  .ficha { position: static; order: -1; max-height: none; overflow: visible; }
   .pagina { padding: 26px 22px 80px; }
   .vista { padding: 22px 20px 60px; }
 }
@@ -681,10 +688,11 @@ tr:hover .celula .vazio, .prop-valor .vazio { opacity: 1; }
 
 /* ---------- avisos ---------- */
 
-.toast {
-  position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--texto); color: var(--bg);
-  padding: 9px 16px; border-radius: 10px; font-size: 13px; z-index: 100; box-shadow: var(--sombra);
-}
+/* avisos rápidos: o cartão do aviso de versão (.cartao-aviso), no meio embaixo para não brigar com ele */
+.cartao-aviso.toast { right: auto; left: 50%; transform: translateX(-50%); bottom: 34px; width: auto; min-width: 280px; max-width: min(520px, calc(100vw - 36px)); z-index: 100; }
+.cartao-aviso.toast .ca-msg { flex: 1; line-height: 1.4; overflow-wrap: anywhere; }
+.cartao-aviso.toast.erro { border-color: var(--t-red); }
+.cartao-aviso.toast.erro .ca-icone { color: var(--t-red); }
 .offline { margin: 80px auto; max-width: 460px; text-align: center; color: var(--texto-2); }
 
 /* ---------- modais: configurações e busca rápida ---------- */
@@ -705,8 +713,11 @@ tr:hover .celula .vazio, .prop-valor .vazio { opacity: 1; }
 .config-nav button { display: flex; align-items: center; gap: 9px; padding: 6px 9px; border-radius: 8px; color: var(--texto-2); text-align: left; font-weight: 500; }
 .config-nav button:hover { background: var(--hover); color: var(--texto); }
 .config-nav button.ativo { background: var(--bg); color: var(--texto); box-shadow: var(--sombra-folha); }
-.config-corpo { flex: 1; overflow-y: auto; padding: 30px 36px 40px; position: relative; }
-.config-corpo .fechar { position: absolute; top: 14px; right: 14px; }
+/* o × e o título da seção ficam à vista ao rolar: o × gruda no canto e cada título gruda no alto (com fundo) até
+   o próximo tomar o lugar */
+.config-corpo { flex: 1; overflow-y: auto; padding: 0 36px 40px; position: relative; }
+.config-corpo > .fechar { position: sticky; top: 14px; float: right; margin: 14px -22px 0 0; z-index: 3; background: var(--bg); }
+.config-corpo h3 { position: sticky; top: 0; z-index: 2; background: var(--bg); padding: 30px 40px 8px 0; margin-top: 0 !important; }
 .config-corpo h3 { font-size: 24px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.01em; }
 .config-corpo h4 { font-size: 10.5px; font-weight: 650; color: var(--texto-3); text-transform: uppercase; letter-spacing: .08em; margin: 30px 0 10px; }
 .config-corpo .dica { color: var(--texto-3); font-size: 13px; margin: 0 0 18px; }
@@ -1003,9 +1014,6 @@ button.mencao:hover { text-decoration: underline; text-underline-offset: 2px; }
 .sb-grupo-titulo { display: flex; align-items: center; gap: 4px; width: 100%; padding: 3px 6px; font-size: 11px; font-weight: 650; color: var(--texto-3); text-transform: uppercase; letter-spacing: .07em; border-radius: 6px; }
 .sb-grupo-titulo:hover { color: var(--texto-2); background: var(--hover); }
 .menu-barra { position: fixed; z-index: 70; } .mono-dica { font-family: 'Cascadia Code', Consolas, monospace; font-size: 11px; }
-.toast { display: flex; align-items: center; gap: 14px; }
-.toast-desfazer { color: var(--bg); font-weight: 700; display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 6px; background: rgba(255,255,255,.14); }
-.toast-desfazer kbd { color: inherit; border-color: currentColor; opacity: .7; }
 
 /* atalhos e relatório */
 .modal.atalhos, .modal.relatorio { display: flex; flex-direction: column; padding: 20px 24px; gap: 12px; width: min(680px, calc(100vw - 48px)); }
@@ -1092,3 +1100,6 @@ body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grab
 /* linha do tempo: eventos automáticos do mesmo instante agrupados (abre ao clicar) */
 .ldt-mais { list-style: none; margin: -4px 0 10px 98px; }
 .ldt-mais .btn { font-size: 12px; padding: 2px 8px; color: var(--texto-3); }
+/* ficha: arrastando o nome de uma propriedade para mudar a ordem */
+.prop-nome.soltar-antes { box-shadow: inset 0 2px 0 var(--acento); }
+.prop-nome.arrastando { opacity: .45; }

@@ -1154,9 +1154,14 @@ pub fn apagar_propriedade(conn: &Connection, id: i64) -> Res<()> {
 pub fn tipo_por_propriedade(conn: &Connection, tipo_id: i64, prop_id: i64, dados: &Value) -> Res<()> {
     existe(conn, "tipos", tipo_id)?;
     existe(conn, "propriedades", prop_id)?;
-    let ordem = match dados.get("ordem").and_then(|v| v.as_i64()) {
-        Some(o) => o,
-        None => conn.query_row("SELECT COALESCE(MAX(ordem), 0) + 1 FROM tipo_propriedades WHERE tipo_id = ?", [tipo_id], |r| r.get(0))?,
+    // sem ordem: a que já está no tipo fica onde está (mudar só as opções não a manda para o fim); nova vai no fim
+    let atual: Option<i64> = conn
+        .query_row("SELECT ordem FROM tipo_propriedades WHERE tipo_id = ? AND propriedade_id = ?", params![tipo_id, prop_id], |r| r.get(0))
+        .optional()?;
+    let ordem = match (dados.get("ordem").and_then(|v| v.as_i64()), atual) {
+        (Some(o), _) => o,
+        (None, Some(o)) => o,
+        (None, None) => conn.query_row("SELECT COALESCE(MAX(ordem), 0) + 1 FROM tipo_propriedades WHERE tipo_id = ?", [tipo_id], |r| r.get(0))?,
     };
     conn.execute(
         "INSERT INTO tipo_propriedades (tipo_id, propriedade_id, ordem) VALUES (?, ?, ?)
@@ -2032,6 +2037,17 @@ mod testes {
         mudar_opcao(&c, Some(1), 1, "Fazendo", &json!({"apagar": true})).unwrap();
         assert!(ler_item(&c, a).unwrap().props.get("1").is_none(), "opção apagada sai do item");
         assert_eq!(itens_com_valor(&c, 1).unwrap(), 0);
+    }
+
+    #[test]
+    fn mudar_opcoes_nao_tira_a_propriedade_do_lugar() {
+        let c = banco();
+        let ordem = |p: i64| -> i64 { c.query_row("SELECT ordem FROM tipo_propriedades WHERE tipo_id = 1 AND propriedade_id = ?", [p], |r| r.get(0)).unwrap() };
+        let antes = ordem(1);
+        tipo_por_propriedade(&c, 1, 1, &json!({ "opcoes": [{ "nome": "A fazer" }] })).unwrap();
+        assert_eq!(ordem(1), antes);
+        tipo_por_propriedade(&c, 1, 1, &json!({ "ordem": 99 })).unwrap();
+        assert_eq!(ordem(1), 99);
     }
 
     #[test]

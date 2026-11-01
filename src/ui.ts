@@ -26,12 +26,12 @@ export function abrir(rota: Rota, nova = false) {
 export type Tema = string;
 
 /** Mostra um aviso embaixo. Com `desfazer`, o aviso ganha o botão "Desfazer" (e Ctrl+Z, enquanto estiver na tela). */
-export function avisar(msg: string, desfazer?: () => Promise<unknown> | void) {
-  window.dispatchEvent(new CustomEvent("atelier:aviso", { detail: { msg, desfazer } }));
+export function avisar(msg: string, desfazer?: () => Promise<unknown> | void, erro = false) {
+  window.dispatchEvent(new CustomEvent("atelier:aviso", { detail: { msg, desfazer, erro } }));
 }
 
 export function falhou(e: unknown) {
-  avisar(e instanceof Error ? e.message : String(e));
+  avisar(e instanceof Error ? e.message : String(e), undefined, true);
 }
 
 /** Arquivo do clipboard → base64 (sem o prefixo data:). */

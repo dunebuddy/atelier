@@ -1,3 +1,4 @@
+import { CircleAlert, Info, X } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, BASE, Bancadas, Esquema, Preferencias, TemaArquivo, Visao } from "./api";
 import { aplicarTema } from "./tema";
@@ -58,7 +59,7 @@ export default function App() {
   useEffect(() => guardar("sidebarLargura", largura), [largura]);
   // workspaces da bancada aberta (o painel de agora é o do workspace ativo)
   const [ws, setWs] = useState<W.Workspaces | null>(null);
-  const [aviso, setAviso] = useState<{ msg: string; desfazer?: () => Promise<unknown> | void } | null>(null);
+  const [aviso, setAviso] = useState<{ msg: string; desfazer?: () => Promise<unknown> | void; erro?: boolean } | null>(null);
   const [bancadas, setBancadas] = useState<Bancadas | null>(null);
   const [config, setConfig] = useState<null | SecaoConfig>(null);
   const [temas, setTemas] = useState<TemaArquivo[]>([]);
@@ -227,10 +228,10 @@ export default function App() {
   useEffect(() => {
     let t: number;
     const f = (e: Event) => {
-      const d = (e as CustomEvent<{ msg: string; desfazer?: () => Promise<unknown> | void }>).detail;
+      const d = (e as CustomEvent<{ msg: string; desfazer?: () => Promise<unknown> | void; erro?: boolean }>).detail;
       setAviso(d);
       window.clearTimeout(t);
-      t = window.setTimeout(() => setAviso(null), d.desfazer ? 8000 : 4000);
+      t = window.setTimeout(() => setAviso(null), d.desfazer || d.erro ? 8000 : 4000);
     };
     window.addEventListener("atelier:aviso", f);
     return () => window.removeEventListener("atelier:aviso", f);
@@ -505,7 +506,7 @@ export default function App() {
             : null
         }
       />
-      <div className="corpo-app">
+      <div className={`corpo-app${fechada ? " sem-barra" : ""}`}>
         <Sidebar
           visoes={visoes}
           esquema={esquema}
@@ -570,9 +571,18 @@ export default function App() {
         />
       )}
       {aviso && (
-        <div className="toast">
-          {aviso.msg}
-          {aviso.desfazer && <button className="toast-desfazer" onClick={desfazerAgora}>Desfazer <kbd>Ctrl Z</kbd></button>}
+        // o mesmo cartão do aviso de versão nova (Atualizacao.tsx): ícone, mensagem e o botão embaixo
+        <div className={`cartao-aviso toast${aviso.erro ? " erro" : ""}`} role={aviso.erro ? "alert" : "status"}>
+          <div className="ca-cabeca">
+            {aviso.erro ? <CircleAlert size={16} className="ca-icone" /> : <Info size={16} className="ca-icone" />}
+            <span className="ca-msg">{aviso.msg}</span>
+            <button className="btn-icone" title="Fechar" onClick={() => setAviso(null)}><X size={14} /></button>
+          </div>
+          {aviso.desfazer && (
+            <div className="ca-acoes">
+              <button className="btn" onClick={desfazerAgora}>Desfazer <kbd>Ctrl Z</kbd></button>
+            </div>
+          )}
         </div>
       )}
     </div>

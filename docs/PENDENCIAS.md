@@ -34,37 +34,7 @@ Como usar:
   4. talvez mostrar na lista de modelos quanto cada um ocupa carregado, não só o tamanho do download.
   Mais longe: rodar o ditado no núcleo Rust lendo o arquivo do disco (como o Handy); exige toolchain MSVC/clang.
 
-- **Pílula de memória/CPU da barra de status ainda desequilibrada** (2026-11-01, print do Paulo na 0.1.3: encostada
-  embaixo). Causa: `.corpo-app` tem `padding: 0 8px 8px 0` (`src/styles.css`), então os painéis terminam 8 px acima
-  da barra de status, e esse espaço tem a mesma cor dela: na prática ~11 px em cima da pílula e 3 px embaixo (a
-  medição anterior olhou só a barra de 24 px isolada). Correção recomendada: tirar o 8 px de baixo do `.corpo-app`
-  (painéis encostam na barra) e dar à barra uma linha fina no topo (`border-top: 1px solid var(--borda)`), para ela ser
-  uma faixa própria com a pílula centrada; alternativa do Paulo: cor de fundo diferente na barra ou sem pílula.
-
-- **Barra lateral escondida: o painel encosta na borda esquerda** (2026-11-01, Paulo). O `.corpo-app` tem
-  `padding: 0 8px 8px 0` (`src/styles.css`): a folga da esquerda vem da própria barra lateral; escondida (Ctrl+\), o
-  painel cola na borda. Corrigir: com a barra fechada, folga de 8 px à esquerda, igual à da direita (classe no
-  `.corpo-app` quando `fechada`, em `App.tsx`). Fazer junto com a pílula da barra de status (mesmo `padding`).
-
 ### Melhorias pedidas
-- **Ordem das propriedades na ficha do item** (sobra do pedido de colunas da 0.1.5): arrastar para reordenar na ficha
-  (a ordem é a do tipo). Entra na 0.1.9 (o Paulo liberou o roadmap inteiro).
-- **Configurações → Geral (janela e sistema)** (2026-11-01, Paulo). Juntar numa página só as opções de como o app se
-  comporta no Windows (hoje "fechar vai para a bandeja" está escondido em Automação):
-  - **Fechar (×)**: vai para a bandeja ou fecha de verdade;
-  - **Minimizar**: vai para a bandeja (some da barra de tarefas) ou minimiza normal;
-  - **Iniciar com o sistema** (desligado por padrão; plugin `tauri-plugin-autostart`), e junto **iniciar escondido na
-    bandeja**;
-  - talvez: mostrar ou não o ícone na bandeja.
-  A seção "Idioma" pode virar parte dessa página.
-- **Ficha do item: coluna fixa à direita com rolagem própria** (2026-11-01, Paulo gostou da ficha). Hoje ela gruda no
-  topo ao rolar (sticky), mas quando é mais alta que a tela o fim dela só aparece quando a página chega ao fim — numa
-  página longa, demora. Quero: a página do item em duas colunas, cada uma com a sua barra de rolagem (texto à esquerda,
-  ficha à direita, altura da janela, `overflow: auto`). **Detalhe do Paulo:** com a janela estreita, a ficha em cima
-  do texto (como hoje) está ótima, manter; quando a janela é larga o bastante para ela caber à direita, ela fica fixa à
-  direita e sempre à vista enquanto a página rola. Onde: `src/components/PaginaItem.tsx` e o estilo da ficha em
-  `src/styles.css`. Conferir junto: num print, o texto da página parecia cortado na beirada encostada na ficha
-  ("sa-", "sh ."), talvez a ficha por cima do texto.
 - **Ditado: escolher onde o modelo roda, RAM (CPU) ou VRAM (placa de vídeo)** (2026-11-01, Paulo). Em
   Configurações → Ditado, uma opção "Processador (RAM)" / "Placa de vídeo (VRAM)". Hoje tudo roda na CPU via WASM
   (`src/ditado.worker.ts`: `backend: "wasm"` no Parakeet, `device: "wasm"` no Whisper). Na GPU seria WebGPU
@@ -79,21 +49,11 @@ Como usar:
     RTX, a opção fica disponível. A detecção tem de ser confiável: nome do adaptador (`requestAdapter().info`) e, se
     der, a memória dedicada lida pelo núcleo (no Windows, `HardwareInformation.qwMemorySize` do registro ou DXGI);
     placa integrada (Intel UHD/Iris, AMD Radeon integrada) conta como sem VRAM.
-- **Título e × fixos nas janelas que sobem (modais)** (2026-11-01, Paulo): nas Configurações (ex.: Integrações), ao
-  rolar, o título da seção e o × somem junto. Deixar o cabeçalho (título + ×) fixo no alto e só o conteúdo rolar,
-  em todos os modais (Configurações do app e da bancada, Atalhos, Exportar, Comando...). Onde mexer: `.config-corpo`
-  com `.fechar` posicionado dentro da área que rola (`src/components/Configuracoes.tsx`, `src/styles.css`); separar um
-  cabeçalho fixo (`position: sticky; top: 0` com fundo) ou tirar o × e o título da área de rolagem.
-- **Toast padrão:** o aviso de versão nova é o modelo; os outros avisos do app (`avisar`) devem seguir o mesmo visual.
 
 ### Pedidos do agente (de `pedidos-ao-atelier.md`, triados com o Paulo em 2026-11-01)
 
 ### Recursos (mudam comportamento: precisam do ok do Paulo antes)
-- Desmontar janelas que não são terminal em workspaces escondidos e abas inativas (ganho alto de memória; perde a
-  rolagem e o estado local ao voltar).
 - PDF: desenhar só as páginas à vista (hoje até 300 de uma vez).
-- WebView2 em modo de pouca memória quando o app vai para a bandeja (ao voltar, a tela pode demorar um instante).
-- Terminal: matar a árvore inteira (agente aberto no terminal morre junto com o shell e quando o app fecha).
 - Podar o histórico guardado dos workspaces (hoje até 50 passos por janela, para sempre).
 
 ### Ideias antigas (ninguém pediu agora)
@@ -115,6 +75,20 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.1.9** (2026-11-01, acabamento e comportamento da janela):
+  - barra de status como faixa própria (linha fina em cima, pílula no meio) e painéis encostando nela; com a barra
+    lateral escondida, o painel tem a mesma folga dos dois lados;
+  - Configurações: o × e o título da seção ficam à vista ao rolar;
+  - avisos (`avisar`/`falhou`) no mesmo cartão do aviso de versão: ícone, mensagem, × e o Desfazer embaixo; erro com
+    borda vermelha e 8 s na tela;
+  - ficha do item: com a janela larga, gruda à direita e rola sozinha quando é mais alta que a janela
+    (`.janela-corpo` virou container de tamanho, `max-height: 100cqh`); estreita, continua em cima do texto;
+  - arrastar o nome de uma propriedade na ficha muda a ordem dela no tipo; e mudar as opções de um status não manda
+    mais a propriedade para o fim (`tipo_por_propriedade` sem ordem mantém a que já tinha);
+  - Configurações → Geral: fechar (×) e minimizar para a bandeja, iniciar com o sistema (chave Run do Windows;
+    `.desktop` no Linux) e iniciar escondido (`--escondido`); escondido na bandeja, o WebView2 vai para pouca memória;
+  - terminal: o shell e tudo o que ele abrir ficam num Job Object que morre junto (fechar a janela do terminal ou o
+    app não deixa mais agente órfão); testado com um cmd que abre um ping.
 - **0.1.8** (2026-11-01, esquema completo pelo MCP + propriedades):
   - MCP: `mudar_propriedade` (renomear, config), `apagar_propriedade` e `apagar_tipo` (primeiro dizem quantos itens
     são afetados; só apagam com `confirmado: true`), `mudar_tipo` (nome, ícone), `mudar_opcao` (renomear, cor,

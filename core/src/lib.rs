@@ -1,6 +1,7 @@
 //! Núcleo do atelier: bancadas, banco e API. Sem Tauri, para o app e o MCP usarem o mesmo código.
 pub mod agentes;
 pub mod api;
+pub mod arvore;
 pub mod bancada;
 pub mod db;
 pub mod disco;

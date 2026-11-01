@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Check, Copy, FileCode, FolderOpen, FolderPlus, Keyboard, Languages, Info, LayoutPanelLeft, Mic, Package, Palette, Pencil, Plug, Plus, RefreshCw, Shapes, Timer, X } from "lucide-react";
 import { Agente, api, Bancada, Bancadas, Esquema, Integracoes, Preferencias, TemaArquivo, AgenteCli, UsoAgente } from "../api";
-import { SecaoAutomacao } from "./Automacao";
+import { SecaoAutomacao, SecaoGeral } from "./Automacao";
 import { SecaoAtalhos } from "./ConfigAtalhos";
 import { procurarAtualizacao } from "./Atualizacao";
 import { avisar, falhou, Tema } from "../ui";
@@ -82,7 +82,7 @@ export function Configuracoes({
             <>
               <div className="config-nav-titulo">Configurações</div>
               {item("aparencia", <Palette size={15} />, "Aparência")}
-              {item("geral", <Languages size={15} />, "Idioma")}
+              {item("geral", <Languages size={15} />, "Geral")}
               {item("bancadas", <Package size={15} />, "Bancadas")}
               {item("integracoes", <Plug size={15} />, "Integrações")}
               {item("ditado", <Mic size={15} />, "Ditado")}
@@ -100,6 +100,7 @@ export function Configuracoes({
           )}
           {secao === "geral" && (
             <>
+              {prefs && <SecaoGeral prefs={prefs} mudar={mudarPrefs} />}
               <h3>Idioma</h3>
               <p className="dica">Por enquanto só português. Quando houver outros, aparecem aqui.</p>
               <select className="campo" style={{ maxWidth: 260 }} value="pt-BR" disabled>

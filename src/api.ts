@@ -499,6 +499,8 @@ export interface Preferencias {
   zoom: number;
   backup: { ativo: boolean; intervalo_horas: number; manter: number };
   captura: { ativo: boolean; atalho: string; bandeja: boolean };
+  /** janela e sistema (Configurações → Geral); fechar para a bandeja é captura.bandeja */
+  janela: { minimizar_bandeja: boolean; iniciar_com_sistema: boolean; iniciar_escondido: boolean };
   lixeira: { ativo: boolean; dias: number };
   /** editor de arquivos: auto-salvar como no VS Code */
   editor: { auto_salvar: "desligado" | "atraso" | "foco"; atraso_ms: number };

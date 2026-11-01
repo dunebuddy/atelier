@@ -86,7 +86,7 @@ Para o agente parar de "sofrer" e para o uso com sistemas da empresa.
 - **Linha do tempo com menos ruído:** agrupar eventos automáticos do mesmo segundo, tirar o "Pasta"/"Pasta criada"
   duplicado; no MCP, `so_notas`.
 
-## 0.1.9 · Acabamento e comportamento da janela
+## 0.1.9 · Acabamento e comportamento da janela · **saiu em 2026-11-01**
 
 Tudo visual e de conforto, no mesmo CSS e nas Configurações. (Em 2026-11-01 o Paulo liberou executar o roadmap
 inteiro, então os itens que pediam o ok dele entram.)

@@ -114,12 +114,29 @@ pub struct Preferencias {
     /// procura versão nova ao abrir (pedido do Paulo: "tem versão nova, quer instalar?")
     #[serde(default)]
     pub atualizacao: Atualizacao,
+    /// como a janela se comporta no sistema (Configurações → Geral)
+    #[serde(default)]
+    pub janela: Janela,
     /// atalhos de teclado mudados pelo Paulo: id → combinação ("Ctrl+Alt+R"); vazio = o padrão
     #[serde(default)]
     pub atalhos: std::collections::BTreeMap<String, String>,
     /// por id da integração ("claude-code", "codex"...)
     #[serde(default)]
     pub agentes: std::collections::BTreeMap<String, UsoAgente>,
+}
+
+/// Janela e sistema. Fechar (×) para a bandeja continua em `captura.bandeja` (onde sempre esteve).
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub struct Janela {
+    /// minimizar esconde na bandeja (some da barra de tarefas)
+    #[serde(default)]
+    pub minimizar_bandeja: bool,
+    /// abrir o atelier quando a sessão do sistema começa
+    #[serde(default)]
+    pub iniciar_com_sistema: bool,
+    /// ao iniciar com o sistema, já vai direto para a bandeja
+    #[serde(default)]
+    pub iniciar_escondido: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -196,6 +213,7 @@ impl Default for Preferencias {
             lixeira: LixeiraAuto::default(),
             editor: EditorArquivos::default(),
             atualizacao: Atualizacao::default(),
+            janela: Janela::default(),
             atalhos: Default::default(),
             agentes: Default::default(),
         }

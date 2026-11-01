@@ -141,6 +141,8 @@ async fn sessao(socket: WebSocket, num: Option<u64>, agente: Option<std::path::P
     if let (Some(n), Some(pid)) = (num, pid) {
         crate::sistema::registrar_sessao(n, pid);
     }
+    // o shell e tudo o que ele abrir morrem junto com o terminal (e com o app)
+    let arvore = pid.and_then(crate::arvore::Arvore::prender);
     let mestre = par.master;
 
     // PTY → tela (thread própria: a leitura bloqueia)
@@ -196,6 +198,7 @@ async fn sessao(socket: WebSocket, num: Option<u64>, agente: Option<std::path::P
     drop(escritor);
     drop(mestre);
     let _ = filho.kill();
+    drop(arvore);
     let _ = tokio::task::spawn_blocking(move || filho.wait()).await;
     envio.abort();
     if let (Some(n), Some(pid)) = (num, pid) {

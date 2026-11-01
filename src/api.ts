@@ -349,7 +349,10 @@ export interface Visao {
   filtro: FiltroVisao;
   config: {
     agrupar_por?: number;
+    /** colunas da tabela e da lista, na ordem escolhida */
     colunas?: number[];
+    /** largura de cada coluna da tabela em px ("titulo", "tipo", "atualizado" ou o id da propriedade) */
+    larguras?: Record<string, number>;
     ordenar?: { prop: number; asc: boolean };
     /** árvore na barra lateral: a propriedade de relação que leva ao nível de baixo */
     arvore?: { prop: number; sentido: Sentido; so_raizes?: boolean } | null;

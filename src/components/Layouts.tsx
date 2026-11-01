@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowDown, ArrowUp, FolderOpen, Layers, Maximize2, Type } from "lucide-react";
 import { api, ConfigProp, Esquema, Item, Opcao, opcoesDe, Propriedade, Valor } from "../api";
 import { avisar, falhou, Rota } from "../ui";
+import { chaveDe, comparar } from "../ordem";
 import { dataHora } from "../visao";
 import { MenuPasta } from "./MenuPasta";
 import { Etiqueta, IconeEspecie, textoSimples, urgencia, valorDe, ValorProp } from "./Valor";
@@ -33,8 +34,12 @@ function BotaoPasta({ pasta }: { pasta: string | null }) {
 /** "Quebrar linha na tabela" (config.quebrar): a coluna volta a quebrar; o padrão é uma linha só por item. */
 const quebra = (p: Propriedade) => !!(p.config as ConfigProp & { quebrar?: boolean } | undefined)?.quebrar;
 
+/** Largura de quem não tem uma guardada, quando a tabela passa a ter larguras fixas. */
+const LARGURA_PADRAO: Record<string, number> = { titulo: 320, tipo: 130 };
+const LARGURA_MINIMA = 60;
+
 export function Tabela({
-  esquema, itens, todos, colunas, mostrarTipo, ir, aoMudarEsquema, aoMudarItens,
+  esquema, itens, todos, colunas, mostrarTipo, ir, aoMudarEsquema, aoMudarItens, larguras, aoReordenar, aoMudarLarguras,
 }: {
   esquema: Esquema;
   itens: Item[];
@@ -44,41 +49,157 @@ export function Tabela({
   ir: (r: Rota) => void;
   aoMudarEsquema: () => Promise<void>;
   aoMudarItens: (l: Item[]) => void;
+  /** largura de cada coluna (chave: "titulo", "tipo", "atualizado" ou o id da propriedade), guardada na visão */
+  larguras?: Record<string, number>;
+  /** nova ordem das colunas de propriedade (arrastando o cabeçalho) */
+  aoReordenar?: (ids: number[]) => void;
+  aoMudarLarguras?: (l: Record<string, number>) => void;
 }) {
   const [ordem, setOrdem] = useState<{ col: string; asc: boolean } | null>(null);
   const mudar = useMudarProp(todos, aoMudarItens, esquema);
+  // arrastando um cabeçalho: qual coluna e antes de qual posição ela cai
+  const [arrasto, setArrasto] = useState<{ id: number; antes: number } | null>(null);
+  // larguras enquanto a alça é arrastada (grava só ao soltar)
+  const [provisorias, setProvisorias] = useState<Record<string, number> | null>(null);
+  const linhaCab = useRef<HTMLTableRowElement>(null);
+  // o clique que encerra um arrasto não ordena
+  const acabouDeArrastar = useRef(false);
 
   let linhas = itens;
   if (ordem) {
+    const p = esquema.propriedades.find((x) => String(x.id) === ordem.col);
     const v = (i: Item) => {
-      if (ordem.col === "titulo") return i.titulo.toLowerCase();
-      if (ordem.col === "tipo") return esquema.tipos.find((t) => t.id === i.tipo_id)?.nome ?? "";
+      if (ordem.col === "titulo") return i.titulo || null;
+      if (ordem.col === "tipo") return esquema.tipos.find((t) => t.id === i.tipo_id)?.nome ?? null;
       if (ordem.col === "atualizado") return i.atualizado_em;
-      const x = i.props[ordem.col];
-      return Array.isArray(x) ? x.join(",") : x == null ? "" : String(x).toLowerCase();
+      return p ? chaveDe(esquema, i, p) : null;
     };
-    linhas = [...itens].sort((a, b) => {
-      const va = v(a), vb = v(b);
-      if (va === vb) return 0;
-      if (va === "") return 1;
-      if (vb === "") return -1;
-      return (va < vb ? -1 : 1) * (ordem.asc ? 1 : -1);
-    });
+    linhas = [...itens].sort((a, b) => comparar(v(a), v(b), ordem.asc));
   }
-  const cab = (chave: string, rotulo: React.ReactNode) => (
-    <th key={chave} onClick={() => setOrdem((o) => (o?.col === chave ? (o.asc ? { col: chave, asc: false } : null) : { col: chave, asc: true }))} style={{ cursor: "pointer" }}>
-      <span className="th-in">{rotulo}{ordem?.col === chave && (ordem.asc ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}</span>
-    </th>
-  );
+
+  const larg = provisorias ?? larguras ?? {};
+  const fixas = Object.keys(larg).length > 0;
+  const larguraDe = (k: string) => larg[k] ?? LARGURA_PADRAO[k] ?? 170;
+  const chaves = ["titulo", ...(mostrarTipo ? ["tipo"] : []), ...colunas.map((p) => String(p.id)), "atualizado"];
+
+  /** A alça na borda do cabeçalho: arrastar muda a largura; duplo clique devolve ao automático. */
+  const redimensionar = (chave: string) => (e: React.PointerEvent) => {
+    if (e.button !== 0 || !aoMudarLarguras) return;
+    e.preventDefault();
+    e.stopPropagation();
+    // a primeira vez congela todas as colunas como estão, para só a arrastada mudar
+    const base: Record<string, number> = { ...larg };
+    if (!fixas) {
+      linhaCab.current?.querySelectorAll<HTMLElement>("th[data-chave]").forEach((th) => {
+        base[th.dataset.chave!] = Math.round(th.getBoundingClientRect().width);
+      });
+    }
+    const x0 = e.clientX;
+    const w0 = base[chave] ?? larguraDe(chave);
+    let atual = base;
+    const mover = (ev: PointerEvent) => {
+      atual = { ...base, [chave]: Math.max(LARGURA_MINIMA, Math.round(w0 + ev.clientX - x0)) };
+      setProvisorias(atual);
+    };
+    const soltar = () => {
+      window.removeEventListener("pointermove", mover);
+      window.removeEventListener("pointerup", soltar);
+      setProvisorias(null);
+      aoMudarLarguras(atual);
+    };
+    window.addEventListener("pointermove", mover);
+    window.addEventListener("pointerup", soltar);
+  };
+  const automatico = (chave: string) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!aoMudarLarguras || !(chave in larg)) return;
+    const { [chave]: _fora, ...resto } = larg;
+    aoMudarLarguras(resto);
+  };
+
+  /** Arrastar o cabeçalho de uma propriedade para o lado muda a ordem das colunas (eventos de ponteiro: o arrastar
+   *  HTML5 não funciona no app instalado). */
+  const pegar = (id: number) => (e: React.PointerEvent) => {
+    if (e.button !== 0 || !aoReordenar) return;
+    const x0 = e.clientX;
+    let antes: number | null = null;
+    const mover = (ev: PointerEvent) => {
+      if (antes === null && Math.abs(ev.clientX - x0) < 6) return;
+      const ths = [...(linhaCab.current?.querySelectorAll<HTMLElement>("th[data-prop]") ?? [])];
+      const i = ths.findIndex((th) => {
+        const r = th.getBoundingClientRect();
+        return ev.clientX < r.left + r.width / 2;
+      });
+      antes = i < 0 ? ths.length : i;
+      setArrasto({ id, antes });
+    };
+    const soltar = () => {
+      window.removeEventListener("pointermove", mover);
+      window.removeEventListener("pointerup", soltar);
+      setArrasto(null);
+      if (antes === null) return;
+      acabouDeArrastar.current = true;
+      setTimeout(() => (acabouDeArrastar.current = false), 0);
+      const ids = colunas.map((p) => p.id);
+      const de = ids.indexOf(id);
+      const para = antes > de ? antes - 1 : antes;
+      if (para === de) return;
+      ids.splice(de, 1);
+      ids.splice(para, 0, id);
+      aoReordenar(ids);
+    };
+    window.addEventListener("pointermove", mover);
+    window.addEventListener("pointerup", soltar);
+  };
+
+  const cab = (chave: string, rotulo: React.ReactNode, prop?: Propriedade) => {
+    const i = prop ? colunas.indexOf(prop) : -1;
+    const classes = [
+      prop && arrasto?.id === prop.id ? "arrastada" : "",
+      prop && arrasto?.antes === i ? "soltar-antes" : "",
+      prop && arrasto?.antes === colunas.length && i === colunas.length - 1 ? "soltar-depois" : "",
+      prop && aoReordenar ? "movel" : "",
+    ].filter(Boolean).join(" ");
+    return (
+      <th
+        key={chave}
+        data-chave={chave}
+        data-prop={prop?.id}
+        className={classes || undefined}
+        onPointerDown={prop ? pegar(prop.id) : undefined}
+        onClick={() => {
+          if (acabouDeArrastar.current) return;
+          setOrdem((o) => (o?.col === chave ? (o.asc ? { col: chave, asc: false } : null) : { col: chave, asc: true }));
+        }}
+        style={{ cursor: "pointer" }}
+        title={prop && aoReordenar ? "Clique ordena · arraste para o lado para mudar a ordem das colunas" : undefined}
+      >
+        <span className="th-in">{rotulo}{ordem?.col === chave && (ordem.asc ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}</span>
+        {aoMudarLarguras && (
+          <span className="th-alca" title="Arraste para mudar a largura · duplo clique volta ao automático"
+            onPointerDown={redimensionar(chave)} onClick={(e) => e.stopPropagation()} onDoubleClick={automatico(chave)} />
+        )}
+      </th>
+    );
+  };
 
   return (
     <div className="tabela-rolagem cartao-tabela">
-      <table className="tabela">
+      <table
+        className={`tabela${fixas ? " larguras-fixas" : ""}`}
+        style={fixas ? { width: chaves.reduce((t, k) => t + (k === "atualizado" && !larg.atualizado ? 150 : larguraDe(k)), 0) } : undefined}
+      >
+        {fixas && (
+          <colgroup>
+            {/* "Atualizado" sem largura guardada fica com a sobra, para a tabela encher o cartão */}
+            {chaves.map((k) => <col key={k} style={k === "atualizado" && !larg.atualizado ? undefined : { width: larguraDe(k) }} />)}
+          </colgroup>
+        )}
         <thead>
-          <tr>
+          <tr ref={linhaCab}>
             {cab("titulo", <><Type size={13} /> Título</>)}
             {mostrarTipo && cab("tipo", <><Layers size={13} /> Tipo</>)}
-            {colunas.map((p) => cab(String(p.id), <><IconeEspecie especie={p.especie} tam={13} /> {p.nome}</>))}
+            {colunas.map((p) => cab(String(p.id), <><IconeEspecie especie={p.especie} tam={13} /> {p.nome}</>, p))}
             {cab("atualizado", <>Atualizado</>)}
           </tr>
         </thead>

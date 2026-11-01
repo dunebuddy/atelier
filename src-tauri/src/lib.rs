@@ -11,6 +11,50 @@ fn trazer_para_frente(app: &tauri::AppHandle) {
     }
 }
 
+/// Ajustes da janela que o Tauri não faz no Windows:
+/// - ícone **grande** (o da barra de tarefas): o Tauri só põe o pequeno, e sem o grande o Windows mostra o ícone
+///   que guardou em cache para o exe (o redemoinho das primeiras versões);
+/// - permissões do WebView2 respondidas sem a caixa dele (escura, solta, às vezes fora da janela): a tela do próprio
+///   app ganha microfone (ditado), área de transferência e notificações; o resto, e qualquer outra origem (o HTML
+///   aberto no explorador roda em 127.0.0.1:7477), fica negado, também sem perguntar.
+#[cfg(windows)]
+fn ajustar_janela(janela: &tauri::WebviewWindow) {
+    use webview2_com::Microsoft::Web::WebView2::Win32::*;
+    use webview2_com::{take_pwstr, PermissionRequestedEventHandler};
+    use windows::core::{HSTRING, PWSTR};
+    use windows::Win32::Foundation::{LPARAM, WPARAM};
+    use windows::Win32::UI::Shell::ExtractIconExW;
+    use windows::Win32::UI::WindowsAndMessaging::{SendMessageW, HICON, ICON_BIG, WM_SETICON};
+
+    if let (Ok(hwnd), Ok(exe)) = (janela.hwnd(), std::env::current_exe()) {
+        let mut grande = HICON::default();
+        let n = unsafe { ExtractIconExW(&HSTRING::from(exe.as_os_str()), 0, Some(&mut grande), None, 1) };
+        if n > 0 && !grande.is_invalid() {
+            unsafe { SendMessageW(hwnd, WM_SETICON, Some(WPARAM(ICON_BIG as usize)), Some(LPARAM(grande.0 as isize))) };
+        }
+    }
+
+    let _ = janela.with_webview(|w| unsafe {
+        let Ok(core) = w.controller().CoreWebView2() else { return };
+        let handler = PermissionRequestedEventHandler::create(Box::new(|_, args| {
+            let Some(args) = args else { return Ok(()) };
+            let mut uri = PWSTR::null();
+            args.Uri(&mut uri)?;
+            let uri = take_pwstr(uri);
+            let mut tipo = COREWEBVIEW2_PERMISSION_KIND::default();
+            args.PermissionKind(&mut tipo)?;
+            let do_app = ["http://tauri.localhost", "https://tauri.localhost", "http://localhost:1420"]
+                .iter()
+                .any(|o| uri == *o || uri.starts_with(&format!("{o}/")));
+            let usa = [COREWEBVIEW2_PERMISSION_KIND_MICROPHONE, COREWEBVIEW2_PERMISSION_KIND_CLIPBOARD_READ, COREWEBVIEW2_PERMISSION_KIND_NOTIFICATIONS]
+                .contains(&tipo);
+            args.SetState(if do_app && usa { COREWEBVIEW2_PERMISSION_STATE_ALLOW } else { COREWEBVIEW2_PERMISSION_STATE_DENY })
+        }));
+        let mut token = 0i64;
+        let _ = core.add_PermissionRequested(&handler, &mut token);
+    });
+}
+
 fn anotar_atualizacao(t: &str) {
     use std::io::Write;
     let p = std::env::temp_dir().join("atelier-atualizacao.log");
@@ -56,6 +100,10 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(move |app| {
             tauri::async_runtime::spawn(api::servir(estado));
+            #[cfg(windows)]
+            if let Some(w) = app.get_webview_window("main") {
+                ajustar_janela(&w);
+            }
 
             // bandeja: clique traz a janela; o menu tem Capturar, Abrir e Sair
             let capturar = MenuItem::with_id(app, "capturar", "Capturar…", true, None::<&str>)?;

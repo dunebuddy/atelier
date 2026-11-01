@@ -326,3 +326,20 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   (o processo de GPU tem ~74 MB, mas o desenho piora).
 - Terminal: matar a árvore inteira (Job Object), para agentes netos morrerem junto com o shell e com o app.
 - Podar o histórico dos workspaces guardados (hoje até 50 passos por janela, para sempre).
+
+## 2026-11-01 (tarde) — 0.1.4, roadmap e 0.1.5
+
+- **0.1.4** saiu (correção expressa: tela segue o MCP, arrastar abas entre metades, histórico, tabela em uma linha,
+  aviso de versão).
+- **Roadmap:** `docs/ROADMAP.md` agrupa as pendências em pacotes (0.1.5 a 0.2.0) e ordena por segurança, quebrado,
+  ganho no dia a dia e acabamento. Pedido novo entra em `PENDENCIAS.md` e, na triagem, ganha lugar num pacote.
+- **0.1.5** (tabela de verdade + blindagem): guarda de `Host`/`Origin` na API, colunas reordenáveis e redimensionáveis
+  guardadas na visão, comparador único (`src/ordem.ts`), MCP com `ordenar`/`colunas`/`larguras`, ícone grande da janela
+  e permissões do WebView2 sem caixa (`ajustar_janela` em `src-tauri/src/lib.rs`), moldura da janela ativa por cima do
+  conteúdo.
+- **Lição:** o teste com `bun run tauri dev` obriga a fechar o atelier do Paulo (porta 7477 e instância única). Ele
+  estava trabalhando. Até existir o teste sem janela (pendência), **perguntar antes de fechar o app dele**.
+
+### Ponto de parada
+- Próximo pacote: **0.1.6 · Relações viram visões** (filtro por relação no núcleo, "Apontado por" com contagem e grupo
+  clicável, buscas prontas, "pode andar agora").

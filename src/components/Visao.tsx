@@ -5,11 +5,12 @@ import {
 } from "lucide-react";
 import { api, Esquema, FiltroData, FiltroVisao, Item, Layout, opcoesDe, Propriedade, propsDoTipo, Visao } from "../api";
 import { EMOJIS, falhou, Rota } from "../ui";
+import { chaveDe, comparar } from "../ordem";
 import { datasDo, PERIODOS, rotuloIntervalo } from "../visao";
 import { Kanban, ListaCompacta, Tabela } from "./Layouts";
 import { LinhaDoTempo } from "./LinhaDoTempo";
 import { Popover, usePopover } from "./Popover";
-import { Etiqueta, IconeEspecie, valorDe } from "./Valor";
+import { Etiqueta, IconeEspecie } from "./Valor";
 import { useAoReaparecer, useVisivel } from "../visivel";
 
 // só carrega quando o Paulo pede para exportar
@@ -125,19 +126,8 @@ export function VisaoTela({
     if (!ordenar) return l;
     // ordem fixa da visão (ex.: por prazo); sem valor vai para o fim
     const p = esquema.propriedades.find((x) => x.id === ordenar.prop);
-    // número compara como número; o resto como texto (datas AAAA-MM-DD ordenam certo)
-    const val = (i: Item): string | number | null => {
-      const x = p ? valorDe(i, p) : i.props[ordenar.prop];
-      if (x == null || x === "") return null;
-      return typeof x === "number" ? x : Array.isArray(x) ? String(x[0] ?? "") : String(x);
-    };
-    return [...l].sort((a, b) => {
-      const va = val(a), vb = val(b);
-      if (va === vb) return 0;
-      if (va === null) return 1;
-      if (vb === null) return -1;
-      return (va < vb ? -1 : 1) * (ordenar.asc ? 1 : -1);
-    });
+    if (!p) return l;
+    return [...l].sort((a, b) => comparar(chaveDe(esquema, a, p), chaveDe(esquema, b, p), ordenar.asc));
   }, [itens, f.esconder_historico, JSON.stringify(f.props), esquema, ordenar?.prop, ordenar?.asc]); // eslint-disable-line react-hooks/exhaustive-deps
   const escondidos = (itens?.length ?? 0) - visiveis.length;
 
@@ -238,7 +228,13 @@ export function VisaoTela({
         <LinhaDoTempo esquema={esquema} filtro={f} de={datas.de} ate={datas.ate} ir={ir} recarga={recarga} capturar={desloca === 0 && (periodo === "hoje")} />
       )}
       {v.layout === "tabela" && itens && (
-        <Tabela esquema={esquema} itens={visiveis} colunas={colunas} mostrarTipo={unicoTipo == null} ir={ir} aoMudarEsquema={aoMudarEsquema} aoMudarItens={(l) => setItens(l)} todos={itens} />
+        <Tabela esquema={esquema} itens={visiveis} colunas={colunas} mostrarTipo={unicoTipo == null} ir={ir} aoMudarEsquema={aoMudarEsquema} aoMudarItens={(l) => setItens(l)} todos={itens}
+          larguras={v.config?.larguras}
+          aoReordenar={(ids) => mudar({ config: { ...v.config, colunas: ids } })}
+          aoMudarLarguras={(l) => {
+            const { larguras: _l, ...resto } = v.config ?? {};
+            mudar({ config: Object.keys(l).length ? { ...resto, larguras: l } : resto });
+          }} />
       )}
       {v.layout === "lista" && itens && (
         <ListaCompacta esquema={esquema} itens={visiveis} colunas={colunas} ir={ir} />
@@ -273,7 +269,8 @@ export function VisaoTela({
       {pColunas.ancora && (
         <Popover ancora={pColunas.ancora} aoFechar={pColunas.fechar} largura={240}>
           <div className="menu-rotulo">Propriedades visíveis</div>
-          {props.map((p) => {
+          {/* as visíveis primeiro, na ordem da tabela (arrastar o cabeçalho muda); depois as outras */}
+          {[...colunas, ...props.filter((p) => !colunas.includes(p))].map((p) => {
             const marcada = colunas.some((c) => c.id === p.id);
             return (
               <label key={p.id} className="menu-item" style={{ cursor: "pointer" }}>
@@ -282,20 +279,20 @@ export function VisaoTela({
                   checked={marcada}
                   style={{ accentColor: "var(--acento)" }}
                   onChange={() => {
+                    // a ordem escolhida fica; a coluna nova entra no fim
                     const atual = colunas.map((c) => c.id);
-                    const nova = marcada ? atual.filter((id) => id !== p.id) : [...atual, p.id];
-                    mudar({ config: { ...v.config, colunas: props.map((x) => x.id).filter((id) => nova.includes(id)) } });
+                    mudar({ config: { ...v.config, colunas: marcada ? atual.filter((id) => id !== p.id) : [...atual, p.id] } });
                   }}
                 />
                 <IconeEspecie especie={p.especie} /> {p.nome}
               </label>
             );
           })}
-          {v.config?.colunas && (
+          {(v.config?.colunas || v.config?.larguras) && (
             <>
               <div className="menu-sep" />
-              <button className="menu-item" onClick={() => { const { colunas: _c, ...resto } = v.config; mudar({ config: resto }); pColunas.fechar(); }}>
-                Voltar ao padrão
+              <button className="menu-item" onClick={() => { const { colunas: _c, larguras: _l, ...resto } = v.config; mudar({ config: resto }); pColunas.fechar(); }}>
+                Voltar ao padrão (colunas, ordem e larguras)
               </button>
             </>
           )}

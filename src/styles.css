@@ -442,8 +442,12 @@ body.redimensionando .sidebar { transition: none; }
   box-shadow: var(--sombra-folha); overflow: hidden;
 }
 .painel.animar .janela { transition: left .18s ease, top .18s ease, width .18s ease, height .18s ease; }
-.janela.moldura { outline: 1px solid transparent; }
-.janela.moldura.ativa { outline: 2px solid var(--acento); outline-offset: -2px; }
+/* destaque da janela ativa numa camada por cima do conteúdo: como outline, a tabela que rola pintava por cima dele */
+.janela.moldura { isolation: isolate; }
+.janela.moldura.ativa::after {
+  content: ""; position: absolute; inset: 0; z-index: 20; pointer-events: none;
+  border: 2px solid var(--acento); border-radius: inherit;
+}
 .janela-cabeca {
   display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 4px 0 10px; flex-shrink: 0;
   border-bottom: 1px solid var(--borda); color: var(--texto-2); font-size: 12.5px; cursor: grab; user-select: none;

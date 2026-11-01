@@ -14,7 +14,7 @@ Cada pacote é uma versão candidata; o Paulo confirma antes de começar e antes
 
 ---
 
-## 0.1.5 · Tabela de verdade + blindagem
+## 0.1.5 · Tabela de verdade + blindagem · **saiu em 2026-11-01**
 
 O pacote que o Paulo marcou como prioritário, mais dois consertos pequenos que mexem no mesmo arranque do app.
 
@@ -38,7 +38,8 @@ O pacote que o Paulo marcou como prioritário, mais dois consertos pequenos que 
 - Permissões do WebView já concedidas, sem a caixa preta: microfone, área de transferência e notificações, só para a
   tela do próprio app.
 
-Em aberto com o Paulo: "dentro do item" era a ordem das propriedades na ficha também?
+Ficou para depois: a ordem das propriedades na ficha do item (confirmar com o Paulo) e o teste sem fechar o app
+dele (ver `PENDENCIAS.md`).
 
 ## 0.1.6 · Relações viram visões
 
@@ -60,6 +61,9 @@ Mexe nas mesmas listas (tabela, lista, quadro, árvore, busca, chips); vem depoi
 - **Deixar claro em qual workspace se está** (menu do terminal/explorador dizendo de qual pasta é; destaque do
   workspace atual). Decidir com o Paulo quais das ideias anotadas.
 - **Barra lateral: arrastar visões e grupos** com eventos de ponteiro (o arrastar HTML5 não funciona no app instalado).
+- **Espaço em disco:** quanto o workspace ocupa (só ele e com os filhos) e quanto a bancada inteira ocupa.
+- **Modo fita: trocar de janela** sem a fita pular de um jeito ruim (a descrição do Paulo ficou pela metade:
+  completar com ele antes de começar).
 
 ## 0.1.8 · Esquema completo pelo MCP + propriedades
 

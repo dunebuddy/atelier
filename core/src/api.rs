@@ -130,7 +130,60 @@ pub fn rotas(banco: Banco) -> Router {
         .route("/api/integracoes/{id}", post(instalar_integracao).delete(remover_integracao))
         .route("/api/temas", get(|| async { Json(json!({ "pasta": crate::temas::pasta(), "temas": crate::temas::listar() })) }))
         .layer(cors)
+        .layer(axum::middleware::from_fn(guarda))
         .with_state(banco)
+}
+
+/// Só quem está nesta máquina fala com a API. O CORS barra *ler* a resposta, não *mandar* o pedido; então:
+/// - `Host` tem de ser o próprio computador (barra o "DNS rebinding": um site de fora que passa a apontar para
+///   127.0.0.1 e chega aqui com o nome dele no `Host`);
+/// - pedido com `Origin` (vindo de navegador) só da tela do app. Sem `Origin` (MCP, curl) passa.
+pub fn pedido_permitido(host: Option<&str>, origem: Option<&str>) -> bool {
+    let host_ok = host.is_none_or(|h| {
+        let nome = match h.strip_prefix('[') {
+            Some(resto) => resto.split(']').next().map(|n| format!("[{n}]")).unwrap_or_default(),
+            None => h.split(':').next().unwrap_or("").to_string(),
+        };
+        let porta = h.rsplit_once(':').filter(|(antes, _)| !antes.is_empty() && !h.ends_with(']')).map(|(_, p)| p);
+        matches!(nome.to_ascii_lowercase().as_str(), "127.0.0.1" | "localhost" | "[::1]")
+            && porta.is_none_or(|p| p == PORTA.to_string())
+    });
+    host_ok && origem.is_none_or(|o| crate::terminal::ORIGENS.contains(&o))
+}
+
+async fn guarda(req: axum::extract::Request, next: axum::middleware::Next) -> Response {
+    let permitido = {
+        let cab = |k: &str| req.headers().get(k).and_then(|v| v.to_str().ok());
+        pedido_permitido(cab("host"), cab("origin"))
+    };
+    if !permitido {
+        return (StatusCode::FORBIDDEN, "pedido de fora do atelier").into_response();
+    }
+    next.run(req).await
+}
+
+#[cfg(test)]
+mod testes_guarda {
+    use super::pedido_permitido as ok;
+
+    #[test]
+    fn so_a_maquina_e_a_tela() {
+        // a tela, o MCP (Host sem porta) e o curl
+        assert!(ok(Some("127.0.0.1:7477"), Some("http://tauri.localhost")));
+        assert!(ok(Some("127.0.0.1:7477"), Some("http://localhost:1420")));
+        assert!(ok(Some("127.0.0.1"), None));
+        assert!(ok(Some("localhost:7477"), None));
+        assert!(ok(Some("[::1]:7477"), None));
+        assert!(ok(None, None));
+        // DNS rebinding: nome de fora no Host
+        assert!(!ok(Some("ataque.exemplo.com:7477"), None));
+        assert!(!ok(Some("127.0.0.1.exemplo.com:7477"), None));
+        assert!(!ok(Some("127.0.0.1:9999"), None));
+        // página aberta no navegador mandando POST para cá
+        assert!(!ok(Some("127.0.0.1:7477"), Some("https://ataque.exemplo.com")));
+        // HTML aberto no explorador (iframe isolado tem origem "null")
+        assert!(!ok(Some("127.0.0.1:7477"), Some("null")));
+    }
 }
 
 /// A cada 10 minutos: backup e limpeza da lixeira, se ligados nas preferências.

@@ -219,7 +219,7 @@ fn ferramentas() -> Value {
         },
         {
             "name": "criar_visao",
-            "description": "Cria uma visão (uma lista salva no menu): nome, layout (tabela, lista, kanban, linha), tipos (nomes), filtros (propriedade → valores aceitos), sem_tipo (só itens sem tipo), texto, agrupar_por (kanban: nome da propriedade), grupo (pasta no menu), icone (emoji).",
+            "description": "Cria uma visão (uma lista salva no menu): nome, layout (tabela, lista, kanban, linha), tipos (nomes), filtros (propriedade → valores aceitos), sem_tipo (só itens sem tipo), texto, agrupar_por (kanban: nome da propriedade), grupo (pasta no menu), icone (emoji), ordenar ({propriedade, crescente}; null volta à ordem padrão), colunas (nomes das propriedades na ordem em que aparecem na tabela; [] volta ao padrão), larguras (coluna → px; Título, Tipo e Atualizado também; {} volta ao automático).",
             "inputSchema": { "type": "object", "properties": {
                 "nome": { "type": "string" },
                 "layout": { "type": "string", "enum": ["tabela", "lista", "kanban", "linha"] },
@@ -229,19 +229,25 @@ fn ferramentas() -> Value {
                 "texto": { "type": "string" },
                 "agrupar_por": { "type": "string" },
                 "grupo": { "type": "string" },
-                "icone": { "type": "string" }
+                "icone": { "type": "string" },
+                "ordenar": { "type": ["object", "null"], "properties": { "propriedade": { "type": "string" }, "crescente": { "type": "boolean" } } },
+                "colunas": { "type": "array", "items": { "type": "string" } },
+                "larguras": { "type": "object", "additionalProperties": { "type": "number" } }
             }, "required": ["nome"] }
         },
         {
             "name": "atualizar_visao",
-            "description": "Muda uma visão (pelo nome): os mesmos campos de criar_visao, mais novo_nome. O filtro vindo substitui o antigo. A visão Todos os itens não aceita filtro.",
+            "description": "Muda uma visão (pelo nome): os mesmos campos de criar_visao, mais novo_nome. O filtro vindo substitui o antigo; agrupar_por, ordenar, colunas e larguras mudam só o que vier. A visão Todos os itens não aceita filtro.",
             "inputSchema": { "type": "object", "properties": {
                 "nome": { "type": "string" }, "novo_nome": { "type": "string" },
                 "layout": { "type": "string", "enum": ["tabela", "lista", "kanban", "linha"] },
                 "tipos": { "type": "array", "items": { "type": "string" } },
                 "filtros": { "type": "object", "additionalProperties": true },
                 "sem_tipo": { "type": "boolean" }, "texto": { "type": "string" },
-                "agrupar_por": { "type": "string" }, "grupo": { "type": "string" }, "icone": { "type": "string" }
+                "agrupar_por": { "type": "string" }, "grupo": { "type": "string" }, "icone": { "type": "string" },
+                "ordenar": { "type": ["object", "null"], "properties": { "propriedade": { "type": "string" }, "crescente": { "type": "boolean" } } },
+                "colunas": { "type": "array", "items": { "type": "string" } },
+                "larguras": { "type": "object", "additionalProperties": { "type": "number" } }
             }, "required": ["nome"] }
         },
         {
@@ -410,8 +416,42 @@ impl Mapa {
             }
             d["filtro"] = f;
         }
+        // config: só as chaves que vieram; null tira a chave (volta ao padrão). Quem grava mescla com a de antes.
+        let mut cfg = Map::new();
         if let Some(p) = s(a, "agrupar_por") {
-            d["config"] = json!({ "agrupar_por": self.prop(p)?["id"] });
+            cfg.insert("agrupar_por".into(), self.prop(p)?["id"].clone());
+        }
+        match a.get("ordenar") {
+            Some(Value::Null) => {
+                cfg.insert("ordenar".into(), Value::Null);
+            }
+            Some(o) => {
+                let nome = o.get("propriedade").and_then(|v| v.as_str()).or(o.as_str()).ok_or("ordenar: { propriedade, crescente }")?;
+                let asc = o.get("crescente").and_then(|v| v.as_bool()).unwrap_or(true);
+                cfg.insert("ordenar".into(), json!({ "prop": self.prop(nome)?["id"], "asc": asc }));
+            }
+            None => {}
+        }
+        if let Some(l) = a.get("colunas").and_then(|v| v.as_array()) {
+            let ids = l.iter().filter_map(|c| c.as_str()).map(|c| Ok(self.prop(c)?["id"].clone())).collect::<Result<Vec<_>, String>>()?;
+            cfg.insert("colunas".into(), if ids.is_empty() { Value::Null } else { json!(ids) });
+        }
+        if let Some(m) = a.get("larguras").and_then(|v| v.as_object()) {
+            let mut l = Map::new();
+            for (col, px) in m {
+                let px = px.as_f64().ok_or_else(|| format!("larguras: {col} precisa de um número (px)"))?.clamp(60.0, 2000.0).round();
+                let chave = match col.trim().to_lowercase().as_str() {
+                    "título" | "titulo" => "titulo".to_string(),
+                    "tipo" => "tipo".to_string(),
+                    "atualizado" | "atualizado em" => "atualizado".to_string(),
+                    _ => self.prop(col)?["id"].to_string(),
+                };
+                l.insert(chave, json!(px as i64));
+            }
+            cfg.insert("larguras".into(), if l.is_empty() { Value::Null } else { Value::Object(l) });
+        }
+        if !cfg.is_empty() {
+            d["config"] = Value::Object(cfg);
         }
         Ok(d)
     }
@@ -501,6 +541,20 @@ impl Mapa {
         }
         v
     }
+}
+
+/// A config que veio (só as chaves mudadas, null = tirar) por cima da de antes; sem nada vindo, não mexe.
+fn mesclar_config(d: &mut Value, antes: &Value) {
+    let Some(novo) = d.get("config").and_then(|c| c.as_object()).cloned() else { return };
+    let mut cfg = antes.as_object().cloned().unwrap_or_default();
+    for (k, v) in novo {
+        if v.is_null() {
+            cfg.remove(&k);
+        } else {
+            cfg.insert(k, v);
+        }
+    }
+    d["config"] = Value::Object(cfg);
 }
 
 /// POST na API local do app (127.0.0.1:7477), sem dependência de cliente HTTP.
@@ -807,10 +861,17 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
             let vs = db::listar_visoes(&conn).map_err(e)?;
             Ok(json!({ "visoes": vs.iter().map(|v| json!({
                 "nome": v.nome, "layout": v.layout, "grupo": v.grupo, "fixa": v.fixa, "filtro": mapa.filtro_humano(&v.filtro),
+                "ordenar": v.config.get("ordenar").map(|o| json!({ "propriedade": mapa.prop_nome(&o["prop"].to_string()), "crescente": o["asc"] })),
+                "colunas": v.config.get("colunas").and_then(|c| c.as_array()).map(|c| c.iter().map(|id| mapa.prop_nome(&id.to_string())).collect::<Vec<_>>()),
+                "larguras": v.config.get("larguras").and_then(|l| l.as_object()).map(|l| l.iter().map(|(k, px)| {
+                    let nome = match k.as_str() { "titulo" => "Título".to_string(), "tipo" => "Tipo".to_string(), "atualizado" => "Atualizado".to_string(), id => mapa.prop_nome(id) };
+                    (nome, px.clone())
+                }).collect::<Map<_, _>>()),
             })).collect::<Vec<_>>() }))
         }
         "criar_visao" => {
             let mut d = mapa.dados_visao(a)?;
+            mesclar_config(&mut d, &json!({}));
             d["nome"] = json!(s(a, "nome").unwrap_or("Nova visão"));
             let id = db::criar_visao(&conn, &d).map_err(e)?;
             let _ = post_api("/api/tela", &json!({ "acao": "recarregar" }));
@@ -819,6 +880,8 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
         "atualizar_visao" => {
             let id = visao_por_nome(&conn, s(a, "nome").unwrap_or(""))?;
             let mut d = mapa.dados_visao(a)?;
+            let antes = db::listar_visoes(&conn).map_err(e)?.into_iter().find(|v| v.id == id).map(|v| v.config).unwrap_or(json!({}));
+            mesclar_config(&mut d, &antes);
             if let Some(n) = s(a, "novo_nome") {
                 d["nome"] = json!(n);
             }

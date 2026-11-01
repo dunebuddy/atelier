@@ -18,39 +18,6 @@ Como usar:
 ## Caixa de entrada
 
 ### Bugs
-- **Servidor local sem conferir `Host` e `Origin` nas rotas HTTP** (2026-11-01, achado ao montar o roadmap;
-  segurança). Os websockets (`terminal.rs`, `tela_eventos`) recusam origem fora de `ORIGENS`, mas as rotas HTTP de
-  `api.rs` só têm CORS, que barra *ler* a resposta, não *enviar* o pedido. Riscos: (1) POST sem corpo, que não passa
-  por preflight, vindo de qualquer página aberta no navegador (backup, restaurar item/nota/versão); (2) DNS
-  rebinding: um domínio de fora que passa a apontar para 127.0.0.1 fica "da mesma origem" e fala com a API toda,
-  inclusive `/api/executar` e `/api/comando` (rodam agente). Correção: um middleware no `Router` que aceita só `Host`
-  `localhost`, `127.0.0.1` ou `[::1]` na porta do app e devolve 403 quando vem `Origin` fora de `ORIGENS` (pedido sem
-  `Origin`, como o do MCP, passa). Teste no núcleo para os três casos.
-- **Ícone velho na barra do sistema depois de atualizar para a 0.1.3** (2026-11-01, Paulo). Não corrigir sem montar
-  a versão. O que já se sabe:
-  - O executável instalado tem o ícone novo (extraído do `atelier.exe` e conferido) e o menu Iniciar mostra o novo.
-  - Não há atalho fixado na barra de tarefas (`...\Quick Launch\User Pinned\TaskBar` só tem Explorer e Edge).
-  - Durante a atualização ficou um `atelier.exe` preso (aberto às 14:35, sem caminho legível); foi encerrado à mão.
-  - O cache de ícones do Windows já foi atualizado (`ie4uinit -show`).
-  - Hipóteses, nesta ordem: (1) ícone "fantasma" na bandeja do processo encerrado, que só some ao passar o mouse;
-    (2) a janela pega o ícone grande de outro lugar: a bandeja e a janela usam `app.default_window_icon()`
-    (`src-tauri/src/lib.rs`), embutido na compilação a partir da lista `bundle.icon` do `tauri.conf.json` (começa
-    por `icons/32x32.png`); conferir qual arquivo o Tauri escolhe e se a janela define o ícone grande (`ICON_BIG`);
-    (3) cache da barra de tarefas por AppUserModelID (`com.paulo.atelier`), que só renova ao sair e entrar na conta.
-  - **Afunilado (Paulo):** a bandeja está certa; o velho é o **botão do app na barra de tarefas**. Cai a hipótese 1
-    (fantasma seria na bandeja) e a 2 fica improvável (bandeja e janela usam o mesmo `default_window_icon`). Fica a 3:
-    cache da barra de tarefas por AppUserModelID, que não troca quando o exe muda. Confirmar reiniciando o Explorer
-    (ou sair e entrar na conta). Se confirmar, decidir se o app/instalador força a renovação depois de atualizar (o
-    instalador NSIS pode chamar `SHChangeNotify(SHCNE_ASSOCCHANGED)` no fim) ou se fica só como nota de "na primeira
-    troca de ícone, reinicie o Explorer".
-  - **Causa achada na 0.1.4 (2026-11-01; o Paulo mostrou o ícone ainda errado já na 0.1.4).** Medido na janela
-    aberta: ela só tem o ícone **pequeno** (`WM_GETICON ICON_SMALL` = o A novo); o **grande** (`ICON_BIG`) está
-    vazio e a classe da janela também não tem ícone. Esse grande é o que a barra de tarefas usa. Sem ele, o Windows
-    cai no ícone guardado em cache para o exe, que ainda é o redemoinho padrão do Tauri das primeiras versões. A
-    hipótese 2 estava certa e foi descartada cedo demais; o cache só explica por que aparece *o velho*.
-    **Correção:** no `setup` (`src-tauri/src/lib.rs`), definir o ícone grande da janela principal com
-    `WM_SETICON ICON_BIG`, usando o ícone embutido no exe (`LoadImageW` do recurso, 32/48 px pela DPI). Depois de
-    instalar, conferir de novo com `WM_GETICON ICON_BIG`.
 
 - **Ditado ocupa o dobro do modelo na memória** (2026-11-01, Paulo: interface em 1,6 GB depois de baixar o
   Parakeet). Medido: o renderer do WebView2 (onde roda o Worker do ditado) foi a 1.484 MB e voltou a 70 MB quando o
@@ -76,15 +43,16 @@ Como usar:
   painel cola na borda. Corrigir: com a barra fechada, folga de 8 px à esquerda, igual à da direita (classe no
   `.corpo-app` quando `fechada`, em `App.tsx`). Fazer junto com a pílula da barra de status (mesmo `padding`).
 
-- **Ordenar pela coluna numérica ordena como texto** (2026-11-01, Paulo: "0, 1, 10, 11…"). Causa: o clique no
-  cabeçalho da tabela (`Tabela` em `Layouts.tsx`, função `v` dentro de `if (ordem)`) passa todo valor por
-  `String(x).toLowerCase()`. O botão "Ordem" da visão (`Visao.tsx`) já compara número como número. Corrigir: ordenar
-  pela espécie da propriedade: número como número; data, criado em e atualizado em pela data; texto com
-  `localeCompare("pt-BR", { numeric: true })` (assim "Etapa 2" vem antes de "Etapa 10", e acento não atrapalha);
-  vazio sempre no fim. Melhor um comparador só, usado pelos dois lugares. Fazer junto com a reordenação de colunas
-  (mesmo pedido, mesma tabela).
-
 ### Melhorias pedidas
+- **Testar sem fechar o atelier do Paulo** (2026-11-01, Paulo: "eu estava trabalhando… testar em uma versão
+  separada, headless de preferência"). Hoje o teste usa `bun run tauri dev`, que precisa da porta 7477 e da instância
+  única, então o app instalado tem de fechar. Fazer: a porta vir de `ATELIER_PORTA` (núcleo, MCP e `BASE` da tela via
+  `VITE_ATELIER_API`), a origem do Vite de teste aceita por `ATELIER_ORIGEM`, um exemplo `core/examples/servidor.rs`
+  que sobe só a API (sem janela) e um script `bun run teste` com Vite em outra porta, para abrir no navegador
+  interno. Até lá: **perguntar ao Paulo antes de fechar o app dele.**
+- **Ordem das propriedades na ficha do item** (sobra do pedido de colunas da 0.1.5): o Paulo falou em ordem "dentro
+  do item ou da visão"; a da visão saiu na 0.1.5. Confirmar com ele se quer reordenar também na ficha (a ordem vem
+  do tipo).
 - **Espaço em disco do workspace e da bancada** (2026-11-01, Paulo). Onde o app já mostra os workspaces (botão
   "Workspace: …" da barra de status, `Workspaces.tsx`, e a visão geral dos workspaces), mostrar quanto ocupam:
   - **só ele:** a pasta do item;
@@ -108,30 +76,6 @@ Como usar:
   um jeito arbitrário; (3) a rolagem é um salto sem animação. Possíveis caminhos, a decidir com ele: centralizar a
   janela ativa (como o Niri com `center-focused-column`), rolar com animação, e encolher sozinha a janela inteira
   quando outra entra ao lado.
-- **Reordenar as colunas da tabela** (2026-11-01, Paulo: **relativamente prioritária**). Escolher a ordem: "essa
-  coluna primeiro, depois essa", e a ordem fica guardada. Hoje a visão já guarda quais colunas aparecem
-  (`config.colunas` em `Visao.tsx`), mas ao marcar ou desmarcar no menu "Propriedades visíveis" a lista volta para a
-  ordem das propriedades do tipo (`props.map(...).filter(...)`), então a ordem escolhida se perde. Fazer:
-  - arrastar o cabeçalho da coluna para o lado na própria tabela (eventos de ponteiro, como as abas do painel:
-    o arrastar HTML5 não funciona no app instalado) e também arrastar a linha no menu "Propriedades visíveis";
-  - gravar a ordem em `config.colunas` da visão; marcar uma coluna nova põe no fim, sem reordenar as outras;
-  - a coluna Título continua fixa na primeira posição;
-  - o mesmo vale para a Lista compacta, que usa as mesmas `colunas`.
-  - **Redimensionar as colunas** (mesmo dia, Paulo: "tem que ser persistente"): alça na borda direita do cabeçalho;
-    arrastar muda a largura e duplo clique volta ao automático. Hoje a tabela não tem largura nenhuma guardada (a
-    coluna se ajusta ao conteúdo). Gravar em `config.larguras` da visão (`{ id da coluna: px }`, Título incluído),
-    com largura mínima; com larguras definidas, `table-layout: fixed` e o texto que não cabe corta com reticências
-    (combina com a linha única). No MCP, `atualizar_visao` aceita `larguras` também.
-  Hoje só as visões têm tabela. "Dentro do item" pode querer dizer a ordem das propriedades na ficha do item, que
-  vem do tipo: confirmar com o Paulo se é para reordenar lá também.
-- **Permissões do WebView sem pedir** (2026-11-01, Paulo). Hoje o WebView2 abre o pedido dele (microfone para o
-  ditado, ler a área de transferência ao colar, etc.): uma caixa escura solta, às vezes fora da janela. O app é do
-  Paulo e só carrega a própria tela, então essas permissões já vêm concedidas. Como: no `setup` do `src-tauri/src/lib.rs`,
-  `webview.with_webview` → `CoreWebView2::add_PermissionRequested` (crate `webview2-com`) respondendo `ALLOW` sem
-  mostrar nada; no Linux, o sinal `permission-request` do WebKitGTK. **Só para a origem do próprio app**
-  (`tauri.localhost` / `localhost:1420`): o visualizador de HTML do explorador roda página de fora em iframe
-  (`localhost:7477`, com scripts) e esse continua sem permissão. Liberar só o que o app usa (microfone, área de
-  transferência, notificações); câmera, localização e o resto seguem negados, sem caixa.
 - **Configurações → Geral (janela e sistema)** (2026-11-01, Paulo). Juntar numa página só as opções de como o app se
   comporta no Windows (hoje "fechar vai para a bandeja" está escondido em Automação):
   - **Fechar (×)**: vai para a bandeja ou fecha de verdade;
@@ -209,10 +153,6 @@ Como usar:
 - **Toast padrão:** o aviso de versão nova é o modelo; os outros avisos do app (`avisar`) devem seguir o mesmo visual.
 
 ### Pedidos do agente (de `pedidos-ao-atelier.md`, triados com o Paulo em 2026-11-01)
-- **MCP: ordenar a visão por uma propriedade.** `criar_visao`/`atualizar_visao` (`mcp/src/main.rs`, `dados_visao`)
-  não têm `ordenar`, embora a visão guarde `config.ordenar`. Acrescentar `ordenar: { propriedade, crescente }` e,
-  junto com a reordenação de colunas, `colunas: [nomes]` na ordem desejada. Cuidado: hoje `agrupar_por` grava
-  `config` inteiro e apagaria o resto; mesclar com o `config` existente. Pequeno.
 - **Linha do tempo com menos ruído.** Eventos automáticos no mesmo segundo e do mesmo tipo (ex.: 12 "Ligado: Filhos…"
   de uma vez) viram uma linha só, que abre ao clicar. Duplicado de verdade: criar a pasta grava "Pasta criada: …"
   (`core/src/pastas.rs`) e a mudança da propriedade grava "Pasta: …" (`db.rs`); ficar só com um. No MCP,
@@ -252,6 +192,18 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.1.5** (2026-11-01, tabela de verdade + blindagem):
+  - servidor local só atende esta máquina e a tela do app: `Host` de fora (DNS rebinding) e `Origin` de fora (site no
+    navegador, HTML aberto no explorador) levam 403; o MCP e o curl continuam passando;
+  - colunas da tabela: arrastar o cabeçalho muda a ordem, a alça na borda muda a largura (duplo clique volta ao
+    automático), as duas guardadas na visão; marcar coluna nova põe no fim; "Voltar ao padrão" limpa ordem e larguras;
+  - ordenação com um comparador só (`src/ordem.ts`): número como número, texto com "Etapa 2" antes de "Etapa 10",
+    seleção e status pela ordem das opções, vazio no fim;
+  - MCP: `criar_visao`/`atualizar_visao` com `ordenar`, `colunas` e `larguras`, mesclando com a configuração de antes;
+    `visoes` mostra essas três com nomes;
+  - janela no Windows com o ícone grande (o da barra de tarefas) e permissões do WebView2 respondidas sem a caixa:
+    microfone, área de transferência e notificações só para a tela do app, o resto negado.
+  - moldura da janela ativa numa camada por cima do conteúdo (a tabela que rolava pintava por cima da borda).
 - **0.1.4** (2026-11-01, correção expressa do que atrapalhava o uso):
   - a tela mostra sozinha o que o agente faz pelo MCP: o núcleo vigia o `data_version` do SQLite a cada segundo e
     manda `mudou`; a tela recarrega esquema, visões, bancadas e o que está à vista;

@@ -45,6 +45,11 @@ Como usar:
     troca de ícone, reinicie o Explorer".
 
 ### Melhorias pedidas
+- **Título e × fixos nas janelas que sobem (modais)** (2026-11-01, Paulo): nas Configurações (ex.: Integrações), ao
+  rolar, o título da seção e o × somem junto. Deixar o cabeçalho (título + ×) fixo no alto e só o conteúdo rolar,
+  em todos os modais (Configurações do app e da bancada, Atalhos, Exportar, Comando...). Onde mexer: `.config-corpo`
+  com `.fechar` posicionado dentro da área que rola (`src/components/Configuracoes.tsx`, `src/styles.css`); separar um
+  cabeçalho fixo (`position: sticky; top: 0` com fundo) ou tirar o × e o título da área de rolagem.
 - **Toast padrão:** o aviso de versão nova é o modelo; os outros avisos do app (`avisar`) devem seguir o mesmo visual.
 
 ### Recursos (mudam comportamento: precisam do ok do Paulo antes)

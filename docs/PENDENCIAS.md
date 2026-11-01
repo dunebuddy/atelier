@@ -27,8 +27,6 @@ Como usar:
 ### Pedidos do agente (de `pedidos-ao-atelier.md`, triados com o Paulo em 2026-11-01)
 
 ### Recursos (mudam comportamento: precisam do ok do Paulo antes)
-- PDF: desenhar só as páginas à vista (hoje até 300 de uma vez).
-- Podar o histórico guardado dos workspaces (hoje até 50 passos por janela, para sempre).
 
 ### Ideias antigas (ninguém pediu agora)
 - Abrir o atelier por link (`atelier://`).
@@ -49,6 +47,11 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.1** (2026-11-01, memória e desempenho):
+  - PDF: um lugar do tamanho certo para cada página (sem o limite de 300) e só as que estão à vista, com uma página
+    de folga, são desenhadas; a que sai de vista solta o desenho (IntersectionObserver na vista);
+  - workspaces guardados: o da bancada, os abertos e os 40 de item usados por último (`info.usado`); cada janela
+    guarda os últimos 15 passos do histórico (na sessão continuam 50).
 - **0.2.0** (2026-11-01, ditado):
   - o Parakeet não deixa mais a cópia do modelo presa: o worker monta o modelo com `getParakeetModel` +
     `ParakeetModel.fromUrls` e solta os links `blob:` que o parakeet.js criava e nunca revogava (era o "dobro");

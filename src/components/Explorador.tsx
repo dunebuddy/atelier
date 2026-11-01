@@ -370,7 +370,9 @@ function Moldura({ html }: { html: string }) {
   return <iframe className="ex-moldura" sandbox="allow-popups" srcDoc={doc} title="Markdown" />;
 }
 
-/** PDF pelo pdf.js (igual no Windows e no Linux). Renderiza as páginas uma embaixo da outra. */
+/** PDF pelo pdf.js (igual no Windows e no Linux). As páginas ficam uma embaixo da outra, mas só as que estão à vista
+ *  (e uma de folga em cada lado) são desenhadas; as que saem de vista soltam o desenho. Antes desenhava até 300 de
+ *  uma vez, e um PDF grande comia centenas de MB. */
 function Pdf({ url }: { url: string }) {
   const caixa = useRef<HTMLDivElement>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -380,6 +382,7 @@ function Pdf({ url }: { url: string }) {
     let cancelado = false;
     // cada documento sobe um worker do pdf.js: destruir a tarefa solta o documento e o worker
     let tarefa: { destroy: () => Promise<void> } | null = null;
+    let observador: IntersectionObserver | null = null;
     (async () => {
       try {
         const pdfjs = await import("pdfjs-dist");
@@ -394,19 +397,48 @@ function Pdf({ url }: { url: string }) {
         const alvo = caixa.current!;
         alvo.innerHTML = "";
         const largura = alvo.clientWidth - 24;
-        for (let n = 1; n <= Math.min(doc.numPages, 300); n++) {
-          if (cancelado) return;
-          const pag = await doc.getPage(n);
-          const base = pag.getViewport({ scale: 1 });
-          const escala = (largura / base.width) * (window.devicePixelRatio || 1);
-          const vp = pag.getViewport({ scale: escala });
-          const canvas = document.createElement("canvas");
-          canvas.width = vp.width;
-          canvas.height = vp.height;
-          canvas.style.width = `${largura}px`;
-          canvas.className = "ex-pdf-pagina";
-          alvo.appendChild(canvas);
-          await pag.render({ canvasContext: canvas.getContext("2d")!, viewport: vp }).promise;
+        // um lugar do tamanho certo para cada página (o tamanho vem da primeira; as diferentes se ajustam ao desenhar)
+        const primeira = (await doc.getPage(1)).getViewport({ scale: 1 });
+        const altura = (largura / primeira.width) * primeira.height;
+        const desenhando = new Set<number>();
+        const desenhar = async (lugar: HTMLDivElement, n: number) => {
+          if (desenhando.has(n) || lugar.firstChild) return;
+          desenhando.add(n);
+          try {
+            const pag = await doc.getPage(n);
+            const base = pag.getViewport({ scale: 1 });
+            const vp = pag.getViewport({ scale: (largura / base.width) * (window.devicePixelRatio || 1) });
+            const canvas = document.createElement("canvas");
+            canvas.width = vp.width;
+            canvas.height = vp.height;
+            canvas.style.width = `${largura}px`;
+            canvas.style.display = "block";
+            lugar.style.height = `${(largura / base.width) * base.height}px`;
+            await pag.render({ canvasContext: canvas.getContext("2d")!, viewport: vp }).promise;
+            // saiu de vista enquanto desenhava: não pendura o desenho (ninguém vai soltá-lo depois)
+            if (!cancelado && lugar.isConnected && lugar.dataset.vista === "1") lugar.appendChild(canvas);
+          } finally {
+            desenhando.delete(n);
+          }
+        };
+        observador = new IntersectionObserver((entradas) => {
+          for (const e of entradas) {
+            const lugar = e.target as HTMLDivElement;
+            const n = Number(lugar.dataset.pagina);
+            lugar.dataset.vista = e.isIntersecting ? "1" : "0";
+            if (e.isIntersecting) desenhar(lugar, n).catch(() => {});
+            else lugar.replaceChildren(); // saiu de vista (com folga): solta o desenho
+          }
+          // raiz = a vista (o corte de quem rola, a janela, entra na conta); folga de uma página em cima e embaixo
+        }, { rootMargin: `${Math.round(altura)}px 0px` });
+        for (let n = 1; n <= doc.numPages; n++) {
+          const lugar = document.createElement("div");
+          lugar.className = "ex-pdf-pagina";
+          lugar.dataset.pagina = String(n);
+          lugar.style.width = `${largura}px`;
+          lugar.style.height = `${altura}px`;
+          alvo.appendChild(lugar);
+          observador.observe(lugar);
         }
       } catch (e) {
         if (!cancelado) setErro(String(e));
@@ -414,6 +446,7 @@ function Pdf({ url }: { url: string }) {
     })();
     return () => {
       cancelado = true;
+      observador?.disconnect();
       tarefa?.destroy().catch(() => {});
     };
   }, [url]);

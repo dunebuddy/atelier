@@ -394,3 +394,9 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   carregar e transcrever 7 s). A economia de memória não dá para medir no teste (a "interface" medida lá é o
   servidor de teste); conferir no app pelo indicador. A opção da placa de vídeo só aparece habilitada na máquina com
   placa dedicada (a desta máquina é a Intel UHD 770): o caminho WebGPU não foi testado aqui.
+
+## 2026-11-01 (noite) — 0.2.1
+
+- O navegador interno escondido não roda `requestAnimationFrame` nem IntersectionObserver, e o pdf.js precisa de
+  quadro de animação para desenhar: o PDF não dá para testar desenhando ali. Conferido: os lugares das páginas e o
+  observador; o desenho, só no app.

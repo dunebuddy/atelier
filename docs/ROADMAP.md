@@ -110,7 +110,7 @@ Um pacote só, porque tudo mexe no worker do ditado e na mesma tela de Configura
 - "Baixar" só baixa; indicador mostra a memória real; lista mostra quanto cada modelo ocupa carregado.
 - Escolher RAM ou VRAM (desabilitado sem placa dedicada).
 
-## 0.2.1 · Memória e desempenho
+## 0.2.1 · Memória e desempenho · **saiu em 2026-11-01**
 
 - PDF desenhando só as páginas à vista (hoje até 300 de uma vez).
 - Podar o histórico guardado dos workspaces (passos de navegação antigos e workspaces de itens apagados).

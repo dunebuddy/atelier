@@ -13,6 +13,29 @@ export const itemDa = (chave: string) => (chave.startsWith("item:") ? Number(cha
 export interface InfoWorkspace {
   titulo: string;
   icone?: string;
+  /** quando foi aberto pela última vez (para a poda do que fica guardado) */
+  usado?: number;
+}
+
+/** O que fica guardado entre uma sessão e outra: os workspaces de item usados por último e, em cada janela, os
+ *  últimos passos do histórico. Na sessão o histórico vai até 50 passos; guardado, até este tanto. */
+const GUARDAR_WORKSPACES = 40;
+const GUARDAR_PASSOS = 15;
+
+function podarJanelas(e: EstadoPainel): EstadoPainel {
+  return {
+    ...e,
+    metades: e.metades.map((m) => ({
+      ...m,
+      janelas: m.janelas.map((j) => {
+        const ini = Math.max(0, j.pos - (GUARDAR_PASSOS - 1));
+        const hist = j.hist.slice(ini, j.pos + 1);
+        const chaves = new Set(hist.map(P.chaveRota));
+        const rotulos = j.rotulos && Object.fromEntries(Object.entries(j.rotulos).filter(([k]) => chaves.has(k)));
+        return { ...j, hist, pos: hist.length - 1, rotulos };
+      }),
+    })),
+  };
 }
 
 export interface Workspaces {
@@ -39,7 +62,13 @@ export function carregar(bancada: string): Workspaces {
 }
 
 export function salvar(bancada: string, w: Workspaces) {
-  guardar(chaveGuardada(bancada), { ativo: w.ativo, estados: w.estados, info: w.info });
+  // ficam: o da bancada, os abertos agora e os de item usados por último
+  const deItem = Object.keys(w.estados).filter((k) => k !== GERAL && !w.abertos.includes(k));
+  deItem.sort((a, b) => (w.info[b]?.usado ?? 0) - (w.info[a]?.usado ?? 0));
+  const ficam = new Set([GERAL, ...w.abertos, ...deItem.slice(0, GUARDAR_WORKSPACES)]);
+  const estados = Object.fromEntries(Object.entries(w.estados).filter(([k]) => ficam.has(k)).map(([k, e]) => [k, podarJanelas(e)]));
+  const info = Object.fromEntries(Object.entries(w.info).filter(([k]) => ficam.has(k)));
+  guardar(chaveGuardada(bancada), { ativo: w.ativo, estados, info });
 }
 
 /** Vai para o workspace (criando o do item, se ainda não existe: começa com o próprio item aberto). */
@@ -50,7 +79,7 @@ export function abrir(w: Workspaces, chave: string, info?: InfoWorkspace): Works
     ...w,
     ativo: chave,
     estados,
-    info: info ? { ...w.info, [chave]: info } : w.info,
+    info: { ...w.info, [chave]: { ...(w.info[chave] ?? { titulo: chave }), ...info, usado: Date.now() } },
     abertos: w.abertos.includes(chave) ? w.abertos : [...w.abertos, chave],
   };
 }

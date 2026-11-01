@@ -48,10 +48,11 @@ Como usar:
 - Ler `~/atelier/pedidos-ao-atelier.md` (o que os agentes não conseguiram fazer) e trazer para cá.
 
 ## Do lado do Paulo (fora do código)
-- Avast: exceção para `C:\Users\paulo\AppData\Local\atelier\*` (abertura de 12–15 s por causa da inspeção).
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **Avast** (2026-11-01, Paulo): exceção para `C:\Users\paulo\AppData\Local\atelier\*`; a abertura caiu de 12–15 s
+  para instantânea.
 - **0.1.3** (2026-11-01): bancada limpa com a visão fixa Todos os itens; instância única e bandeja; ícone carimbo em A;
   configurações do app e da bancada separadas; painel dividido corrigido e explorador em árvore; comando para o agente
   com MCP ampliado; ditado local (Parakeet e Whisper); Excel e Word no explorador; pedidos anotados; menos memória

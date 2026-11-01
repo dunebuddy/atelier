@@ -93,6 +93,12 @@ Como usar:
   "Quebrar linha na tabela"), desligada por padrão, para quem quiser ver o texto inteiro. Onde: `src/components/Layouts.tsx`
   (Tabela) e `src/components/Valor.tsx` (como cada espécie desenha), estilos em `src/styles.css`.
 
+- **Chip de item (relação) invade a célula vizinha na tabela** (2026-11-01, Paulo). O chip de link para item passa
+  por cima da próxima coluna. Corrigir junto com "tabela em uma linha": a célula corta o que não cabe
+  (`overflow: hidden`, `min-width: 0` no conteúdo), o chip ganha `max-width: 100%` com o título cortado em "…", e
+  vários chips seguem a regra dos "+N". Onde: `ChipItem`/`ValorRelacao` em `src/components/Valor.tsx` e `.celula` em
+  `src/styles.css`.
+
 ### Melhorias pedidas
 - **"Apontado por" com contagem e grupo clicável que vira visão** (2026-11-01, Paulo). Em `Relacoes.tsx`, cada grupo
   (o nome inverso da propriedade de relação: "Filhos" de Pai, "Gerou" de Nasceu de, "Itens do projeto" de Projeto, e

@@ -41,15 +41,7 @@ O pacote que o Paulo marcou como prioritário, mais dois consertos pequenos que 
 Ficou para depois: a ordem das propriedades na ficha do item (confirmar com o Paulo) e o teste sem fechar o app
 dele (ver `PENDENCIAS.md`).
 
-## 0.1.5.x · Painel sem esconder nada (correção, entra antes da 0.1.6)
-
-Duas coisas quebradas no uso diário, no mesmo `Painel.tsx`/`styles.css`:
-- **Muitas abas:** botão de lista à esquerda das abas (popover com todas, como o histórico do voltar), roda do mouse
-  rolando as abas e a ativa sempre à vista.
-- **Conteúdo largo:** barra horizontal sempre visível no rodapé do painel, junto da vertical (a tabela rola dentro do
-  próprio cartão, que ocupa a altura da janela).
-
-## 0.1.6 · Relações viram visões
+## 0.1.6 · Relações viram visões + painel sem esconder nada
 
 O que mais vai facilitar o dia a dia: sair de um item e ver na hora a lista que interessa. Tudo depende de uma peça
 só, o **filtro por relação** no núcleo, por isso anda junto.
@@ -60,6 +52,12 @@ só, o **filtro por relação** no núcleo, por isso anda junto.
 - **Buscas prontas a partir do item:** filhos em aberto, o que este item bloqueia, itens do projeto por status.
 - **Visão "pode andar agora"** (pedido do agente): sai de graça com o filtro novo.
 - MCP: o mesmo filtro em `criar_visao`, para o agente montar essas visões.
+
+Junto (decisão do Paulo, 2026-11-01), correções do painel:
+- **Muitas abas:** botão de lista à esquerda das abas (popover com todas, como o histórico do voltar), roda do mouse
+  rolando as abas e a ativa sempre à vista.
+- **Conteúdo largo:** barra horizontal sempre visível no rodapé do painel, junto da vertical (a tabela rola dentro do
+  próprio cartão, que ocupa a altura da janela).
 
 ## 0.1.7 · Workspaces e navegação
 

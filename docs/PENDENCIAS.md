@@ -56,6 +56,13 @@ Como usar:
   4. talvez mostrar na lista de modelos quanto cada um ocupa carregado, não só o tamanho do download.
   Mais longe: rodar o ditado no núcleo Rust lendo o arquivo do disco (como o Handy); exige toolchain MSVC/clang.
 
+- **Pílula de memória/CPU da barra de status ainda desequilibrada** (2026-11-01, print do Paulo na 0.1.3: encostada
+  embaixo). Causa: `.corpo-app` tem `padding: 0 8px 8px 0` (`src/styles.css`), então os painéis terminam 8 px acima
+  da barra de status, e esse espaço tem a mesma cor dela: na prática ~11 px em cima da pílula e 3 px embaixo (a
+  medição anterior olhou só a barra de 24 px isolada). Correção recomendada: tirar o 8 px de baixo do `.corpo-app`
+  (painéis encostam na barra) e dar à barra uma linha fina no topo (`border-top: 1px solid var(--borda)`), para ela ser
+  uma faixa própria com a pílula centrada; alternativa do Paulo: cor de fundo diferente na barra ou sem pílula.
+
 ### Melhorias pedidas
 - **MCP: criar bancada** (2026-11-01, primeiro uso real do Paulo, pedindo pelo agente do `daily-work`). O MCP lista e
   troca de bancada, mas não cria. Acrescentar `criar_bancada { nome, pasta? }` (pasta padrão: `~/atelier/bancadas/<slug>`),

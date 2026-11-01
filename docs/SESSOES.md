@@ -247,3 +247,16 @@ Tudo do plano refeito foi feito e testado no app de teste (`ATELIER_HOME`), pela
   modo silencioso e reabriu já na 0.1.2 (log em `%TEMP%\atelier-atualizacao.log`, `/api/saude` responde a versão).
   O app ficou instalado em `%LOCALAPPDATA%\atelier` (0.1.2). Instalador mantido (como VS Code, Discord, Obsidian):
   atualização sem clique, sem admin, e caminho fixo do `atelier-mcp` para os agentes.
+
+## PONTO DE PARADA — 2026-10-31 (fim do dia)
+
+Versão publicada e instalada na máquina do Paulo: **v0.1.2** (repo público `dunebuddy/atelier`, CI por tag,
+atualização automática testada). O Paulo achou "bem utilizável". Para a próxima:
+1. O Paulo usar de verdade (app instalado, dados reais em `~/atelier`) e trazer o que incomodar.
+2. Instalar o MCP no Claude Code real (Integrações) e ligar os usos dos agentes.
+3. Conferir na janela real o que só foi visto no navegador de teste: aviso de versão nova, seletor e visão geral dos
+   workspaces, arrastar abas, exportar com a janela de salvar e o PDF.
+4. Em aberto: deep link `atelier://item/<código>`; fórmula e rollup nas propriedades; contexto mãe/filhas (só se a
+   necessidade aparecer); migração do posto `daily-work` (planejar com o Paulo; conteúdo da empresa fica em
+   `privado/`).
+5. Publicar versão: `node scripts/versao.mjs X.Y.Z`, commit, `git tag vX.Y.Z`, push da tag.

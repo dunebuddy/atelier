@@ -290,6 +290,7 @@ export const api = {
         if (!r.ok) throw new Error(dados.erro ?? `erro ${r.status}`);
         return dados as { saida: string; segundos: number };
       }),
+  pedidos: () => req<{ arquivo: string; existe: boolean; abertos: number }>("GET", "/falta"),
   estadoDaTela: (texto: string) => req("POST", "/tela/estado", { texto }),
   testarAgente: (id: string) => req<{ ok: boolean; versao?: string; erro?: string | null }>("POST", `/agentes/${id}/testar`),
   /** chama o agente sem terminal e espera a resposta (até 10 min); `sinal` cancela (o processo morre junto) */

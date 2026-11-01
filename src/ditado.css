@@ -1,0 +1,25 @@
+/* Ditado: microfone, lista de modelos nas Configurações e o indicador na barra de status. */
+.ditado-botao.gravando { color: var(--t-red); background: color-mix(in srgb, var(--t-red) 18%, transparent); animation: ditado-pulsar 1.1s ease-in-out infinite; }
+.ditado-botao.transcrevendo { color: var(--acento); }
+@keyframes ditado-pulsar { 50% { background: color-mix(in srgb, var(--t-red) 6%, transparent); } }
+.girando { animation: ditado-girar 1s linear infinite; }
+@keyframes ditado-girar { to { transform: rotate(360deg); } }
+
+.ditado-modelos { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.ditado-modelo { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--borda); border-radius: 10px; cursor: pointer; }
+.ditado-modelo.escolhido { border-color: var(--acento); background: var(--acento-suave); }
+.ditado-modelo.sem { cursor: default; }
+.ditado-modelo input { accent-color: var(--acento); }
+.ditado-info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ditado-info strong { display: flex; align-items: center; gap: 6px; color: var(--texto); }
+.ditado-info small { color: var(--texto-3); line-height: 1.4; }
+.ditado-acoes { display: flex; align-items: center; gap: 6px; }
+.ditado-ok { display: flex; align-items: center; gap: 4px; color: var(--t-green); font-size: 12.5px; }
+.ditado-barra { height: 4px; border-radius: 2px; background: var(--borda); overflow: hidden; margin-top: 6px; }
+.ditado-barra span { display: block; height: 100%; background: var(--acento); transition: width .2s; }
+.ditado-tempo { display: flex; align-items: center; gap: 8px; color: var(--texto-2); }
+.ditado-tempo select { width: auto; }
+.ditado-teste { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px dashed var(--borda-forte); border-radius: 10px; color: var(--texto); }
+.ditado-teste .vazio { color: var(--texto-3); }
+.ditado-indicador { color: var(--acento); }
+.comando-pedidos { padding: 2px 9px; font-size: 12px; }

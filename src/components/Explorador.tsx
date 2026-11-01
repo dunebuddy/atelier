@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ArrowLeft, ArrowUp, ChevronDown, ChevronRight, Code2, Eye, File, FileText, Film, Folder, FolderOpen, Image, Music, Pencil, RefreshCw, Save,
+  ArrowLeft, ArrowUp, ChevronDown, ChevronRight, Code2, Eye, File, FileSpreadsheet, FileText, Film, Folder, FolderOpen, Image, Music, Pencil,
+  RefreshCw, Save, Table,
 } from "lucide-react";
 import { marked } from "marked";
 import { api, BASE, Entrada } from "../api";
 import { abrir, avisar, falhou } from "../ui";
 import { dataHora } from "../visao";
 import { MenuPasta } from "./MenuPasta";
+import { DocumentoWord, Planilha } from "./Documentos";
+import "../documentos.css";
 
 /** Abre o explorador numa janela ao lado, na pasta (e, se vier, já mostrando um arquivo). */
 export function abrirExplorador(raiz: string, arquivo?: string, titulo?: string) {
@@ -22,7 +25,8 @@ function Icone({ especie }: { especie: string }) {
   const P = { size: 15, strokeWidth: 1.7 };
   switch (especie) {
     case "pasta": return <Folder {...P} />;
-    case "pdf": case "markdown": return <FileText {...P} />;
+    case "pdf": case "markdown": case "documento": return <FileText {...P} />;
+    case "planilha": return <FileSpreadsheet {...P} />;
     case "html": case "texto": return <Code2 {...P} />;
     case "imagem": return <Image {...P} />;
     case "video": return <Film {...P} />;
@@ -169,6 +173,8 @@ function Previa({ caminho, aoVoltar }: { caminho: string; aoVoltar: () => void }
   const [editado, setEditado] = useState<string | null>(null);
   const [editando, setEditando] = useState(false);
   const [mudouFora, setMudouFora] = useState(false);
+  const ehCsv = /\.(csv|tsv)$/i.test(caminho);
+  const [tabela, setTabela] = useState(true);
   const [versao, setVersao] = useState(0);
   const modRef = useRef<string | null>(null);
   const [auto, setAuto] = useState<{ auto_salvar: string; atraso_ms: number }>({ auto_salvar: "desligado", atraso_ms: 1000 });
@@ -242,7 +248,10 @@ function Previa({ caminho, aoVoltar }: { caminho: string; aoVoltar: () => void }
   }, [pendente, salvar]);
 
   if (!info) return <div className="vazio-grande">Abrindo…</div>;
-  const mostrarEditor = ehTexto && (info.especie === "texto" || editando);
+  // CSV/TSV abre como tabela; "Editar" volta para o texto
+  const comoTabela = ehCsv && tabela && info.especie === "texto";
+  const mostrarEditor = ehTexto && ((info.especie === "texto" && !comoTabela) || editando);
+  const ext = caminho.split(".").pop()?.toLowerCase();
 
   return (
     <div className="ex-previa">
@@ -260,6 +269,9 @@ function Previa({ caminho, aoVoltar }: { caminho: string; aoVoltar: () => void }
         <span style={{ flex: 1 }} />
         {ehTexto && info.especie !== "texto" && (
           <button className="btn" onClick={() => setEditando((v) => !v)}>{editando ? <><Eye size={14} /> Ver</> : <><Pencil size={14} /> Editar</>}</button>
+        )}
+        {ehCsv && info.especie === "texto" && (
+          <button className="btn" onClick={() => setTabela((v) => !v)}>{tabela ? <><Pencil size={14} /> Editar</> : <><Table size={14} /> Tabela</>}</button>
         )}
         {pendente && <button className="btn primario" onClick={salvar}><Save size={14} /> Salvar <kbd>Ctrl S</kbd></button>}
         {!pendente && auto.auto_salvar !== "desligado" && ehTexto && <span className="ex-meta">auto-salvar ligado</span>}
@@ -289,6 +301,12 @@ function Previa({ caminho, aoVoltar }: { caminho: string; aoVoltar: () => void }
               }
             }}
           />
+        ) : comoTabela && texto != null ? (
+          <Planilha texto={editado ?? texto} />
+        ) : info.especie === "planilha" ? (
+          <Planilha key={versao} url={urlDo(caminho) + `&v=${versao}`} />
+        ) : info.especie === "documento" && ext === "docx" ? (
+          <DocumentoWord key={versao} url={urlDo(caminho) + `&v=${versao}`} />
         ) : info.especie === "markdown" && texto != null ? (
           <Moldura html={marked.parse(editado ?? texto, { async: false }) as string} />
         ) : info.especie === "html" ? (
@@ -303,7 +321,9 @@ function Previa({ caminho, aoVoltar }: { caminho: string; aoVoltar: () => void }
           <div className="ex-centro"><audio src={urlDo(caminho)} controls /></div>
         ) : (
           <div className="vazio-grande">
-            Sem pré-visualização para este tipo de arquivo.
+            {info.especie === "documento"
+              ? `Arquivo .${ext} não tem visualização aqui (só .docx).`
+              : "Sem pré-visualização para este tipo de arquivo."}
             <div style={{ marginTop: 12 }}><button className="btn primario" onClick={() => api.abrirArquivo(caminho).catch(falhou)}>Abrir no programa padrão</button></div>
           </div>
         )}

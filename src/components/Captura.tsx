@@ -1,3 +1,4 @@
+import { BotaoDitado } from "./Ditado";
 import { useEffect, useRef, useState } from "react";
 import { CornerDownLeft, Inbox } from "lucide-react";
 import { api, Preferencias } from "../api";
@@ -93,6 +94,7 @@ export function CapturaGlobal({ prefs }: { prefs: Preferencias | null }) {
               if (e.key === "Escape") setAberta(false);
             }}
           />
+          <BotaoDitado aoTexto={(t) => { setTexto((x) => (x.trim() ? `${x.trimEnd()} ${t}` : t)); campo.current?.focus(); }} />
           <kbd><CornerDownLeft size={11} /></kbd>
         </div>
       </div>

@@ -123,7 +123,7 @@ pub fn rotas(banco: Banco) -> Router {
         .route("/api/exportar", post(exportar))
         .route("/api/tela/eventos", get(tela_eventos))
         .route("/api/tela/estado", post(tela_estado))
-        .route("/api/falta", post(falta))
+        .route("/api/falta", post(falta).get(pedidos))
         .route("/api/agentes/{id}/testar", post(testar_agente))
         .route("/api/executar", post(executar))
         .route("/api/comando", post(comando))
@@ -773,6 +773,13 @@ async fn tela(State(b): State<Banco>, Json(d): Json<Value>) -> R {
 async fn tela_estado(State(b): State<Banco>, Json(d): Json<Value>) -> R {
     *b.tela_estado.lock().unwrap_or_else(|e| e.into_inner()) = d.get("texto").and_then(|v| v.as_str()).unwrap_or("").to_string();
     Ok(Json(json!({ "ok": true })))
+}
+
+/// Onde estão os pedidos anotados e quantos ainda estão em aberto (`- [ ]`).
+async fn pedidos() -> R {
+    let arq = bancada::pasta_atelier().join("pedidos-ao-atelier.md");
+    let abertos = std::fs::read_to_string(&arq).map(|t| t.lines().filter(|l| l.starts_with("- [ ]")).count()).unwrap_or(0);
+    Ok(Json(json!({ "arquivo": arq, "existe": arq.exists(), "abertos": abertos })))
 }
 
 /// O agente não soube fazer algo pelo atelier: anota em `~/atelier/pedidos-ao-atelier.md` e avisa na tela.

@@ -3,7 +3,8 @@ import { Mic, RotateCcw, Sparkles, Square, X } from "lucide-react";
 import { AgenteCli, api, Bancadas, Visao } from "../api";
 import { bate, combinacao } from "../atalhos";
 import { janelaAtiva, rotaDe } from "../painel";
-import { avisar, guardar, ler, Rota } from "../ui";
+import { abrir, avisar, guardar, ler, Rota } from "../ui";
+import { BotaoDitado } from "./Ditado";
 import * as W from "../workspaces";
 
 /** Pedido que chega para a tela pelo websocket (do MCP ou do Comando). Veja ACOES_TELA em core/src/api.rs. */
@@ -102,8 +103,10 @@ export function ComandoAgente({ descricao }: { descricao: string }) {
     return () => { window.removeEventListener("atelier:comando", abrir); window.removeEventListener("keydown", tecla); };
   }, []);
 
+  const [pedidos, setPedidos] = useState<{ arquivo: string; abertos: number } | null>(null);
   useEffect(() => {
     if (!aberto) return;
+    api.pedidos().then(setPedidos).catch(() => {});
     api.agentes().then((r) => {
       const l = r.agentes.filter((a) => a.comando);
       setAgentes(l);
@@ -173,6 +176,15 @@ export function ComandoAgente({ descricao }: { descricao: string }) {
           </select>
         )}
         <span className="espaco" />
+        {pedidos && pedidos.abertos > 0 && (
+          <button
+            className="btn comando-pedidos"
+            title="O que os agentes não conseguiram fazer pelo atelier (vira lista de recursos)"
+            onClick={() => { const a = pedidos.arquivo; abrir({ v: "arquivos", raiz: a.slice(0, Math.max(a.lastIndexOf("\\"), a.lastIndexOf("/"))), arquivo: a, titulo: "Pedidos ao atelier" }, true); setAberto(false); }}
+          >
+            {pedidos.abertos} {pedidos.abertos === 1 ? "pedido anotado" : "pedidos anotados"}
+          </button>
+        )}
         {conversa.length > 0 && !trabalhando && (
           <button className="btn-icone" title="Nova conversa (esquece as anteriores)" onClick={() => setConversa([])}><RotateCcw size={14} /></button>
         )}
@@ -218,10 +230,11 @@ export function ComandoAgente({ descricao }: { descricao: string }) {
               onKeyDown={teclas}
               disabled={!agente}
             />
+            <BotaoDitado aoTexto={(t) => { setTexto((x) => (x.trim() ? `${x.trimEnd()} ${t}` : t)); caixa.current?.focus(); }} />
             <button className="btn primario" onClick={enviar} disabled={!texto.trim() || !!trabalhando || !agente}>Mandar</button>
           </div>
           <div className="comando-dica">
-            Enter manda · Shift+Enter quebra a linha · ↑ edita o último pedido · <Mic size={11} /> Win+H dita por voz
+            Enter manda · Shift+Enter quebra a linha · ↑ edita o último pedido · <Mic size={11} /> o microfone dita (dá para editar antes de mandar)
           </div>
         </>
       )}

@@ -1,0 +1,52 @@
+{
+  "versao": 1,
+  "nota": "Catálogo dos modelos de ditado. O app lê este arquivo do GitHub ao procurar versão nova e avisa quando aparece modelo novo. Para acrescentar um modelo, acrescente aqui (motor: parakeet ou whisper) e suba no master.",
+  "modelos": [
+    {
+      "id": "parakeet-v3",
+      "nome": "Parakeet V3",
+      "motor": "parakeet",
+      "repo": "parakeet-tdt-0.6b-v3",
+      "tamanho_mb": 680,
+      "idiomas": "25 línguas europeias, inclusive português (detecta sozinho)",
+      "nota": "Da NVIDIA. Rápido e preciso; o recomendado para português.",
+      "recomendado": true
+    },
+    {
+      "id": "whisper-tiny",
+      "nome": "Whisper Tiny",
+      "motor": "whisper",
+      "repo": "onnx-community/whisper-tiny",
+      "tamanho_mb": 45,
+      "idiomas": "multilíngue",
+      "nota": "Da OpenAI. Muito leve e rápido, erra mais."
+    },
+    {
+      "id": "whisper-base",
+      "nome": "Whisper Base",
+      "motor": "whisper",
+      "repo": "onnx-community/whisper-base",
+      "tamanho_mb": 85,
+      "idiomas": "multilíngue",
+      "nota": "Leve; bom para frases curtas."
+    },
+    {
+      "id": "whisper-small",
+      "nome": "Whisper Small",
+      "motor": "whisper",
+      "repo": "onnx-community/whisper-small",
+      "tamanho_mb": 260,
+      "idiomas": "multilíngue",
+      "nota": "Equilíbrio entre peso e acerto."
+    },
+    {
+      "id": "whisper-large-v3-turbo",
+      "nome": "Whisper Large V3 Turbo",
+      "motor": "whisper",
+      "repo": "onnx-community/whisper-large-v3-turbo",
+      "tamanho_mb": 900,
+      "idiomas": "multilíngue",
+      "nota": "O que mais acerta do Whisper, mas é pesado e mais lento sem placa de vídeo."
+    }
+  ]
+}

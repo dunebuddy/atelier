@@ -293,8 +293,18 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   explorador_sistema, barra_lateral, tema, zoom, configuracoes, busca, estado...). A tela manda o que está mostrando
   para `/api/tela/estado`. O que o agente não sabe fazer vai para `~/atelier/pedidos-ao-atelier.md` e aparece um aviso.
 
+- **Ditado local** (inspirado no Handy): catálogo em `modelos-ditado.json` (raiz do repo; o app lê do GitHub junto com
+  a procura de versão e avisa modelo novo). Parakeet V3 (parakeet.js, IndexedDB) e Whisper tiny/base/small/large-v3-turbo
+  (transformers.js, Cache Storage), num Worker (`src/ditado.worker.ts`), na CPU via WASM (ONNX Runtime da CDN, versão
+  fixa; as cópias empacotadas são cortadas da build no `vite.config.ts`). Configurações → Ditado: baixar, escolher,
+  apagar, nenhum; descarrega da memória depois de N minutos sem uso (padrão 5; o Worker é encerrado); a barra de status
+  mostra enquanto está carregado. Microfone no Comando e na captura. Testado com voz sintética: Parakeet acertou a frase
+  (36 s para baixar, 4 s para transcrever); Whisper Tiny erra nomes próprios.
+- **Documentos no app**: PDF, HTML, Markdown, texto e imagem já abriam; entraram Excel (xlsx/xls/ods, CSV/TSV como
+  tabela) e Word (.docx, via mammoth). .doc/.odt/.rtf mostram aviso e "abrir fora".
+- Pedidos anotados: botão no Comando abre `pedidos-ao-atelier.md` (o explorador libera só esse arquivo fora da bancada).
+
 ### Na fila
 - **Instalar o MCP no Claude Code real** (Integrações → Claude Code → Instalar) e marcar "Comando"; testar o botão ✨.
-- **Ver documentos dentro do app** sem abrir fora: PDF, HTML, Markdown, texto, imagem; Excel e Word se possível (só
-  visualizar). Conferir o que a prévia do explorador já faz antes.
+- Microfone na janela real (WebView2 pode pedir permissão na primeira vez): ainda não testado fora do navegador.
 - Ler `~/atelier/pedidos-ao-atelier.md` de tempos em tempos e virar recurso.

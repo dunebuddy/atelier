@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Download, Sparkles, X } from "lucide-react";
 import { Preferencias } from "../api";
 import { avisar, falhou } from "../ui";
+import { procurarModelosNovos } from "../ditado";
 
 // Atualização: o app pergunta ao GitHub (release mais recente) se tem versão nova. Só instala se o Paulo mandar.
 // Fora do app (navegador de teste) não há atualizador: não faz nada.
@@ -39,6 +40,8 @@ export function AvisoAtualizacao({ prefs }: { prefs: Preferencias | null }) {
   const [fechado, setFechado] = useState(false);
 
   const verificar = useCallback(async (manual: boolean) => {
+    // a lista de modelos de ditado também mora no GitHub: modelo novo vira aviso
+    procurarModelosNovos();
     try {
       const a = await procurar();
       setAchada(a);

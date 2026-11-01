@@ -1,3 +1,4 @@
+import { IndicadorDitado } from "./Ditado";
 import { useEffect, useRef, useState } from "react";
 import {
   ChevronDown, Cpu, GalleryHorizontalEnd, LayoutDashboard, LayoutPanelLeft, MemoryStick, PanelTop, Power, Trash2,
@@ -98,6 +99,7 @@ export function BarraStatus({ ws }: { ws: Workspaces }) {
     <footer className="barra-status">
       <span className="bs-ws">{ws.info[ws.ativo]?.titulo}</span>
       <span style={{ flex: 1 }} />
+      <IndicadorDitado interfaceRam={m.interface} />
       <button className="bs-medida" onClick={pop.abrir} title={`Memória: ${mb(m.ram)} de ${mb(m.ram_maquina)} da máquina · CPU ${m.cpu.toFixed(0)}% (clique para ver por workspace)`}>
         <MemoryStick size={12} />
         <span className="bs-barra"><span style={{ width: `${Math.max(2, pct)}%` }} className={pct > 25 ? "alto" : ""} /></span>

@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, FileCode, FolderOpen, FolderPlus, Keyboard, Languages, LayoutPanelLeft, Package, Palette, Pencil, Plug, Plus, RefreshCw, Shapes, Timer, X } from "lucide-react";
+import { Check, Copy, FileCode, FolderOpen, FolderPlus, Keyboard, Languages, LayoutPanelLeft, Mic, Package, Palette, Pencil, Plug, Plus, RefreshCw, Shapes, Timer, X } from "lucide-react";
 import { Agente, api, Bancada, Bancadas, Esquema, Integracoes, Preferencias, TemaArquivo, AgenteCli, UsoAgente } from "../api";
 import { SecaoAutomacao } from "./Automacao";
 import { SecaoAtalhos } from "./ConfigAtalhos";
 import { procurarAtualizacao } from "./Atualizacao";
 import { avisar, falhou, Tema } from "../ui";
 import { abrirWorkspace } from "./Workspaces";
+import { SecaoDitado } from "./Ditado";
 
 // as do app (engrenagem da barra de título) e as da bancada aberta (botão no rodapé da barra lateral)
-export type SecaoConfig = "aparencia" | "geral" | "bancadas" | "integracoes" | "automacao" | "editor" | "atalhos" | "bancada" | "tipos";
+export type SecaoConfig = "aparencia" | "geral" | "bancadas" | "integracoes" | "ditado" | "automacao" | "editor" | "atalhos" | "bancada" | "tipos";
 type Secao = SecaoConfig;
 
 const TEMAS: { id: Tema; nome: string; cores: string[] }[] = [
@@ -78,6 +79,7 @@ export function Configuracoes({
               {item("geral", <Languages size={15} />, "Idioma")}
               {item("bancadas", <Package size={15} />, "Bancadas")}
               {item("integracoes", <Plug size={15} />, "Integrações")}
+              {item("ditado", <Mic size={15} />, "Ditado")}
               {item("editor", <FileCode size={15} />, "Editor de arquivos")}
               {item("atalhos", <Keyboard size={15} />, "Atalhos")}
               {item("automacao", <Timer size={15} />, "Automação")}
@@ -101,6 +103,7 @@ export function Configuracoes({
           {secao === "bancadas" && <SecaoBancadas aoTrocar={aoTrocarBancada} />}
           {secao === "bancada" && bancada && <SecaoEstaBancada bancada={bancada} aoFechar={aoFechar} />}
           {secao === "integracoes" && <SecaoIntegracoes />}
+          {secao === "ditado" && <SecaoDitado />}
           {secao === "atalhos" && prefs && <SecaoAtalhos prefs={prefs} mudar={mudarPrefs} />}
           {secao === "automacao" && prefs && <SecaoAutomacao prefs={prefs} mudar={mudarPrefs} />}
           {secao === "automacao" && prefs && (

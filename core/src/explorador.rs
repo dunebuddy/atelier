@@ -14,11 +14,13 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-/// Garante que `caminho` está dentro de `raiz` (os dois canônicos). Devolve o caminho canônico.
+/// Garante que `caminho` está dentro de `raiz` (os dois canônicos). Devolve o caminho canônico. A única exceção é o
+/// arquivo de pedidos ao atelier (`~/atelier/pedidos-ao-atelier.md`), que o Comando abre para leitura e edição.
 pub fn dentro(raiz: &Path, caminho: &Path) -> Result<PathBuf, Erro> {
     let r = raiz.canonicalize().map_err(|e| Erro::Invalido(format!("bancada inacessível: {e}")))?;
     let c = caminho.canonicalize().map_err(|_| Erro::NaoEncontrado(format!("{}", caminho.display())))?;
-    if !c.starts_with(&r) {
+    let pedidos = crate::bancada::pasta_atelier().join("pedidos-ao-atelier.md").canonicalize().ok();
+    if !c.starts_with(&r) && pedidos.as_ref() != Some(&c) {
         return Err(Erro::Invalido("fora da bancada: o explorador só mostra arquivos da bancada aberta".into()));
     }
     Ok(c)
@@ -42,6 +44,8 @@ pub fn espécie(nome: &str) -> &'static str {
         "png" | "jpg" | "jpeg" | "gif" | "webp" | "svg" | "bmp" | "ico" | "avif" => "imagem",
         "mp4" | "webm" | "mov" | "m4v" => "video",
         "mp3" | "wav" | "ogg" | "m4a" | "flac" => "audio",
+        "xlsx" | "xlsm" | "xls" | "ods" => "planilha",
+        "docx" | "doc" | "odt" | "rtf" => "documento",
         "txt" | "log" | "csv" | "tsv" | "json" | "jsonl" | "yaml" | "yml" | "toml" | "xml" | "ini" | "cfg" | "conf" | "env"
         | "sql" | "py" | "rs" | "ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs" | "css" | "scss" | "sh" | "bash" | "ps1" | "psm1"
         | "bat" | "cmd" | "go" | "java" | "kt" | "cs" | "c" | "h" | "cpp" | "hpp" | "rb" | "php" | "lua" | "r" | "tf" | "hcl"
@@ -182,6 +186,9 @@ mod testes {
         assert_eq!(espécie("leia.md"), "markdown");
         assert_eq!(espécie("x.tsx"), "texto");
         assert_eq!(espécie("foto.jpeg"), "imagem");
-        assert_eq!(espécie("planilha.xlsx"), "outro");
+        assert_eq!(espécie("planilha.XLSX"), "planilha");
+        assert_eq!(espécie("relatorio.docx"), "documento");
+        assert_eq!(espécie("dados.csv"), "texto");
+        assert_eq!(espécie("pacote.zip"), "outro");
     }
 }

@@ -16,6 +16,11 @@ Como usar:
 ## Caixa de entrada
 
 ### Bugs
+- **Tela não mostra tipos e propriedades criados pelo agente** (2026-11-01, uso real: bancada MDB). No banco e na API
+  estão lá (6 tipos, 13 propriedades), mas a tela só carrega o esquema ao abrir e ao trocar de bancada. Corrigir: o
+  MCP chama `tela` → `recarregar` depois de `criar_tipo`, `criar_propriedade`, `ligar_propriedade` (e dos futuros
+  apagar/renomear), como já faz com visões e lixeira; e no `App.tsx` o pedido `recarregar` (e o foco da janela)
+  também recarrega o esquema (`carregarEsquema`), não só as listas.
 - **Botão "Instalar" do aviso de atualização com o texto fora do centro** (2026-11-01, print do Paulo na 0.1.2 → 0.1.3).
   O aviso em si ficou bom: **ele deve virar o padrão de aviso (toast) do app**, com título, texto, ações e o ×.
 

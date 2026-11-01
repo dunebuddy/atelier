@@ -85,6 +85,19 @@ Como usar:
   (mesmo pedido, mesma tabela).
 
 ### Melhorias pedidas
+- **Espaço em disco do workspace e da bancada** (2026-11-01, Paulo). Onde o app já mostra os workspaces (botão
+  "Workspace: …" da barra de status, `Workspaces.tsx`, e a visão geral dos workspaces), mostrar quanto ocupam:
+  - **só ele:** a pasta do item;
+  - **com os filhos:** a pasta dele somada à de todos os descendentes pela relação Pai/Filhos (descendo a árvore
+    inteira). Só o total, sem a lista dos filhos: para ver um filho, o Paulo abre o filho (ou pergunta ao agente);
+  - **a bancada inteira:** a pasta da bancada toda (itens, banco, anexos), no workspace da bancada e nas
+    Configurações da bancada.
+  Detalhes: as pastas dos itens são planas (`<bancada>/itens/<slug>`, `core/src/pastas.rs`), então "com os filhos"
+  vem da relação, não do disco; a pasta do item pode apontar para outro lugar (propriedade Pasta), então somar sem
+  contar duas vezes uma pasta que está dentro de outra. Medir no núcleo, fora da tela (`spawn_blocking`, sem seguir
+  atalhos/links), com resultado guardado por alguns minutos; a tela mostra "calculando…" e depois "1,2 GB · 3,4 GB
+  com os filhos". Pasta grande (`node_modules`, `.git`) entra na conta: é espaço de verdade. Rota nova
+  (`/api/itens/{id}/tamanho`, `/api/bancadas/tamanho`) e o mesmo no MCP, para o agente da bancada responder.
 - **Modo fita: trocar de janela fica ruim** (2026-11-01, Paulo: "não gostei de como ficou o modo de fita quando eu
   passo pro outro, se tiver mais de um, ou se tiver um grande, aí quando eu clico no outro…"; a frase ficou pela
   metade: **completar com ele o que acontece e o que ele esperava**). Como funciona hoje (`rolagemPara` em

@@ -18,29 +18,6 @@ Como usar:
 ## Caixa de entrada
 
 ### Bugs
-- **A ordem escolhida não se mantém: item mexido pula para o topo** (2026-11-01, Paulo: "mando ordenar de um jeito
-  e, depois que o agente ou qualquer um muda um item, ele vai para o topo"). O que o código faz hoje:
-  - há **duas** ordens: o clique no cabeçalho da tabela (`Tabela` em `Layouts.tsx`) guarda a ordem só na memória da
-    tela (não na visão), e o botão "Ordem" grava na visão (`config.ordenar`). Sem nenhuma das duas, a visão vem do
-    núcleo por **última atualização** (`listar_itens`: `ORDER BY atualizado_em DESC`), então qualquer mudança, de
-    quem for, joga o item para o topo;
-  - a ordenação é estável: itens empatados (mesmo status, mesma data, vazio) ficam na ordem de chegada, que é a
-    de última atualização, e o item mexido sobe dentro do grupo dele.
-  Correção: (1) **clicar no cabeçalho grava a ordem na visão**, a mesma do botão "Ordem" (uma fonte só; a seta no
-  cabeçalho mostra qual vale); (2) **desempate fixo** que não depende de atualização (título em ordem natural, depois
-  o código), para nada pular quando muda; (3) decidir com o Paulo a ordem **padrão** de visão sem ordem escolhida:
-  hoje "última atualização" (o que mexeu sobe), alternativa "criação" (fica parado). Conferir no app dele qual
-  visão era e se a ordem estava no cabeçalho ou no botão.
-  **Decidido (Paulo, 2026-11-01):** visão sem ordem escolhida continua por última atualização (o que mexeu sobe);
-  o que precisa é a ordem escolhida se manter. Vai na 0.1.7.
-- **Atualizar dá erro quando o MCP está aberto** (2026-11-01, Paulo: "o instalador não tá matando o MCP"). O
-  `atelier-mcp.exe` não é processo do atelier: é aberto pelo Claude Code (e outros agentes) a cada sessão com o MCP
-  ligado. Com ele rodando, o instalador NSIS não consegue sobrescrever o arquivo e dá erro. Matar o processo
-  derrubaria o MCP das sessões abertas no meio do trabalho. Correção: gancho do NSIS antes de instalar
-  (`bundle.windows.nsis.installerHooks`, macro `NSIS_HOOK_PREINSTALL`) que **renomeia** o exe em uso para
-  `atelier-mcp.antigo-<n>.exe` (o Windows deixa renomear um exe aberto, só não deixa sobrescrever) e põe o novo no
-  lugar; a sessão aberta segue com o antigo até reiniciar, a próxima já pega o novo. Os `.antigo-*` são apagados
-  na instalação seguinte e ao abrir o app (se ninguém mais usa), e na desinstalação.
 
 - **Ditado ocupa o dobro do modelo na memória** (2026-11-01, Paulo: interface em 1,6 GB depois de baixar o
   Parakeet). Medido: o renderer do WebView2 (onde roda o Worker do ditado) foi a 1.484 MB e voltou a 70 MB quando o
@@ -70,29 +47,6 @@ Como usar:
 - **Ordem das propriedades na ficha do item** (sobra do pedido de colunas da 0.1.5): o Paulo falou em ordem "dentro
   do item ou da visão"; a da visão saiu na 0.1.5. Confirmar com ele se quer reordenar também na ficha (a ordem vem
   do tipo).
-- **Espaço em disco do workspace e da bancada** (2026-11-01, Paulo). Onde o app já mostra os workspaces (botão
-  "Workspace: …" da barra de status, `Workspaces.tsx`, e a visão geral dos workspaces), mostrar quanto ocupam:
-  - **só ele:** a pasta do item;
-  - **com os filhos:** a pasta dele somada à de todos os descendentes pela relação Pai/Filhos (descendo a árvore
-    inteira). Só o total, sem a lista dos filhos: para ver um filho, o Paulo abre o filho (ou pergunta ao agente);
-  - **a bancada inteira:** a pasta da bancada toda (itens, banco, anexos), no workspace da bancada e nas
-    Configurações da bancada.
-  Detalhes: as pastas dos itens são planas (`<bancada>/itens/<slug>`, `core/src/pastas.rs`), então "com os filhos"
-  vem da relação, não do disco; a pasta do item pode apontar para outro lugar (propriedade Pasta), então somar sem
-  contar duas vezes uma pasta que está dentro de outra. Medir no núcleo, fora da tela (`spawn_blocking`, sem seguir
-  atalhos/links), com resultado guardado por alguns minutos; a tela mostra "calculando…" e depois "1,2 GB · 3,4 GB
-  com os filhos". Pasta grande (`node_modules`, `.git`) entra na conta: é espaço de verdade. Rota nova
-  (`/api/itens/{id}/tamanho`, `/api/bancadas/tamanho`) e o mesmo no MCP, para o agente da bancada responder.
-- **Modo fita: trocar de janela fica ruim** (2026-11-01, Paulo: "não gostei de como ficou o modo de fita quando eu
-  passo pro outro, se tiver mais de um, ou se tiver um grande, aí quando eu clico no outro…"; a frase ficou pela
-  metade: **completar com ele o que acontece e o que ele esperava**). Como funciona hoje (`rolagemPara` em
-  `src/painel.ts`, chamado por `Painel.tsx` a cada mudança): a fita rola **o mínimo** para a janela clicada caber
-  inteira; ela encosta na borda por onde entrou e a vizinha grande fica cortada pela metade (`clipPath`). Suspeitas do
-  que incomoda: (1) janela inteira (1/1) seguida de outra: clicar na outra empurra a fita toda e a de antes some de
-  vez, sem dar para ver as duas; (2) a nova janela entra na borda e não no centro, e o resto da fita fica cortado de
-  um jeito arbitrário; (3) a rolagem é um salto sem animação. Possíveis caminhos, a decidir com ele: centralizar a
-  janela ativa (como o Niri com `center-focused-column`), rolar com animação, e encolher sozinha a janela inteira
-  quando outra entra ao lado.
 - **Configurações → Geral (janela e sistema)** (2026-11-01, Paulo). Juntar numa página só as opções de como o app se
   comporta no Windows (hoje "fechar vai para a bandeja" está escondido em Automação):
   - **Fechar (×)**: vai para a bandeja ou fecha de verdade;
@@ -101,26 +55,6 @@ Como usar:
     bandeja**;
   - talvez: mostrar ou não o ícone na bandeja.
   A seção "Idioma" pode virar parte dessa página.
-- **Barra lateral: arrastar para reordenar visões e grupos** usa o arrastar HTML5 (`Sidebar.tsx`), o mesmo que o Tauri
-  bloqueia no Windows: provavelmente não funciona no app instalado. Trocar por eventos de ponteiro, como as abas do
-  painel na 0.1.4 (`Painel.tsx`).
-- **Deixar claro em qual workspace se está** (2026-11-01, Paulo: abriu o explorador "do item" e veio a raiz da MDB;
-  provavelmente estava no workspace da bancada com o item aberto numa janela, e aí a regra é abrir na pasta do
-  workspace). Hoje o workspace só aparece no seletor da barra de título e no rodapé ("Workspace: …"), fácil de não
-  ver. Ideias para decidir com o Paulo:
-  1. o menu do terminal e do explorador diz de qual pasta se trata ("Pasta do workspace: bancada MDB" / "… do item
-     #d475363") e, se o item da janela em foco não é o do workspace, oferece também "Pasta deste item";
-  2. página de item aberta fora do próprio workspace mostra um aviso discreto com o botão "Abrir o workspace deste
-     item";
-  3. destaque visual do workspace atual (cor/ícone do item no seletor e uma faixa fina no painel), diferente para o
-     da bancada;
-  4. (mudança de regra, só com o ok dele) no workspace da bancada, as ferramentas usarem a pasta do item da janela em
-     foco.
-  - **Decidido (Paulo):** em todo lugar que um item aparece numa lista, ao lado da ação de abrir, uma ação **"Abrir
-    workspace"** (ícone pequeno, aparece no hover): linhas da tabela e da lista, cartões do quadro, linha do tempo,
-    busca rápida (Ctrl+K), chips de relação, e a **árvore da barra lateral** (os itens e filhos de uma visão, ex.:
-    Projeto). Usa `abrirWorkspace({ id, titulo, icone })` de `src/components/Workspaces.tsx`. Arquivos: `Layouts.tsx`,
-    `Arvore.tsx`, `BarraTitulo.tsx` (BuscaRapida), `Valor.tsx` (chips), `Visao.tsx`/linha do tempo.
 - **Ficha do item: coluna fixa à direita com rolagem própria** (2026-11-01, Paulo gostou da ficha). Hoje ela gruda no
   topo ao rolar (sticky), mas quando é mais alta que a tela o fim dela só aparece quando a página chega ao fim — numa
   página longa, demora. Quero: a página do item em duas colunas, cada uma com a sua barra de rolagem (texto à esquerda,
@@ -197,6 +131,23 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.1.7** (2026-11-01, workspaces e navegação):
+  - atualizar com o MCP aberto não dá mais erro: o instalador renomeia o `atelier-mcp.exe` em uso para
+    `atelier-mcp.antigo-N.exe` e põe o novo no lugar (`src-tauri/windows/ganchos.nsh`); as sobras saem ao abrir o app,
+    na instalação seguinte e ao desinstalar (testado com um instalador mínimo e um exe travado);
+  - a ordem escolhida se mantém: o clique no cabeçalho grava na visão (a mesma do botão "Ordem", que agora aceita
+    Título, Tipo e Atualizado; o MCP também) e o desempate é por título e código; sem ordem escolhida segue "o que
+    mexeu sobe" (decisão do Paulo);
+  - "Abrir workspace" (ícone no hover) na tabela, na lista, no quadro, na linha do tempo, na árvore da barra
+    lateral, nos chips de item e na busca rápida;
+  - o menu do terminal diz "Pasta do workspace: <nome>" e, quando o item da janela em foco é outro, oferece "Pasta
+    deste item" (terminal, explorador em árvore, explorador do sistema);
+  - barra lateral: arrastar visões e grupos com eventos de ponteiro (funciona no app instalado);
+  - espaço em disco na barra de status: o workspace do item (só ele e com os descendentes por Pai → Filhos) e a
+    bancada inteira; medida no núcleo (`core/src/disco.rs`, sem seguir links, sem contar pasta dentro de pasta, vale
+    5 minutos); MCP `espaco_em_disco`;
+  - modo fita como o Niri: janela já à vista não mexe, a de antes fica junto quando cabe, senão a nova vem para o
+    centro; desliza (0,26 s) com o corte acompanhando, em vez de surgir de repente.
 - **0.1.6** (2026-11-01, relações viram visões + painel sem esconder nada):
   - "Apontado por" com contagem ("Filhos 5") e grupo clicável: abre ao lado uma visão avulsa (rota `consulta`) com os
     itens daquele grupo, os tipos deles, concluídos escondidos e "Salvar como visão"; "Mencionado em" também;

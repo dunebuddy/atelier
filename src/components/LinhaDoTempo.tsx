@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { BotaoWorkspace } from "./BotaoWorkspace";
 import { ArrowRight, Copy, CornerDownLeft, FileText, FolderOpen, Inbox, Save, X } from "lucide-react";
 import { api, Esquema, Evento, FiltroVisao, Opcao, opcoesDe } from "../api";
 import { avisar, falhou, Rota } from "../ui";
@@ -165,6 +166,7 @@ function EventoLinha({ esquema, e, ir }: { esquema: Esquema; e: Evento; ir: (r: 
             <span className="id-item">#{e.codigo}</span>
             <span className="ldt-titulo">{e.titulo || "Sem título"}</span>
           </button>
+          <BotaoWorkspace esquema={esquema} item={{ id: e.item_id, titulo: e.titulo, tipo_id: e.tipo_id }} />
         </div>
         <O_que esquema={esquema} e={e} ir={ir} />
       </div>

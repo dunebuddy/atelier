@@ -315,22 +315,34 @@ export function arrumar(m: Metade, mi: number, corpo: Retangulo, rolagem: number
   return lugares;
 }
 
-/** Fita: rolagem que deixa a coluna da janela `id` inteira à vista (mexendo o mínimo). */
-export function rolagemPara(m: Metade, largura: number, id: string | null, atual: number): number {
+/**
+ * Fita: para onde rolar quando a janela `id` ganha o foco, como no Niri ("center-focused-column on-overflow"):
+ * - já está inteira à vista: não mexe;
+ * - cabe junto com a janela de antes (`anterior`): rola o mínimo para as duas ficarem à vista;
+ * - não cabe: a coluna dela vem para o centro (a de antes fica pela metade dos lados, não some de repente).
+ */
+export function rolagemPara(m: Metade, largura: number, id: string | null, atual: number, anterior?: string | null): number {
   const cols = colunasDaFita(m);
   let x = 0;
   let total = 0;
   let alvo: { x: number; w: number } | null = null;
+  let antes: { x: number; w: number } | null = null;
   for (const c of cols) {
     const w = largura / c.largura;
     if (id && c.ids.includes(id)) alvo = { x, w };
+    if (anterior && c.ids.includes(anterior)) antes = { x, w };
     x += w;
     total = x;
   }
-  let r = atual;
-  if (alvo) {
-    if (alvo.x < r) r = alvo.x;
-    if (alvo.x + alvo.w > r + largura) r = alvo.x + alvo.w - largura;
+  const limitar = (r: number) => Math.max(0, Math.min(r, Math.max(0, total - largura)));
+  const r = limitar(atual);
+  if (!alvo) return r;
+  const folga = 0.5;
+  if (alvo.x >= r - folga && alvo.x + alvo.w <= r + largura + folga) return r;
+  if (antes && antes !== alvo) {
+    const ini = Math.min(antes.x, alvo.x);
+    const fim = Math.max(antes.x + antes.w, alvo.x + alvo.w);
+    if (fim - ini <= largura + folga) return limitar(alvo.x > antes.x ? fim - largura : ini);
   }
-  return Math.max(0, Math.min(r, Math.max(0, total - largura)));
+  return limitar(alvo.x - (largura - alvo.w) / 2);
 }

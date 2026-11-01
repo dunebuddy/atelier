@@ -483,6 +483,37 @@ pub fn resumos(conn: &Connection, cods: &[String]) -> Res<Vec<Value>> {
 
 /// Os itens um nível abaixo na árvore de uma visão. `sentido` "aponta": os itens que este aponta na propriedade
 /// (ex.: "Bloqueado por" → quem bloqueia); "apontado": os itens que apontam para este nela (ex.: "Pai" → os filhos).
+/// As pastas de um item e dos descendentes dele (pelas relações de pai: as de um item só, como Pai → Filhos),
+/// descendo a árvore inteira. Devolve (pasta do item, pastas dos descendentes, quantos descendentes).
+pub fn pastas_da_arvore(conn: &Connection, id: i64) -> Res<(Option<String>, Vec<String>, usize)> {
+    let pasta: Option<String> = conn.query_row("SELECT pasta FROM itens WHERE id = ?", [id], |r| r.get(0))?;
+    let pais: Vec<i64> = conn
+        .prepare("SELECT id FROM propriedades WHERE especie = 'relacao' AND json_extract(config, '$.um_so') = 1")?
+        .query_map([], |r| r.get(0))?
+        .collect::<Result<_, _>>()?;
+    let mut vistos = std::collections::HashSet::from([id]);
+    let mut fila = vec![resumo_item(conn, id)?.0];
+    let mut pastas = vec![];
+    while let Some(cod) = fila.pop() {
+        for p in &pais {
+            let mut st = conn.prepare(&format!(
+                "SELECT id, codigo, pasta FROM itens WHERE apagado_em IS NULL AND EXISTS \
+                 (SELECT 1 FROM json_each(itens.props, '$.\"{p}\"') WHERE value = ?1)"
+            ))?;
+            let filhos = st
+                .query_map([&cod], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?, r.get::<_, Option<String>>(2)?)))?
+                .collect::<Result<Vec<_>, _>>()?;
+            for (fid, fcod, fpasta) in filhos {
+                if vistos.insert(fid) {
+                    pastas.extend(fpasta);
+                    fila.push(fcod);
+                }
+            }
+        }
+    }
+    Ok((pasta, pastas, vistos.len() - 1))
+}
+
 pub fn ramo(conn: &Connection, id: i64, prop: i64, sentido: &str) -> Res<Vec<Item>> {
     let (cod, _) = resumo_item(conn, id)?;
     let sql = if sentido == "apontado" {

@@ -114,6 +114,8 @@ pub fn rotas(banco: Banco) -> Router {
         .route("/api/itens/{id}/versoes", get(versoes_item))
         .route("/api/itens/{id}/ligar", post(ligar))
         .route("/api/itens/{id}/ramo", get(ramo))
+        .route("/api/itens/{id}/tamanho", get(tamanho_item))
+        .route("/api/bancadas/tamanho", get(tamanho_bancada))
         .route("/api/resumos", get(resumos))
         .route("/api/versoes/{id}/restaurar", post(restaurar_versao))
         .route("/api/lixeira", get(lixeira).delete(esvaziar_lixeira))
@@ -237,6 +239,28 @@ pub async fn servir(banco: Banco) {
         }
         Err(e) => eprintln!("atelier: não consegui abrir {endereco}: {e}"),
     }
+}
+
+/// Quanto o workspace do item ocupa no disco: só a pasta dele e com a dos descendentes (Pai → Filhos).
+async fn tamanho_item(State(b): State<Banco>, Path(id): Path<i64>) -> R {
+    let (pasta, filhos, n) = com(&b, |c| db::pastas_da_arvore(c, id))?;
+    let r = tokio::task::spawn_blocking(move || {
+        let proprio = pasta.as_ref().map(|p| crate::disco::somar_pastas([std::path::PathBuf::from(p)])).unwrap_or(0);
+        let todos = crate::disco::somar_pastas(pasta.into_iter().chain(filhos).map(std::path::PathBuf::from));
+        json!({ "proprio": proprio, "com_filhos": todos, "filhos": n })
+    })
+    .await
+    .map_err(|e| Erro::Invalido(e.to_string()))?;
+    Ok(Json(r))
+}
+
+/// Quanto a bancada aberta ocupa no disco (a pasta inteira: itens, banco, anexos).
+async fn tamanho_bancada(State(b): State<Banco>) -> R {
+    let Some(banc) = b.bancada_ativa() else { return Err(Erro::Invalido("nenhuma bancada aberta".into())) };
+    let n = tokio::task::spawn_blocking(move || crate::disco::somar_pastas([std::path::PathBuf::from(banc.caminho)]))
+        .await
+        .map_err(|e| Erro::Invalido(e.to_string()))?;
+    Ok(Json(json!({ "bytes": n })))
 }
 
 async fn esquema(State(b): State<Banco>) -> R {

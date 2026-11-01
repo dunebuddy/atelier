@@ -3,6 +3,7 @@ pub mod agentes;
 pub mod api;
 pub mod bancada;
 pub mod db;
+pub mod disco;
 pub mod explorador;
 pub mod exportar;
 pub mod integracoes;

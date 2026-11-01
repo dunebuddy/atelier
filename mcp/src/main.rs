@@ -4,6 +4,9 @@
 //! aberto ou fechado. Reabre a bancada a cada chamada: se o Paulo trocar de bancada no app, o agente acompanha.
 //! Tipos e propriedades são tratados pelo **nome** (o agente não precisa saber ids).
 
+// a lista de ferramentas é um json! grande demais para o limite padrão da macro
+#![recursion_limit = "256"]
+
 use atelier_core::{bancada, db};
 use rusqlite::Connection;
 use serde_json::{json, Map, Value};
@@ -269,6 +272,11 @@ fn ferramentas() -> Value {
             "inputSchema": { "type": "object", "properties": { "id": ID }, "required": ["id"] }
         },
         {
+            "name": "espaco_em_disco",
+            "description": "Quanto ocupa no disco: com id (código do item), a pasta do workspace dele e a dele somada à dos descendentes (Pai → Filhos, a árvore inteira); sem id, a pasta da bancada inteira. Pasta dentro de outra não conta duas vezes.",
+            "inputSchema": { "type": "object", "properties": { "id": ID } }
+        },
+        {
             "name": "nao_consigo",
             "description": "Use quando o usuário pedir algo que as ferramentas do atelier não fazem: fica anotado num arquivo de pedidos (vira recurso novo) e a tela avisa. Diga o pedido como o usuário falou e o que faltou.",
             "inputSchema": { "type": "object", "properties": {
@@ -438,7 +446,14 @@ impl Mapa {
             Some(o) => {
                 let nome = o.get("propriedade").and_then(|v| v.as_str()).or(o.as_str()).ok_or("ordenar: { propriedade, crescente }")?;
                 let asc = o.get("crescente").and_then(|v| v.as_bool()).unwrap_or(true);
-                cfg.insert("ordenar".into(), json!({ "prop": self.prop(nome)?["id"], "asc": asc }));
+                // as colunas fixas da tabela também ordenam
+                let prop = match nome.trim().to_lowercase().as_str() {
+                    "título" | "titulo" => json!("titulo"),
+                    "tipo" => json!("tipo"),
+                    "atualizado" | "atualizado em" | "última atualização" => json!("atualizado"),
+                    _ => self.prop(nome)?["id"].clone(),
+                };
+                cfg.insert("ordenar".into(), json!({ "prop": prop, "asc": asc }));
             }
             None => {}
         }
@@ -880,13 +895,30 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
             let vs = db::listar_visoes(&conn).map_err(e)?;
             Ok(json!({ "visoes": vs.iter().map(|v| json!({
                 "nome": v.nome, "layout": v.layout, "grupo": v.grupo, "fixa": v.fixa, "filtro": mapa.filtro_humano(&v.filtro),
-                "ordenar": v.config.get("ordenar").map(|o| json!({ "propriedade": mapa.prop_nome(&o["prop"].to_string()), "crescente": o["asc"] })),
+                "ordenar": v.config.get("ordenar").map(|o| {
+                    let nome = match o["prop"].as_str() { Some("titulo") => "Título".into(), Some("tipo") => "Tipo".into(), Some("atualizado") => "Atualizado".into(), _ => mapa.prop_nome(&o["prop"].to_string()) };
+                    json!({ "propriedade": nome, "crescente": o["asc"] })
+                }),
                 "colunas": v.config.get("colunas").and_then(|c| c.as_array()).map(|c| c.iter().map(|id| mapa.prop_nome(&id.to_string())).collect::<Vec<_>>()),
                 "larguras": v.config.get("larguras").and_then(|l| l.as_object()).map(|l| l.iter().map(|(k, px)| {
                     let nome = match k.as_str() { "titulo" => "Título".to_string(), "tipo" => "Tipo".to_string(), "atualizado" => "Atualizado".to_string(), id => mapa.prop_nome(id) };
                     (nome, px.clone())
                 }).collect::<Map<_, _>>()),
             })).collect::<Vec<_>>() }))
+        }
+        "espaco_em_disco" => {
+            use std::path::PathBuf;
+            let legivel = |n: u64| if n >= 1 << 30 { format!("{:.1} GB", n as f64 / (1u64 << 30) as f64) } else { format!("{:.0} MB", n as f64 / (1u64 << 20) as f64) };
+            if a.get("id").is_some() {
+                let id = id_de(&conn, a)?;
+                let (pasta, filhos, n) = db::pastas_da_arvore(&conn, id).map_err(e)?;
+                let proprio = pasta.as_ref().map(|p| atelier_core::disco::somar_pastas([PathBuf::from(p)])).unwrap_or(0);
+                let todos = atelier_core::disco::somar_pastas(pasta.clone().into_iter().chain(filhos).map(PathBuf::from));
+                Ok(json!({ "pasta": pasta, "so_ele": legivel(proprio), "com_os_filhos": legivel(todos), "descendentes": n, "bytes": { "so_ele": proprio, "com_os_filhos": todos } }))
+            } else {
+                let n = atelier_core::disco::somar_pastas([PathBuf::from(&banc.caminho)]);
+                Ok(json!({ "bancada": banc.nome, "pasta": banc.caminho, "ocupa": legivel(n), "bytes": n }))
+            }
         }
         "criar_visao" => {
             let mut d = mapa.dados_visao(a)?;

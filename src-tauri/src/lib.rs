@@ -111,6 +111,14 @@ pub fn run() {
             if let Some(w) = app.get_webview_window("main") {
                 ajustar_janela(&w);
             }
+            // o instalador renomeia o MCP que estava em uso (windows/ganchos.nsh); o que ninguém usa mais sai aqui
+            if let Some(pasta) = std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.to_path_buf())) {
+                for f in std::fs::read_dir(pasta).into_iter().flatten().flatten() {
+                    if f.file_name().to_string_lossy().starts_with("atelier-mcp.antigo-") {
+                        let _ = std::fs::remove_file(f.path());
+                    }
+                }
+            }
 
             // bandeja: clique traz a janela; o menu tem Capturar, Abrir e Sair
             let capturar = MenuItem::with_id(app, "capturar", "Capturar…", true, None::<&str>)?;

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { BotaoWorkspace } from "./BotaoWorkspace";
 import {
   Copy, Minus, PanelLeft, Search, Settings, Sparkles, Square, Trash2, X,
 } from "lucide-react";
@@ -157,14 +158,15 @@ function BuscaRapida({ esquema, ir, aoFechar, inicial = "" }: { esquema: Esquema
         icone: esquema.tipos.find((t) => t.id === r.tipo_id)?.icone ?? "·",
         detalhe: `#${r.codigo} · recente`,
         rota: { v: "item", id: r.id } as Rota,
+        item: r,
       }))
     : [];
-  const opcoes: { rotulo: string; icone: string; detalhe: string; rota: Rota }[] = [
+  const opcoes: { rotulo: string; icone: string; detalhe: string; rota: Rota; item?: { id: number; titulo: string; tipo_id: number | null } }[] = [
     ...recentes,
     ...tipos.map((t) => ({ rotulo: t.nome, icone: t.icone, detalhe: "tipo", rota: { v: "lista", tipo: t.id } as Rota })),
     ...itens.filter((it) => !recentes.some((r) => (r.rota as { id: number }).id === it.id)).map((it) => {
       const t = esquema.tipos.find((x) => x.id === it.tipo_id);
-      return { rotulo: it.titulo || "Sem título", icone: t?.icone ?? "·", detalhe: `#${it.codigo} · ${t?.nome ?? "sem tipo"}`, rota: { v: "item", id: it.id } as Rota };
+      return { rotulo: it.titulo || "Sem título", icone: t?.icone ?? "·", detalhe: `#${it.codigo} · ${t?.nome ?? "sem tipo"}`, rota: { v: "item", id: it.id } as Rota, item: it };
     }),
   ];
 
@@ -202,6 +204,7 @@ function BuscaRapida({ esquema, ir, aoFechar, inicial = "" }: { esquema: Esquema
               <span className="tipo-chip pequeno">{o.icone}</span>
               <span className="br-rotulo">{o.rotulo}</span>
               <span className="br-detalhe">{o.detalhe}</span>
+              {o.item && <BotaoWorkspace esquema={esquema} item={o.item} depois={aoFechar} />}
             </button>
           ))}
           {opcoes.length === 0 && <div className="br-vazio">{b ? "Nada encontrado." : "Nenhum item ainda."}</div>}

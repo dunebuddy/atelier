@@ -443,6 +443,8 @@ body.redimensionando .sidebar { transition: none; }
   box-shadow: var(--sombra-folha); overflow: hidden;
 }
 .painel.animar .janela { transition: left .18s ease, top .18s ease, width .18s ease, height .18s ease; }
+/* a fita desliza como a do Niri (o corte acompanha, senão a janela some antes de chegar) */
+.painel.animar .janela.na-fita { transition: left .26s cubic-bezier(.2, .8, .2, 1), top .26s cubic-bezier(.2, .8, .2, 1), width .26s cubic-bezier(.2, .8, .2, 1), height .26s cubic-bezier(.2, .8, .2, 1), clip-path .26s cubic-bezier(.2, .8, .2, 1); }
 /* destaque da janela ativa numa camada por cima do conteúdo: como outline, a tabela que rola pintava por cima dele */
 .janela.moldura { isolation: isolate; }
 .janela.moldura.ativa::after {
@@ -1070,3 +1072,20 @@ button.mencao:hover { text-decoration: underline; text-underline-offset: 2px; }
 .sobre { display: flex; gap: 14px; align-items: center; margin-top: 8px; }
 .sobre .marca { width: 56px; height: 56px; margin: 0; }
 .sobre-nome { font-size: 18px; font-weight: 600; color: var(--texto); display: flex; align-items: center; gap: 8px; }
+
+/* "Abrir workspace" nas listas de itens: discreto, aparece no hover da linha (BotaoWorkspace.tsx) */
+.botao-ws {
+  display: inline-grid; place-items: center; width: 20px; height: 20px; flex-shrink: 0; border-radius: 5px;
+  color: var(--texto-3); cursor: pointer; opacity: 0; transition: opacity .12s;
+}
+.botao-ws:hover { background: var(--hover); color: var(--acento); }
+.tabela tbody tr:hover .botao-ws, .lc-linha:hover .botao-ws, .kb-cartao:hover .botao-ws, .ldt-evento:hover .botao-ws,
+.arv-no:hover .botao-ws, .br-item:hover .botao-ws, .br-item.foco .botao-ws, .rel-chip:hover .botao-ws { opacity: 1; }
+.arv-no .botao-ws { margin-left: auto; }
+.rel-chip .rel-ws { width: 16px; height: 16px; }
+/* rótulo de menu que traz um nome (pasta do workspace): sem caixa alta, corta em … */
+.menu-rotulo-nome { text-transform: none; letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* arrastando uma visão na barra lateral: nada de selecionar texto, cursor de mover */
+body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grabbing !important; }
+/* espaço em disco do workspace, ao lado do nome dele na barra de status */
+.bs-disco { gap: 5px; margin-left: 4px; }

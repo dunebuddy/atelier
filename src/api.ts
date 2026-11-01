@@ -279,6 +279,9 @@ export const api = {
   apagarVisao: (id: number) => req("DELETE", `/visoes/${id}`),
 
   /** itens que passam no filtro de uma visão (período já resolvido em datas) */
+  /** quanto o workspace do item ocupa no disco (só ele e com os descendentes) */
+  tamanhoDoItem: (id: number) => req<{ proprio: number; com_filhos: number; filhos: number }>("GET", `/itens/${id}/tamanho`),
+  tamanhoDaBancada: () => req<{ bytes: number }>("GET", "/bancadas/tamanho"),
   itensDaVisao: (f: FiltroVisao, periodo: { de: string; ate: string } | null, q?: string) =>
     req<Item[]>("GET", `/itens?${queryFiltro(f, periodo, q)}`),
   linha: (de: string, ate: string, f: FiltroVisao) => req<Evento[]>("GET", `/linha?${queryFiltro(f, { de, ate })}`),
@@ -356,7 +359,8 @@ export interface Visao {
     colunas?: number[];
     /** largura de cada coluna da tabela em px ("titulo", "tipo", "atualizado" ou o id da propriedade) */
     larguras?: Record<string, number>;
-    ordenar?: { prop: number; asc: boolean };
+    /** ordem escolhida: id da propriedade, ou "titulo" / "tipo" / "atualizado" (colunas fixas da tabela) */
+    ordenar?: { prop: number | "titulo" | "tipo" | "atualizado"; asc: boolean };
     /** árvore na barra lateral: a propriedade de relação que leva ao nível de baixo */
     arvore?: { prop: number; sentido: Sentido; so_raizes?: boolean } | null;
   };

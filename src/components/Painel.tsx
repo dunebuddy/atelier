@@ -104,9 +104,11 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
     return { x: m.x, y: m.y + CABECA, w: m.w, h: m.h - CABECA };
   };
 
-  // fita: a janela ativa sempre inteira à vista
+  // fita: a janela ativa sempre inteira à vista; a de antes fica junto quando cabe (como no Niri)
+  const ativasAntes = useRef<(string | null)[]>([]);
   useEffect(() => {
-    setRolagem((rs) => estado.metades.map((m, mi) => (m.modo === "fita" ? P.rolagemPara(m, corpoDe(mi).w, m.ativa, rs[mi] ?? 0) : 0)));
+    setRolagem((rs) => estado.metades.map((m, mi) => (m.modo === "fita" ? P.rolagemPara(m, corpoDe(mi).w, m.ativa, rs[mi] ?? 0, ativasAntes.current[mi]) : 0)));
+    ativasAntes.current = estado.metades.map((m) => m.ativa);
   }, [estado, tam.w]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const lugares: Lugar[] = estado.metades.flatMap((m, mi) => P.arrumar(m, mi, corpoDe(mi), rolagem[mi] ?? 0));
@@ -296,11 +298,13 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
         return (
           <section
             key={j.id}
-            className={`janela${ativa ? " ativa" : ""}${m.modo !== "abas" && m.janelas.length > 1 ? " moldura" : ""}`}
+            className={`janela${ativa ? " ativa" : ""}${m.modo !== "abas" && m.janelas.length > 1 ? " moldura" : ""}${m.modo === "fita" ? " na-fita" : ""}`}
             style={{
               left: l.r.x, top: l.r.y, width: l.r.w, height: l.r.h,
-              display: l.visivel ? undefined : "none",
-              clipPath: corte.top || corte.right || corte.bottom || corte.left ? `inset(${corte.top}px ${corte.right}px ${corte.bottom}px ${corte.left}px)` : undefined,
+              // na fita, as janelas de fora seguem no lugar (cortadas): assim deslizam para dentro em vez de surgir
+              display: l.visivel || m.modo === "fita" ? undefined : "none",
+              // na fita o corte vale sempre (mesmo zerado), para animar junto com a posição
+              clipPath: m.modo === "fita" || corte.top || corte.right || corte.bottom || corte.left ? `inset(${corte.top}px ${corte.right}px ${corte.bottom}px ${corte.left}px)` : undefined,
             }}
             onMouseDownCapture={() => { if (m.ativa !== j.id || estado.foco !== mi) mudar((s) => P.ativar(s, mi, j.id)); }}
           >

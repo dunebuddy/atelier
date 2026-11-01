@@ -1,5 +1,5 @@
 import type { SecaoConfig } from "./Configuracoes";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, History, ListTree, Plus, Settings2, Trash2 } from "lucide-react";
 import { api, Bancadas, Esquema, Visao } from "../api";
 import { falhou, guardar, ler, Rota } from "../ui";
@@ -74,8 +74,8 @@ export function Sidebar({
   }, [visoes, esquema]);
 
   // arrastar uma visão para cima de outra: fica antes dela e no mesmo grupo
-  const soltar = async (alvo: Visao | null, grupo: string | null) => {
-    const v = visoes.find((x) => x.id === arrastando);
+  const soltar = async (id: number, alvo: Visao | null, grupo: string | null) => {
+    const v = visoes.find((x) => x.id === id);
     setArrastando(null);
     setSobre(null);
     if (!v || v.id === alvo?.id) return;
@@ -97,6 +97,46 @@ export function Sidebar({
     }
   };
 
+  // o clique que encerra um arrasto não abre a visão
+  const acabouDeArrastar = useRef(false);
+  /** Arrastar com eventos de ponteiro (o arrastar HTML5 não funciona no app instalado: o Tauri segura no Windows).
+   *  Solta em cima de uma visão (fica antes dela, no grupo dela) ou do título de um grupo (vai para o começo dele). */
+  const pegar = (v: Visao) => (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    const y0 = e.clientY;
+    let ativo = false;
+    let alvo: string | null = null;
+    const debaixo = (x: number, y: number) => document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-soltar-visao]")?.dataset.soltarVisao ?? null;
+    const mover = (ev: PointerEvent) => {
+      if (!ativo && Math.abs(ev.clientY - y0) < 6) return;
+      if (!ativo) {
+        ativo = true;
+        setArrastando(v.id);
+        document.body.classList.add("arrastando-visao");
+      }
+      alvo = debaixo(ev.clientX, ev.clientY);
+      setSobre(alvo == null ? null : alvo.startsWith("g:") ? alvo : Number(alvo));
+    };
+    const fim = () => {
+      window.removeEventListener("pointermove", mover);
+      window.removeEventListener("pointerup", fim);
+      document.body.classList.remove("arrastando-visao");
+      if (!ativo) return;
+      acabouDeArrastar.current = true;
+      setTimeout(() => (acabouDeArrastar.current = false), 0);
+      if (alvo == null) { setArrastando(null); setSobre(null); return; }
+      if (alvo.startsWith("g:")) {
+        const g = alvo.slice(2);
+        soltar(v.id, visoes.find((x) => x.grupo === g && x.id !== v.id) ?? null, g);
+      } else {
+        const a = visoes.find((x) => x.id === Number(alvo)) ?? null;
+        soltar(v.id, a, a?.grupo ?? null);
+      }
+    };
+    window.addEventListener("pointermove", mover);
+    window.addEventListener("pointerup", fim);
+  };
+
   const alternarGrupo = (g: string) => {
     const n = fechados.includes(g) ? fechados.filter((x) => x !== g) : [...fechados, g];
     setFechados(n);
@@ -106,13 +146,10 @@ export function Sidebar({
   const linha = (v: Visao) => (
     <button
       key={v.id}
-      draggable
-      onDragStart={(e) => { setArrastando(v.id); e.dataTransfer.effectAllowed = "move"; }}
-      onDragEnd={() => { setArrastando(null); setSobre(null); }}
-      onDragOver={(e) => { if (arrastando != null) { e.preventDefault(); setSobre(v.id); } }}
-      onDrop={(e) => { e.preventDefault(); soltar(v, v.grupo ?? null); }}
+      data-soltar-visao={v.id}
+      onPointerDown={pegar(v)}
       className={`sb-item${rota.v === "visao" && rota.id === v.id ? " ativo" : ""}${sobre === v.id ? " soltar-antes" : ""}${arrastando === v.id ? " arrastando" : ""}`}
-      onClick={() => ir({ v: "visao", id: v.id })}
+      onClick={() => { if (!acabouDeArrastar.current) ir({ v: "visao", id: v.id }); }}
     >
       <span className="tipo-chip">{v.icone}</span>
       <span className="rotulo">{v.nome}</span>
@@ -162,14 +199,9 @@ export function Sidebar({
             return (
               <div key={g} className="sb-grupo">
                 <button
+                  data-soltar-visao={`g:${g}`}
                   className={`sb-grupo-titulo${sobre === `g:${g}` ? " soltar-antes" : ""}`}
                   onClick={() => alternarGrupo(g)}
-                  onDragOver={(e) => { if (arrastando != null) { e.preventDefault(); setSobre(`g:${g}`); } }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const primeira = visoes.find((x) => x.grupo === g && x.id !== arrastando) ?? null;
-                    soltar(primeira, g);
-                  }}
                 >
                   {fechado ? <ChevronRight size={13} /> : <ChevronDown size={13} />} {g}
                 </button>

@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { api, Esquema, FiltroData, FiltroVisao, Item, Layout, opcoesDe, Propriedade, propsDoTipo, Visao } from "../api";
 import { EMOJIS, falhou, Rota } from "../ui";
-import { chaveDe, comparar } from "../ordem";
+import { ordenarItens } from "../ordem";
 import { datasDo, PERIODOS, rotuloIntervalo } from "../visao";
 import { Kanban, ListaCompacta, Tabela } from "./Layouts";
 import { LinhaDoTempo } from "./LinhaDoTempo";
@@ -49,6 +49,14 @@ export function ehHistorico(e: Esquema, it: Item) {
  * O item aparece na visão? Com "esconder concluídos" ligado, o item em status de histórico sai — a não ser que o
  * filtro peça aquele status de propósito (filtrar Status = Feito tem de mostrar os feitos).
  */
+/** Nome de uma coluna de ordem: propriedade ou fixa da tabela. */
+function nomeDaColuna(e: Esquema, col: number | string) {
+  if (col === "titulo") return "Título";
+  if (col === "tipo") return "Tipo";
+  if (col === "atualizado") return "Atualizado";
+  return e.propriedades.find((p) => p.id === col)?.nome ?? "?";
+}
+
 export function visivelNaVisao(e: Esquema, f: FiltroVisao, it: Item) {
   if (!f.esconder_historico || !ehHistorico(e, it)) return true;
   // só filtro de status conta como "pediu de propósito" (filtro de relação, ex. "Pai contém #x", não)
@@ -131,9 +139,7 @@ export function VisaoTela({
     const l = (itens ?? []).filter((i) => visivelNaVisao(esquema, f, i));
     if (!ordenar) return l;
     // ordem fixa da visão (ex.: por prazo); sem valor vai para o fim
-    const p = esquema.propriedades.find((x) => x.id === ordenar.prop);
-    if (!p) return l;
-    return [...l].sort((a, b) => comparar(chaveDe(esquema, a, p), chaveDe(esquema, b, p), ordenar.asc));
+    return ordenarItens(esquema, l, ordenar.prop, ordenar.asc);
   }, [itens, f.esconder_historico, JSON.stringify(f.props), esquema, ordenar?.prop, ordenar?.asc]); // eslint-disable-line react-hooks/exhaustive-deps
   const escondidos = (itens?.length ?? 0) - visiveis.length;
 
@@ -214,7 +220,7 @@ export function VisaoTela({
         )}
         {v.layout !== "linha" && (
           <button className="btn" onClick={pOrdem.abrir}>
-            <ArrowUpDown size={14} /> {ordenar ? `${esquema.propriedades.find((p) => p.id === ordenar.prop)?.nome ?? "?"} ${ordenar.asc ? "↑" : "↓"}` : "Ordem"}
+            <ArrowUpDown size={14} /> {ordenar ? `${nomeDaColuna(esquema, ordenar.prop)} ${ordenar.asc ? "↑" : "↓"}` : "Ordem"}
           </button>
         )}
         {!v.fixa && v.layout !== "linha" && (f.esconder_historico || (itens ?? []).some((i) => ehHistorico(esquema, i))) && (
@@ -240,6 +246,13 @@ export function VisaoTela({
         <Tabela esquema={esquema} itens={visiveis} colunas={colunas} mostrarTipo={unicoTipo == null} ir={ir} aoMudarEsquema={aoMudarEsquema} aoMudarItens={(l) => setItens(l)} todos={itens}
           larguras={v.config?.larguras}
           aoReordenar={(ids) => mudar({ config: { ...v.config, colunas: ids } })}
+          ordem={ordenar ? { col: String(ordenar.prop), asc: ordenar.asc } : null}
+          aoOrdenar={(o) => {
+            // o clique no cabeçalho grava na visão, a mesma ordem do botão "Ordem"
+            const { ordenar: _o, ...resto } = v.config ?? {};
+            const fixa = o && ["titulo", "tipo", "atualizado"].includes(o.col);
+            mudar({ config: o ? { ...resto, ordenar: { prop: fixa ? (o.col as "titulo" | "tipo" | "atualizado") : Number(o.col), asc: o.asc } } : resto });
+          }}
           aoMudarLarguras={(l) => {
             const { larguras: _l, ...resto } = v.config ?? {};
             mudar({ config: Object.keys(l).length ? { ...resto, larguras: l } : resto });

@@ -360,3 +360,17 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 - Próximo pacote: **0.1.7 · Workspaces e navegação** (Abrir workspace em toda lista, clareza do workspace, arrastar na
   barra lateral, espaço em disco, modo fita: completar a descrição com o Paulo).
 
+## 2026-11-01 (noite, depois) — 0.1.7
+
+- Pacote 0.1.7 feito e testado sem janela (`bun run teste`): MCP renomeado pelo instalador, ordem gravada na visão,
+  "Abrir workspace" nas listas, menu com a pasta do workspace, arrastar na barra lateral, espaço em disco, fita como
+  o Niri. Detalhes em `PENDENCIAS.md` → Feito.
+- No navegador interno escondido o `requestAnimationFrame` não roda: o painel não liga a classe `animar` e as
+  transições não aparecem. A animação da fita foi conferida pelo CSS aplicado; ver de verdade só no app.
+- Gravação feita pela própria API de teste não muda o `data_version` (mesma conexão): a tela de teste não recarrega
+  sozinha; recarregar a página.
+
+### Ponto de parada
+- 0.1.7 commitada, **sem tag**: gerar a versão com o ok do Paulo.
+- Próximo pacote: **0.1.8 · Esquema completo pelo MCP + propriedades**.
+

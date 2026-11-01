@@ -24,6 +24,24 @@ export function chaveDe(esquema: Esquema, it: Item, p: Propriedade): Chave {
   return typeof x === "number" ? x : String(x);
 }
 
+/** A chave de um item numa coluna da tabela: propriedade (id) ou uma das fixas. */
+export function chaveDaColuna(esquema: Esquema, it: Item, col: number | string): Chave {
+  if (col === "titulo") return it.titulo || null;
+  if (col === "tipo") return esquema.tipos.find((t) => t.id === it.tipo_id)?.nome ?? null;
+  if (col === "atualizado") return it.atualizado_em;
+  const p = esquema.propriedades.find((x) => String(x.id) === String(col));
+  return p ? chaveDe(esquema, it, p) : null;
+}
+
+/** Ordena pela coluna; empate desempata por título e código, que não mudam quando o item é mexido (assim o item
+ *  editado não pula para o topo do grupo dele). */
+export function ordenarItens(esquema: Esquema, itens: Item[], col: number | string, asc: boolean): Item[] {
+  return [...itens].sort((a, b) =>
+    comparar(chaveDaColuna(esquema, a, col), chaveDaColuna(esquema, b, col), asc)
+    || colador.compare(a.titulo, b.titulo)
+    || colador.compare(a.codigo, b.codigo));
+}
+
 export function comparar(a: Chave, b: Chave, asc: boolean): number {
   if (a === b) return 0;
   if (a === null) return 1;

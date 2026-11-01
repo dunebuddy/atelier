@@ -25,11 +25,32 @@ export function definirPastaDoWorkspace(f: () => Promise<string | undefined>) {
   pastaDoWorkspace = f;
 }
 
+/** De quem é a pasta do workspace (para o menu dizer) e o item da janela em foco, quando não é o do workspace. */
+export interface InfoWorkspace {
+  /** "bancada MDB" ou "#d475363 Calculadora" */
+  nome: string;
+  /** o item aberto na janela em foco, se for outro que não o do workspace: oferece a pasta dele */
+  outroItem?: { id: number; codigo?: string; titulo: string } | null;
+}
+let infoWorkspace: () => InfoWorkspace = () => ({ nome: "workspace" });
+export function definirInfoWorkspace(f: () => InfoWorkspace) {
+  infoWorkspace = f;
+}
+
 /** Pasta do workspace ativo nas mãos de `f` (avisa se não tem). */
 async function naPasta(f: (pasta: string) => void) {
   const p = await pastaDoWorkspace().catch(() => undefined);
   if (p) f(p);
   else avisar("Este workspace não tem pasta.");
+}
+
+/** Pasta de um item (criada na hora, se ainda não tem) nas mãos de `f`. */
+async function naPastaDoItem(id: number, f: (pasta: string) => void) {
+  try {
+    f((await api.criarPasta(id)).pasta);
+  } catch (e) {
+    falhou(e);
+  }
 }
 
 /** Abre um terminal (o shell, ou um agente) numa janela ao lado. */
@@ -47,6 +68,7 @@ export function BotaoTerminal() {
   useEffect(() => {
     if (pop.ancora) fetch(`${BASE}/terminal/programas`).then((r) => r.json()).then(setD).catch(() => {});
   }, [pop.ancora]);
+  const info = pop.ancora ? infoWorkspace() : { nome: "" };
   return (
     <span className="botao-terminal">
       <button className="btn-icone" title="Novo terminal (Ctrl+`)" onClick={() => abrirTerminal()}><SquareTerminal size={15} /></button>
@@ -59,13 +81,31 @@ export function BotaoTerminal() {
               <SquareTerminal size={14} /> {s.nome}
             </button>
           ))}
-          <div className="menu-rotulo">Pasta do workspace</div>
+          <div className="menu-rotulo menu-rotulo-nome" title="O terminal e o explorador abrem na pasta do workspace em que você está">
+            Pasta do workspace: {info.nome}
+          </div>
           <button className="menu-item" onClick={() => { pop.fechar(); naPasta((p) => abrir({ v: "pastas", raiz: p }, true)); }}>
             <FolderTree size={14} /> Explorador em árvore
           </button>
           <button className="menu-item" onClick={() => { pop.fechar(); naPasta((p) => api.abrirPasta(p).catch(falhou)); }}>
             <FolderOpen size={14} /> No explorador do sistema
           </button>
+          {info.outroItem && (
+            <>
+              <div className="menu-rotulo menu-rotulo-nome" title="O item aberto na janela em foco não é o deste workspace">
+                Pasta deste item: {info.outroItem.codigo ? `#${info.outroItem.codigo} ` : ""}{info.outroItem.titulo}
+              </div>
+              <button className="menu-item" onClick={() => { pop.fechar(); naPastaDoItem(info.outroItem!.id, (p) => abrirTerminal(p)); }}>
+                <SquareTerminal size={14} /> Terminal na pasta do item
+              </button>
+              <button className="menu-item" onClick={() => { pop.fechar(); naPastaDoItem(info.outroItem!.id, (p) => abrir({ v: "pastas", raiz: p }, true)); }}>
+                <FolderTree size={14} /> Explorador em árvore
+              </button>
+              <button className="menu-item" onClick={() => { pop.fechar(); naPastaDoItem(info.outroItem!.id, (p) => api.abrirPasta(p).catch(falhou)); }}>
+                <FolderOpen size={14} /> No explorador do sistema
+              </button>
+            </>
+          )}
           <div className="menu-rotulo">Agentes</div>
           {(d?.agentes ?? []).map((a) => (
             <button key={a.id} className="menu-item" onClick={() => { abrirTerminal(undefined, a.id, a.nome); pop.fechar(); }}>

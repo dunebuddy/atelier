@@ -2,8 +2,8 @@ import { useRef, useState } from "react";
 import { ArrowDown, ArrowUp, FolderOpen, Layers, Maximize2, Type } from "lucide-react";
 import { api, ConfigProp, Esquema, Item, Opcao, opcoesDe, Propriedade, Valor } from "../api";
 import { avisar, falhou, Rota } from "../ui";
-import { chaveDe, comparar } from "../ordem";
 import { dataHora } from "../visao";
+import { BotaoWorkspace } from "./BotaoWorkspace";
 import { MenuPasta } from "./MenuPasta";
 import { Etiqueta, IconeEspecie, textoSimples, urgencia, valorDe, ValorProp } from "./Valor";
 
@@ -39,7 +39,7 @@ const LARGURA_PADRAO: Record<string, number> = { titulo: 320, tipo: 130 };
 const LARGURA_MINIMA = 60;
 
 export function Tabela({
-  esquema, itens, todos, colunas, mostrarTipo, ir, aoMudarEsquema, aoMudarItens, larguras, aoReordenar, aoMudarLarguras,
+  esquema, itens, todos, colunas, mostrarTipo, ir, aoMudarEsquema, aoMudarItens, larguras, aoReordenar, aoMudarLarguras, ordem, aoOrdenar,
 }: {
   esquema: Esquema;
   itens: Item[];
@@ -54,8 +54,10 @@ export function Tabela({
   /** nova ordem das colunas de propriedade (arrastando o cabeçalho) */
   aoReordenar?: (ids: number[]) => void;
   aoMudarLarguras?: (l: Record<string, number>) => void;
+  /** a ordem da visão (os itens já chegam ordenados); o clique no cabeçalho pede outra */
+  ordem: { col: string; asc: boolean } | null;
+  aoOrdenar: (o: { col: string; asc: boolean } | null) => void;
 }) {
-  const [ordem, setOrdem] = useState<{ col: string; asc: boolean } | null>(null);
   const mudar = useMudarProp(todos, aoMudarItens, esquema);
   // arrastando um cabeçalho: qual coluna e antes de qual posição ela cai
   const [arrasto, setArrasto] = useState<{ id: number; antes: number } | null>(null);
@@ -65,17 +67,7 @@ export function Tabela({
   // o clique que encerra um arrasto não ordena
   const acabouDeArrastar = useRef(false);
 
-  let linhas = itens;
-  if (ordem) {
-    const p = esquema.propriedades.find((x) => String(x.id) === ordem.col);
-    const v = (i: Item) => {
-      if (ordem.col === "titulo") return i.titulo || null;
-      if (ordem.col === "tipo") return esquema.tipos.find((t) => t.id === i.tipo_id)?.nome ?? null;
-      if (ordem.col === "atualizado") return i.atualizado_em;
-      return p ? chaveDe(esquema, i, p) : null;
-    };
-    linhas = [...itens].sort((a, b) => comparar(v(a), v(b), ordem.asc));
-  }
+  const linhas = itens;
 
   const larg = provisorias ?? larguras ?? {};
   const fixas = Object.keys(larg).length > 0;
@@ -171,7 +163,7 @@ export function Tabela({
         onPointerDown={prop ? pegar(prop.id) : undefined}
         onClick={() => {
           if (acabouDeArrastar.current) return;
-          setOrdem((o) => (o?.col === chave ? (o.asc ? { col: chave, asc: false } : null) : { col: chave, asc: true }));
+          aoOrdenar(ordem?.col === chave ? (ordem.asc ? { col: chave, asc: false } : null) : { col: chave, asc: true });
         }}
         style={{ cursor: "pointer" }}
         title={prop && aoReordenar ? "Clique ordena · arraste para o lado para mudar a ordem das colunas" : undefined}
@@ -219,6 +211,7 @@ export function Tabela({
                       {it.titulo || <span className="vazio" style={{ opacity: 1 }}>Sem título</span>}
                     </span>
                     <span className="acoes-linha">
+                      <BotaoWorkspace esquema={esquema} item={it} />
                       <BotaoPasta pasta={it.pasta} />
                       <span className="abrir"><Maximize2 size={11} /> Abrir</span>
                     </span>
@@ -261,6 +254,7 @@ export function ListaCompacta({ esquema, itens, colunas, ir }: { esquema: Esquem
             <span className="lc-props">
               {colunas.map((p) => <Resumo key={p.id} esquema={esquema} prop={p} item={it} />)}
             </span>
+            <BotaoWorkspace esquema={esquema} item={it} />
             <BotaoPasta pasta={it.pasta} />
             <span className="data-hora">{dataHora(it.atualizado_em)}</span>
           </div>
@@ -358,6 +352,7 @@ export function Kanban({
                 </div>
                 <div className="kb-rodape">
                   <span className="id-item">#{it.codigo}</span>
+                  <BotaoWorkspace esquema={esquema} item={it} />
                   <BotaoPasta pasta={it.pasta} />
                   <span className="data-hora">{dataHora(it.atualizado_em)}</span>
                 </div>

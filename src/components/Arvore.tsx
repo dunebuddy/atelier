@@ -3,6 +3,7 @@ import { ArrowLeft, ChevronDown, ChevronRight, ListTree, RefreshCw } from "lucid
 import { api, Esquema, Item, Sentido, Visao } from "../api";
 import { abrir, falhou, Rota } from "../ui";
 import { datasDo } from "../visao";
+import { BotaoWorkspace } from "./BotaoWorkspace";
 import { Popover, usePopover } from "./Popover";
 import { codigos } from "./Valor";
 import { ehHistorico, visivelNaVisao } from "./Visao";
@@ -153,6 +154,7 @@ function No({ item, esquema, rota, ir, prop, sentido, nivel, caminho, esconder }
         </button>
         <span className="arv-icone">{t?.icone ?? "·"}</span>
         <span className="rotulo">{item.titulo || "Sem título"}</span>
+        <BotaoWorkspace esquema={esquema} item={item} />
       </div>
       {aberto && filhos === null && <div className="arv-vazio" style={{ paddingLeft: 30 + nivel * 14 }}>…</div>}
       {aberto && filhos?.length === 0 && <div className="arv-vazio" style={{ paddingLeft: 30 + nivel * 14 }}>nada embaixo</div>}

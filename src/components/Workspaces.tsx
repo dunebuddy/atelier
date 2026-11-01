@@ -1,11 +1,11 @@
 import { IndicadorDitado } from "./Ditado";
 import { useEffect, useRef, useState } from "react";
 import {
-  ChevronDown, Cpu, GalleryHorizontalEnd, LayoutDashboard, LayoutPanelLeft, MemoryStick, PanelTop, Power, Trash2,
+  ChevronDown, Cpu, GalleryHorizontalEnd, HardDrive, LayoutDashboard, LayoutPanelLeft, MemoryStick, PanelTop, Power, Trash2,
 } from "lucide-react";
 import { rotaDe } from "../painel";
-import { BASE } from "../api";
-import { GERAL, sessoesDe, Workspaces } from "../workspaces";
+import { api, BASE } from "../api";
+import { GERAL, itemDa, sessoesDe, Workspaces } from "../workspaces";
 import { Popover, usePopover } from "./Popover";
 
 /** Pede para abrir o workspace de um item (ou o "Geral", sem id). */
@@ -75,6 +75,63 @@ interface Medida {
 }
 
 /** Barra de status: memória (principal) e CPU do atelier; o detalhe mostra quanto cada workspace gasta. */
+/** Bytes como gente lê: 840 KB, 12 MB, 1,4 GB. */
+const tamanho = (b: number) =>
+  b >= 1024 ** 3 ? `${(b / 1024 ** 3).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} GB`
+  : b >= 1024 ** 2 ? `${Math.round(b / 1024 ** 2)} MB`
+  : `${Math.max(1, Math.round(b / 1024))} KB`;
+
+/** Quanto o workspace ocupa no disco: o do item (só ele e com os filhos) ou a bancada inteira. O núcleo guarda a
+ *  medida por 5 minutos; aqui relê ao trocar de workspace e a cada 5 minutos. */
+function IndicadorDisco({ ativo }: { ativo: string }) {
+  const id = ativo === GERAL ? null : itemDa(ativo);
+  const [item, setItem] = useState<{ proprio: number; com_filhos: number; filhos: number } | null>(null);
+  const [bancada, setBancada] = useState<number | null>(null);
+  const pop = usePopover();
+  useEffect(() => {
+    let vivo = true;
+    const medir = () => {
+      if (id != null) api.tamanhoDoItem(id).then((r) => vivo && setItem(r)).catch(() => {});
+      else setItem(null);
+      api.tamanhoDaBancada().then((r) => vivo && setBancada(r.bytes)).catch(() => {});
+    };
+    setItem(null);
+    medir();
+    // de 5 em 5 minutos, só com o app à vista (minimizado ou na bandeja não mede)
+    const t = window.setInterval(() => { if (!document.hidden) medir(); }, 300000);
+    return () => { vivo = false; window.clearInterval(t); };
+  }, [id]);
+  const principal = id != null ? (item ? tamanho(item.proprio) : "…") : bancada != null ? tamanho(bancada) : "…";
+  return (
+    <>
+      <button className="bs-medida bs-disco" onClick={pop.abrir} title="Espaço em disco deste workspace (clique para ver com os filhos e a bancada inteira)">
+        <HardDrive size={12} /> {principal}
+        {id != null && item && item.filhos > 0 && <span className="rotulo-fraco">· {tamanho(item.com_filhos)} com os filhos</span>}
+      </button>
+      {pop.ancora && (
+        <Popover ancora={pop.ancora} aoFechar={pop.fechar} largura={300}>
+          <div className="menu-rotulo">Espaço em disco</div>
+          {id != null && (
+            <div className="bs-grupo">
+              <div className="bs-linha forte"><span>Só este item</span><span>{item ? tamanho(item.proprio) : "calculando…"}</span></div>
+              <div className="bs-linha forte">
+                <span>Com os filhos{item ? ` (${item.filhos})` : ""}</span><span>{item ? tamanho(item.com_filhos) : "calculando…"}</span>
+              </div>
+            </div>
+          )}
+          <div className="bs-grupo">
+            <div className="bs-linha forte"><span>A bancada inteira</span><span>{bancada != null ? tamanho(bancada) : "calculando…"}</span></div>
+          </div>
+          <div className="menu-rotulo" style={{ textTransform: "none", letterSpacing: 0 }}>
+            Filhos são os itens que têm este como Pai, descendo a árvore. Para ver um filho, abra o workspace dele (ou
+            pergunte ao agente da bancada). A medida é refeita a cada 5 minutos.
+          </div>
+        </Popover>
+      )}
+    </>
+  );
+}
+
 export function BarraStatus({ ws }: { ws: Workspaces }) {
   const [m, setM] = useState<Medida | null>(null);
   const pop = usePopover();
@@ -101,6 +158,7 @@ export function BarraStatus({ ws }: { ws: Workspaces }) {
       <button className="bs-ws" title="Workspace aberto agora (cada item tem o seu; o da bancada é o geral). Clique para ver todos (Ctrl+Shift+O)" onClick={() => window.dispatchEvent(new Event("atelier:ver-workspaces"))}>
         <LayoutPanelLeft size={12} /> <span className="rotulo-fraco">Workspace:</span> <span>{ws.info[ws.ativo]?.titulo}</span>
       </button>
+      <IndicadorDisco ativo={ws.ativo} />
       <span style={{ flex: 1 }} />
       <IndicadorDitado interfaceRam={m.interface} />
       <button className="bs-medida" onClick={pop.abrir} title={`Memória: ${mb(m.ram)} de ${mb(m.ram_maquina)} da máquina · CPU ${m.cpu.toFixed(0)}% (clique para ver por workspace)`}>

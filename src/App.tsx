@@ -3,7 +3,7 @@ import { api, BASE, Bancadas, Esquema, Preferencias, TemaArquivo, Visao } from "
 import { aplicarTema } from "./tema";
 import { BarraTitulo } from "./components/BarraTitulo";
 import type { SecaoConfig } from "./components/Configuracoes";
-import { abrirTerminal, definirPastaDoWorkspace, EscolherAgente } from "./components/Terminal";
+import { abrirTerminal, definirInfoWorkspace, definirPastaDoWorkspace, EscolherAgente } from "./components/Terminal";
 import { ComandoAgente, descreverTela, PedidoTela } from "./components/Comando";
 import { AvisoAtualizacao } from "./components/Atualizacao";
 import { CapturaGlobal } from "./components/Captura";
@@ -100,6 +100,15 @@ export default function App() {
     const id = wsAtivo ? W.itemDa(wsAtivo) : null;
     definirPastaDoWorkspace(async () => (id != null ? (await api.criarPasta(id)).pasta : bancadaAtual ?? undefined));
   }, [wsAtivo, bancadaAtual]);
+  // o menu do terminal diz de quem é a pasta, e oferece a do item em foco quando ele não é o do workspace
+  useEffect(() => {
+    const id = wsAtivo ? W.itemDa(wsAtivo) : null;
+    const doItem = rota.v === "item" && rota.id !== id ? rota.id : null;
+    definirInfoWorkspace(() => ({
+      nome: id != null ? `${ws?.info[wsAtivo!]?.titulo ?? "item"}` : `bancada ${bancadas?.ativa?.nome ?? ""}`.trim(),
+      outroItem: doItem != null ? { id: doItem, titulo: ativa?.titulo ?? "item" } : null,
+    }));
+  });
   useEffect(() => {
     if (!ws || !bancadaAtual) return;
     const t = window.setTimeout(() => W.salvar(bancadaAtual, ws), 300);

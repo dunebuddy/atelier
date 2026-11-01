@@ -59,7 +59,7 @@ Junto (decisão do Paulo, 2026-11-01), correções do painel:
 - **Conteúdo largo:** barra horizontal sempre visível no rodapé do painel, junto da vertical (a tabela rola dentro do
   próprio cartão, que ocupa a altura da janela).
 
-## 0.1.7 · Workspaces e navegação
+## 0.1.7 · Workspaces e navegação · **pronta em 2026-11-01**
 
 Mexe nas mesmas listas (tabela, lista, quadro, árvore, busca, chips); vem depois da 0.1.5 para não brigar com ela.
 

@@ -1,4 +1,5 @@
 import { ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { BotaoWorkspace } from "./BotaoWorkspace";
 import {
   CalendarDays, Clock, ExternalLink, Flag, Hash, Link2, Mail, PenLine, Phone, Plus, SquareCheck, Tag, Tags, Waypoints, X,
 } from "lucide-react";
@@ -471,6 +472,7 @@ export function ChipItem({ esquema, r, codigo, remover }: {
         <span className="id-item">#{r?.codigo ?? codigo}</span>
         <span className="rel-titulo">{r ? r.titulo || "Sem título" : "…"}</span>
       </button>
+      {r && <BotaoWorkspace esquema={esquema} item={r} tam={11} classe="botao-ws rel-ws" />}
       {remover && <button className="rel-tirar" title="Desligar" onClick={(e) => { e.stopPropagation(); remover(); }}><X size={11} /></button>}
     </span>
   );

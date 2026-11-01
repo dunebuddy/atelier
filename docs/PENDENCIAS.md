@@ -19,6 +19,13 @@ Como usar:
 - **Botão "Instalar" do aviso de atualização com o texto fora do centro** (2026-11-01, print do Paulo na 0.1.2 → 0.1.3).
   O aviso em si ficou bom: **ele deve virar o padrão de aviso (toast) do app**, com título, texto, ações e o ×.
 
+- **Atualização da 0.1.2 para a 0.1.3 (2026-11-01):** o primeiro instalador travou ("não respondendo", provavelmente o
+  Avast segurando o instalador sem assinatura) e um segundo clique em Instalar abriu outro instalador, que terminou e
+  reabriu o app. Corrigir: o botão Instalar trava depois do clique e mostra o progresso (nunca dois instaladores); se o
+  instalador demorar, dizer que o antivírus pode estar inspecionando.
+- **Confirmar a atualização:** ao reabrir depois de atualizar, avisar "Atualizado para a X.Y.Z" (hoje não há sinal de
+  que deu certo; o Paulo teve de perguntar).
+
 ### Melhorias pedidas
 - **Toast padrão:** o aviso de versão nova é o modelo; os outros avisos do app (`avisar`) devem seguir o mesmo visual.
 

@@ -17,6 +17,9 @@ Como usar:
 
 ## Caixa de entrada
 
+> **Triagem de 2026-11-01:** tudo o que está abaixo já tem lugar no [`ROADMAP.md`](ROADMAP.md) (0.1.8 a 0.2.2; as
+> ideias antigas ficaram em "Ideias, sem data"). Pedido novo entra aqui e ganha lugar lá.
+
 ### Bugs
 
 - **Ditado ocupa o dobro do modelo na memória** (2026-11-01, Paulo: interface em 1,6 GB depois de baixar o
@@ -44,9 +47,8 @@ Como usar:
   `.corpo-app` quando `fechada`, em `App.tsx`). Fazer junto com a pílula da barra de status (mesmo `padding`).
 
 ### Melhorias pedidas
-- **Ordem das propriedades na ficha do item** (sobra do pedido de colunas da 0.1.5): o Paulo falou em ordem "dentro
-  do item ou da visão"; a da visão saiu na 0.1.5. Confirmar com ele se quer reordenar também na ficha (a ordem vem
-  do tipo).
+- **Ordem das propriedades na ficha do item** (sobra do pedido de colunas da 0.1.5): arrastar para reordenar na ficha
+  (a ordem é a do tipo). Entra na 0.1.9 (o Paulo liberou o roadmap inteiro).
 - **Configurações → Geral (janela e sistema)** (2026-11-01, Paulo). Juntar numa página só as opções de como o app se
   comporta no Windows (hoje "fechar vai para a bandeja" está escondido em Automação):
   - **Fechar (×)**: vai para a bandeja ou fecha de verdade;

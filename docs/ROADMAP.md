@@ -59,7 +59,7 @@ Junto (decisão do Paulo, 2026-11-01), correções do painel:
 - **Conteúdo largo:** barra horizontal sempre visível no rodapé do painel, junto da vertical (a tabela rola dentro do
   próprio cartão, que ocupa a altura da janela).
 
-## 0.1.7 · Workspaces e navegação · **pronta em 2026-11-01**
+## 0.1.7 · Workspaces e navegação · **saiu em 2026-11-01**
 
 Mexe nas mesmas listas (tabela, lista, quadro, árvore, busca, chips); vem depois da 0.1.5 para não brigar com ela.
 
@@ -88,17 +88,19 @@ Para o agente parar de "sofrer" e para o uso com sistemas da empresa.
 
 ## 0.1.9 · Acabamento e comportamento da janela
 
-Tudo visual e de conforto, no mesmo CSS e nas Configurações.
+Tudo visual e de conforto, no mesmo CSS e nas Configurações. (Em 2026-11-01 o Paulo liberou executar o roadmap
+inteiro, então os itens que pediam o ok dele entram.)
 
 - Folgas do corpo do app: pílula da barra de status centrada e painel sem encostar na esquerda com a barra
   lateral escondida (mesmo `padding`).
 - Título e × fixos nos modais.
 - Toast padrão para todos os avisos (o aviso de versão é o modelo).
 - Ficha do item fixa à direita com rolagem própria (em cima do texto quando a janela é estreita).
+- Ordem das propriedades na ficha: arrastar para reordenar (é a ordem do tipo, vale para todos os itens dele).
 - **Configurações → Geral:** fechar e minimizar para a bandeja, iniciar com o sistema (e escondido).
-- Precisa do ok: WebView2 em modo de pouca memória quando o app vai para a bandeja (casa com a página Geral).
-- Precisa do ok: terminal mata a árvore inteira de processos (hoje um agente aberto no terminal pode continuar
-  rodando depois que o app fecha; é também uma questão de segurança leve).
+- WebView2 em modo de pouca memória quando o app vai para a bandeja.
+- Terminal mata a árvore inteira de processos (hoje um agente aberto no terminal pode continuar rodando depois
+  que o app fecha).
 
 ## 0.2.0 · Ditado
 
@@ -108,13 +110,27 @@ Um pacote só, porque tudo mexe no worker do ditado e na mesma tela de Configura
 - "Baixar" só baixa; indicador mostra a memória real; lista mostra quanto cada modelo ocupa carregado.
 - Escolher RAM ou VRAM (desabilitado sem placa dedicada).
 
-## Depois (sem pressa, com o ok do Paulo)
+## 0.2.1 · Memória e desempenho
 
-- Memória: desmontar janelas escondidas, PDF desenhando só as páginas à vista, podar o histórico dos workspaces.
-- Ideias antigas: abrir por link (`atelier://`), propriedades calculadas, migrar o `daily-work` para dentro.
+- PDF desenhando só as páginas à vista (hoje até 300 de uma vez).
+- Podar o histórico guardado dos workspaces (passos de navegação antigos e workspaces de itens apagados).
+- Fica de fora, de propósito: desmontar janelas escondidas (perderia a rolagem e o que estiver sendo editado; o
+  ganho de memória não paga o risco no uso diário).
+
+## 0.2.2 · Item vira documento (pacote sozinho)
+
+Pedido do Paulo em 2026-11-01: a entidade central deixa de se chamar **item** e passa a se chamar **documento**. Nada
+muda no comportamento, só o nome: tela, mensagens, MCP (descrições e nomes das ferramentas, com os nomes antigos
+ainda aceitos para não quebrar agentes) e documentação.
+
+## Ideias, sem data (fora do roadmap)
+
+- Abrir o atelier por link (`atelier://`).
+- Propriedades calculadas (fórmula; soma a partir de itens ligados).
+- Migrar o posto `daily-work` para dentro do atelier (é trabalho no outro repositório, não aqui).
 
 ## Para conferir no uso
 
-- Microfone do ditado na janela de verdade (resolve-se na 0.1.5 com as permissões).
+- Microfone do ditado e colar na janela de verdade (permissões do WebView2, 0.1.5).
 - Comando para o agente com o MCP instalado no Claude Code real.
 - "Bloqueia" com título antigo: só reabrir se aparecer fora da linha do tempo.

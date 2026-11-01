@@ -75,6 +75,13 @@ Como usar:
   (painéis encostam na barra) e dar à barra uma linha fina no topo (`border-top: 1px solid var(--borda)`), para ela ser
   uma faixa própria com a pílula centrada; alternativa do Paulo: cor de fundo diferente na barra ou sem pílula.
 
+- **Tabela: células quebrando linha e esticando a linha** (2026-11-01, print do Paulo, visão Projeto da MDB). Texto
+  longo (Apontamento) quebra em várias linhas, e as listas (Envolvidos, Cervello, Links) empilham um valor embaixo do
+  outro. **Padrão: uma linha só** — texto cortado com "…" (texto inteiro no tooltip e ao abrir a célula), listas na
+  horizontal mostrando os que cabem e "+N" para o resto. **Opção por propriedade** (configuração da propriedade, ex.:
+  "Quebrar linha na tabela"), desligada por padrão, para quem quiser ver o texto inteiro. Onde: `src/components/Layouts.tsx`
+  (Tabela) e `src/components/Valor.tsx` (como cada espécie desenha), estilos em `src/styles.css`.
+
 ### Melhorias pedidas
 - **MCP: apagar propriedade (e o resto do esquema)** (2026-11-01, uso real: o agente tirou "Projeto" dos tipos mas não
   conseguiu apagá-la, e ela ficou sobrando na bancada). Hoje o MCP cria tipo/propriedade e liga/desliga propriedade de

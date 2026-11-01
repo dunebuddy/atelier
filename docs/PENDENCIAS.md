@@ -170,6 +170,23 @@ Como usar:
   cabeçalho fixo (`position: sticky; top: 0` com fundo) ou tirar o × e o título da área de rolagem.
 - **Toast padrão:** o aviso de versão nova é o modelo; os outros avisos do app (`avisar`) devem seguir o mesmo visual.
 
+### Pedidos do agente (de `pedidos-ao-atelier.md`, triados com o Paulo em 2026-11-01)
+- **MCP: ordenar a visão por uma propriedade.** `criar_visao`/`atualizar_visao` (`mcp/src/main.rs`, `dados_visao`)
+  não têm `ordenar`, embora a visão guarde `config.ordenar`. Acrescentar `ordenar: { propriedade, crescente }` e,
+  junto com a reordenação de colunas, `colunas: [nomes]` na ordem desejada. Cuidado: hoje `agrupar_por` grava
+  `config` inteiro e apagaria o resto; mesclar com o `config` existente. Pequeno.
+- **Linha do tempo com menos ruído.** Eventos automáticos no mesmo segundo e do mesmo tipo (ex.: 12 "Ligado: Filhos…"
+  de uma vez) viram uma linha só, que abre ao clicar. Duplicado de verdade: criar a pasta grava "Pasta criada: …"
+  (`core/src/pastas.rs`) e a mudança da propriedade grava "Pasta: …" (`db.rs`); ficar só com um. No MCP,
+  `linha_do_tempo`/`ler_item` ganham `so_notas` (só o que alguém escreveu com anotar).
+- **Propriedade com molde de link.** Guardar só o número de um chamado ou card (ex.: `17329`) e o app mostrar o link
+  clicável a partir de um molde configurado na propriedade (`https://…/{valor}`). Vale para texto e número;
+  editar continua editando só o número. Serve para os sistemas da empresa sem pôr nome nem endereço deles no código:
+  o molde fica na propriedade, no banco do Paulo.
+- **Visão "pode andar agora"** (recurso, precisa do ok). Tasks não concluídas cujos itens em "Bloqueado por" estão
+  todos concluídos, ou que não têm bloqueio. Hoje o filtro só aceita "propriedade = valores". Proposta genérica:
+  filtro de relação "todos os ligados estão concluídos (status de histórico) ou não há nenhum", no app e no MCP.
+
 ### Recursos (mudam comportamento: precisam do ok do Paulo antes)
 - Desmontar janelas que não são terminal em workspaces escondidos e abas inativas (ganho alto de memória; perde a
   rolagem e o estado local ao voltar).
@@ -186,7 +203,12 @@ Como usar:
 ### A conferir no uso
 - Microfone do ditado na janela de verdade (só foi testado no navegador; o WebView2 pode pedir permissão).
 - Comando para o agente com o MCP instalado no Claude Code real.
-- Ler `~/atelier/pedidos-ao-atelier.md` (o que os agentes não conseguiram fazer) e trazer para cá.
+- Ler `~/atelier/pedidos-ao-atelier.md` (o que os agentes não conseguiram fazer) e trazer para cá. Lido em
+  2026-11-01 (4 pedidos, triados acima).
+- **"Bloqueia" com título antigo** (o agente notou "07 · Etapa 5…" com o número na frente). A relação guarda só o
+  código e o título é lido na hora (`db::resumos`), então a lista de verdade acompanha a troca de título. O que
+  guarda o título da época é a linha do tempo ("Ligado: Bloqueia #código título"), e isso é histórico: está certo.
+  Se aparecer de novo fora da linha do tempo, anotar onde (ficha, tabela ou MCP) e reabrir como bug.
 
 ## Do lado do Paulo (fora do código)
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.

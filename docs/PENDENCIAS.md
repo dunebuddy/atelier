@@ -16,6 +16,17 @@ Como usar:
 ## Caixa de entrada
 
 ### Bugs
+- **Arrastar aba de uma metade para a outra não funciona no app** (2026-11-01, Paulo, prioridade alta). O arrasto
+  começa (a aba clareia) mas mostra "não pode soltar". Causa: o `tauri.conf.json` não define `dragDropEnabled`, que
+  por padrão fica ligado (o Tauri recebe arquivos arrastados do sistema, usado em `PaginaItem.tsx` com
+  `onDragDropEvent`), e no Windows isso bloqueia o arrastar HTML5 dentro da página (abas em `Painel.tsx`:
+  `draggable`/`onDragStart`). No navegador de teste funcionava por não ter essa camada. Caminhos:
+  1. trocar o arrastar das abas para eventos de ponteiro (pointerdown/move/up) em vez de HTML5 drag — não depende do
+     Tauri e mantém o soltar arquivos do sistema como está (**recomendado**);
+  2. ou `dragDropEnabled: false` e receber arquivos do sistema pelo HTML5 (`dataTransfer.files`, enviando os bytes
+     pela rota de colar arquivo, sem o caminho original).
+  Junto: menu de botão direito na aba com "Mover para a outra metade" (e "Abrir na outra metade"), para não depender
+  só de arrastar.
 - **REGRA (prioridade alta, Paulo 2026-11-01): tudo o que for feito pelo MCP aparece na tela sozinho, sempre.** Nada
   de trocar de bancada ou reabrir para ver. Não depender de cada ferramenta lembrar de avisar: o núcleo do app percebe
   qualquer escrita no banco feita por outro processo (o MCP fala direto com o SQLite) e avisa a tela. Como: o núcleo

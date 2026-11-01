@@ -53,6 +53,11 @@ Como usar:
   (painéis encostam na barra) e dar à barra uma linha fina no topo (`border-top: 1px solid var(--borda)`), para ela ser
   uma faixa própria com a pílula centrada; alternativa do Paulo: cor de fundo diferente na barra ou sem pílula.
 
+- **Barra lateral escondida: o painel encosta na borda esquerda** (2026-11-01, Paulo). O `.corpo-app` tem
+  `padding: 0 8px 8px 0` (`src/styles.css`): a folga da esquerda vem da própria barra lateral; escondida (Ctrl+\), o
+  painel cola na borda. Corrigir: com a barra fechada, folga de 8 px à esquerda, igual à da direita (classe no
+  `.corpo-app` quando `fechada`, em `App.tsx`). Fazer junto com a pílula da barra de status (mesmo `padding`).
+
 ### Melhorias pedidas
 - **Barra lateral: arrastar para reordenar visões e grupos** usa o arrastar HTML5 (`Sidebar.tsx`), o mesmo que o Tauri
   bloqueia no Windows: provavelmente não funciona no app instalado. Trocar por eventos de ponteiro, como as abas do

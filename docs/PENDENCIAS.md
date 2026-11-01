@@ -83,6 +83,12 @@ Como usar:
   (Tabela) e `src/components/Valor.tsx` (como cada espécie desenha), estilos em `src/styles.css`.
 
 ### Melhorias pedidas
+- **Ficha do item: coluna fixa à direita com rolagem própria** (2026-11-01, Paulo gostou da ficha). Hoje ela gruda no
+  topo ao rolar (sticky), mas quando é mais alta que a tela o fim dela só aparece quando a página chega ao fim — numa
+  página longa, demora. Quero: a página do item em duas colunas, cada uma com a sua barra de rolagem (texto à esquerda,
+  ficha à direita, altura da janela, `overflow: auto`). Onde: `src/components/PaginaItem.tsx` e o estilo da ficha em
+  `src/styles.css`. Conferir junto: num print, o texto da página parecia cortado na beirada encostada na ficha
+  ("sa-", "sh ."), talvez a ficha por cima do texto.
 - **MCP: apagar propriedade (e o resto do esquema)** (2026-11-01, uso real: o agente tirou "Projeto" dos tipos mas não
   conseguiu apagá-la, e ela ficou sobrando na bancada). Hoje o MCP cria tipo/propriedade e liga/desliga propriedade de
   tipo (`ligar_propriedade` com `remover`), mas não apaga nem renomeia. Acrescentar: `apagar_propriedade` (avisar

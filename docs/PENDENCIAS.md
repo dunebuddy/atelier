@@ -67,6 +67,17 @@ Como usar:
   `.corpo-app` quando `fechada`, em `App.tsx`). Fazer junto com a pílula da barra de status (mesmo `padding`).
 
 ### Melhorias pedidas
+- **Reordenar as colunas da tabela** (2026-11-01, Paulo: **relativamente prioritária**). Escolher a ordem: "essa
+  coluna primeiro, depois essa", e a ordem fica guardada. Hoje a visão já guarda quais colunas aparecem
+  (`config.colunas` em `Visao.tsx`), mas ao marcar ou desmarcar no menu "Propriedades visíveis" a lista volta para a
+  ordem das propriedades do tipo (`props.map(...).filter(...)`), então a ordem escolhida se perde. Fazer:
+  - arrastar o cabeçalho da coluna para o lado na própria tabela (eventos de ponteiro, como as abas do painel:
+    o arrastar HTML5 não funciona no app instalado) e também arrastar a linha no menu "Propriedades visíveis";
+  - gravar a ordem em `config.colunas` da visão; marcar uma coluna nova põe no fim, sem reordenar as outras;
+  - a coluna Título continua fixa na primeira posição;
+  - o mesmo vale para a Lista compacta, que usa as mesmas `colunas`.
+  Hoje só as visões têm tabela. "Dentro do item" pode querer dizer a ordem das propriedades na ficha do item, que
+  vem do tipo: confirmar com o Paulo se é para reordenar lá também.
 - **Permissões do WebView sem pedir** (2026-11-01, Paulo). Hoje o WebView2 abre o pedido dele (microfone para o
   ditado, ler a área de transferência ao colar, etc.): uma caixa escura solta, às vezes fora da janela. O app é do
   Paulo e só carrega a própria tela, então essas permissões já vêm concedidas. Como: no `setup` do `src-tauri/src/lib.rs`,

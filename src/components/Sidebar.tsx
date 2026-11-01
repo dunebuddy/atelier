@@ -4,7 +4,7 @@ import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, History,
 import { api, Bancadas, Esquema, Visao } from "../api";
 import { falhou, guardar, ler, Rota } from "../ui";
 import { datasDo } from "../visao";
-import { ehHistorico } from "./Visao";
+import { visivelNaVisao } from "./Visao";
 import { Popover, usePopover } from "./Popover";
 import { ArvoreVisao } from "./Arvore";
 
@@ -62,7 +62,7 @@ export function Sidebar({
         if (v.layout === "linha") continue;
         const datas = v.filtro?.periodo ? datasDo(v.filtro.periodo) : null;
         api.itensDaVisao(v.filtro ?? {}, datas)
-          .then((l) => setContagens((c) => ({ ...c, [v.id]: l.filter((i) => v.filtro?.historico || !ehHistorico(esquema, i)).length })))
+          .then((l) => setContagens((c) => ({ ...c, [v.id]: l.filter((i) => visivelNaVisao(esquema, v.filtro ?? {}, i)).length })))
           .catch(() => {});
       }
     };

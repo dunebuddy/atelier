@@ -263,6 +263,16 @@ export default function App() {
     window.addEventListener("atelier:abrir", f);
     return () => window.removeEventListener("atelier:abrir", f);
   }, [ir, abrirAoLado]);
+  // uma rajada de gravações do agente vira uma recarga só
+  const tRecarga = useRef<number | undefined>(undefined);
+  const recarregarTudo = () => {
+    window.clearTimeout(tRecarga.current);
+    tRecarga.current = window.setTimeout(() => {
+      aoMudarEsquema();
+      carregarBancadas();
+      window.dispatchEvent(new Event("focus"));
+    }, 300);
+  };
   // pedidos para a tela, vindos do MCP (o agente) e do Comando: a lista está em core/src/api.rs (ACOES_TELA)
   const pedidoDaTela = (d: PedidoTela) => {
     const naMetade = (f: (s: EstadoPainel) => EstadoPainel) => setPainel((s) => {
@@ -300,6 +310,8 @@ export default function App() {
       case "busca": window.dispatchEvent(new CustomEvent("atelier:busca", { detail: d.texto ?? "" })); return;
       case "bancada": return;
       case "recarregar": window.dispatchEvent(new Event("focus")); return;
+      // outro processo (o agente, pelo MCP) gravou no banco: esquema, visões, bancadas e o que está à vista
+      case "mudou": recarregarTudo(); return;
       case "filtrar": window.dispatchEvent(new CustomEvent("atelier:filtrar", { detail: { texto: d.texto ?? "" } })); return;
       case "destacar": if (d.codigo) destacar(d.codigo); return;
       case "falta": avisar(`O agente ainda não sabe fazer isto pelo atelier: “${d.texto}”. Ficou anotado em pedidos-ao-atelier.md.`); return;

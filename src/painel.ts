@@ -199,6 +199,18 @@ export function mover(e: EstadoPainel, id: string, paraMi: number, antesDe?: str
   return { ...e, metades, foco: paraMi };
 }
 
+/** Manda a janela para a outra metade (com uma só, divide e manda para a direita). */
+export function moverParaOutraMetade(e: EstadoPainel, id: string, mi: number): EstadoPainel {
+  return mover(e, id, e.metades.length > 1 ? 1 - mi : 1);
+}
+
+/** Fecha as outras janelas da metade `mi`, deixando só `id` (que fica ativa). */
+export function fecharOutras(e: EstadoPainel, id: string, mi: number): EstadoPainel {
+  const m = e.metades[mi];
+  if (!m) return e;
+  return m.janelas.filter((j) => j.id !== id).reduce((s, j) => fechar(s, j.id), ativar(e, mi, id));
+}
+
 /** Anda a janela uma posição para o lado dentro da metade. */
 export function moverLado(e: EstadoPainel, id: string, passo: number): EstadoPainel {
   const achada = acharJanela(e, id);

@@ -1,0 +1,31 @@
+/* ---------- tabela: uma linha só por item ----------
+   Padrão: texto corta em "…" (o inteiro fica no tooltip) e listas mostram o que cabe + "+N".
+   A coluna com "Quebrar linha na tabela" (td.quebra) volta a quebrar. Em todas, a célula
+   corta o que não cabe: nada passa por cima da coluna vizinha. */
+
+.tabela td .celula { overflow: hidden; }
+.tabela td .celula > * { min-width: 0; }
+.tabela td:not(.quebra) .celula { white-space: nowrap; }
+.tabela td.quebra .celula { white-space: normal; overflow-wrap: anywhere; }
+
+.tabela .celula .corta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* chip de item (relação): nunca maior que a célula; o título corta em "…" */
+.tabela .rel-chip { max-width: 100%; }
+.tabela .rel-chip > button:first-child { min-width: 0; }
+.tabela .rel-titulo { min-width: 0; }
+.tabela .link-chip > button:first-child { min-width: 0; overflow: hidden; }
+
+/* valores lado a lado numa linha só (Enfileirados, em Valor.tsx) */
+.enfileirados {
+  position: relative; display: flex; flex-wrap: nowrap; align-items: center; gap: 4px;
+  flex: 1 1 auto; min-width: 0; overflow: hidden;
+}
+.enf-item { flex: none; display: flex; align-items: center; min-width: 0; overflow: hidden; }
+.enf-item > * { min-width: 0; max-width: 100%; }
+.enf-mais {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  min-width: 26px; text-align: center; padding: 0 6px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 550; line-height: 19px; white-space: nowrap;
+  color: var(--texto-2); background: var(--hover); border: 1px solid var(--borda);
+}

@@ -5,7 +5,7 @@ import { abrir, falhou, Rota } from "../ui";
 import { datasDo } from "../visao";
 import { Popover, usePopover } from "./Popover";
 import { codigos } from "./Valor";
-import { ehHistorico } from "./Visao";
+import { ehHistorico, visivelNaVisao } from "./Visao";
 
 /**
  * Visão focada na barra lateral: ela sobe para o topo, as outras somem, e os itens dela aparecem em árvore.
@@ -31,7 +31,7 @@ export function ArvoreVisao({ visao, esquema, rota, ir, aoSair, aoMudarVisoes }:
     const datas = f.periodo ? datasDo(f.periodo) : null;
     setItens(null);
     api.itensDaVisao(f, datas)
-      .then((l) => setItens(l.filter((i) => f.historico || !ehHistorico(esquema, i))))
+      .then((l) => setItens(l.filter((i) => visivelNaVisao(esquema, f, i))))
       .catch(falhou);
   }, [visao.id, JSON.stringify(visao.filtro), recarga]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -76,7 +76,7 @@ export function ArvoreVisao({ visao, esquema, rota, ir, aoSair, aoMudarVisoes }:
         {itens === null && <div className="arv-vazio">Carregando…</div>}
         {itens && raizes.length === 0 && <div className="arv-vazio">Nenhum item nesta visão.</div>}
         {raizes.map((it) => (
-          <No key={`${it.id}-${recarga}`} item={it} esquema={esquema} rota={rota} ir={ir} prop={prop?.id ?? null} sentido={config?.sentido ?? "aponta"} nivel={0} caminho={[it.id]} />
+          <No key={`${it.id}-${recarga}`} item={it} esquema={esquema} rota={rota} ir={ir} prop={prop?.id ?? null} sentido={config?.sentido ?? "aponta"} nivel={0} caminho={[it.id]} esconder={!!visao.filtro?.esconder_historico} />
         ))}
       </div>
 
@@ -117,8 +117,10 @@ export function ArvoreVisao({ visao, esquema, rota, ir, aoSair, aoMudarVisoes }:
   );
 }
 
-function No({ item, esquema, rota, ir, prop, sentido, nivel, caminho }: {
+function No({ item, esquema, rota, ir, prop, sentido, nivel, caminho, esconder }: {
   item: Item; esquema: Esquema; rota: Rota; ir: (r: Rota) => void; prop: number | null; sentido: Sentido; nivel: number; caminho: number[];
+  /** a visão esconde os concluídos (desligado por padrão) */
+  esconder: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
   const [filhos, setFilhos] = useState<Item[] | null>(null);
@@ -130,7 +132,7 @@ function No({ item, esquema, rota, ir, prop, sentido, nivel, caminho }: {
     if (!prop) return;
     if (!aberto && filhos === null) {
       api.ramo(item.id, prop, sentido)
-        .then((l) => setFilhos(l.filter((x) => !caminho.includes(x.id) && !ehHistorico(esquema, x))))
+        .then((l) => setFilhos(l.filter((x) => !caminho.includes(x.id) && !(esconder && ehHistorico(esquema, x)))))
         .catch(falhou);
     }
     setAberto((a) => !a);
@@ -155,7 +157,7 @@ function No({ item, esquema, rota, ir, prop, sentido, nivel, caminho }: {
       {aberto && filhos === null && <div className="arv-vazio" style={{ paddingLeft: 30 + nivel * 14 }}>…</div>}
       {aberto && filhos?.length === 0 && <div className="arv-vazio" style={{ paddingLeft: 30 + nivel * 14 }}>nada embaixo</div>}
       {aberto && filhos?.map((f) => (
-        <No key={f.id} item={f} esquema={esquema} rota={rota} ir={ir} prop={prop} sentido={sentido} nivel={nivel + 1} caminho={[...caminho, f.id]} />
+        <No key={f.id} item={f} esquema={esquema} rota={rota} ir={ir} prop={prop} sentido={sentido} nivel={nivel + 1} caminho={[...caminho, f.id]} esconder={esconder} />
       ))}
     </>
   );

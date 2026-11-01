@@ -1,0 +1,15 @@
+/* Arrastar abas e janelas do painel por ponteiro (o arrastar HTML5 não funciona no app instalado). */
+
+/* sem "draggable", segurar e mover seleciona texto: aqui não */
+.aba, .janela-cabeca { user-select: none; -webkit-user-select: none; }
+.painel.arrastando, .painel.arrastando * { cursor: grabbing !important; }
+/* a aba que está sendo levada fica apagada no lugar de origem */
+.aba.arrastada { opacity: .45; }
+
+/* a "fantasma" que segue o mouse; não pode ser alvo do elementFromPoint */
+.aba-fantasma {
+  position: fixed; top: 0; left: 0; z-index: 1000; pointer-events: none;
+  display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; max-width: 220px;
+  border-radius: 8px; border: 1px solid var(--borda); background: var(--bg-elev, var(--bg)); color: var(--texto);
+  font-size: 12.5px; white-space: nowrap; box-shadow: var(--sombra); opacity: .92;
+}

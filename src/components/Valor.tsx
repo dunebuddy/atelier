@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   CalendarDays, Clock, ExternalLink, Flag, Hash, Link2, Mail, PenLine, Phone, Plus, SquareCheck, Tag, Tags, Waypoints, X,
 } from "lucide-react";
@@ -9,6 +9,7 @@ import {
 import { abrir } from "../ui";
 import { lembrarResumo, useResumos } from "../resumos";
 import { Popover, usePopover } from "./Popover";
+import "../tabela.css";
 
 export function IconeEspecie({ especie, tam = 15 }: { especie: Especie; tam?: number }) {
   const P = { size: tam, strokeWidth: 1.8 };
@@ -81,7 +82,7 @@ export function textoSimples(v: Valor | undefined, p: Propriedade): string {
 
 /** Mostra o valor de uma propriedade e deixa editar no lugar, conforme a espécie. */
 export function ValorProp({
-  esquema, prop, tipoId, valor, aoMudar, aoMudarEsquema, classe = "prop-valor", proprio,
+  esquema, prop, tipoId, valor, aoMudar, aoMudarEsquema, classe = "prop-valor", proprio, linhaUnica,
 }: {
   /** código do item dono do valor (relação não aponta para ele mesmo) */
   proprio?: string;
@@ -92,6 +93,8 @@ export function ValorProp({
   aoMudar: (v: Valor) => void;
   aoMudarEsquema: () => void;
   classe?: string;
+  /** tabela: tudo numa linha só (texto corta em "…", listas mostram o que cabe e "+N") */
+  linhaUnica?: boolean;
 }) {
   const pop = usePopover();
   const [editando, setEditando] = useState(false);
@@ -100,7 +103,7 @@ export function ValorProp({
   const achar = (nome: string): Opcao => opcoes.find((o) => o.nome === nome) ?? { nome };
 
   if (prop.config?.lista && LISTAVEIS.includes(prop.especie)) {
-    return <ValorLista prop={prop} valor={valor} aoMudar={aoMudar} classe={classe} />;
+    return <ValorLista prop={prop} valor={valor} aoMudar={aoMudar} classe={classe} linhaUnica={linhaUnica} />;
   }
 
   switch (prop.especie) {
@@ -147,9 +150,10 @@ export function ValorProp({
           </div>
         );
       }
-      let mostra = valor == null || valor === "" ? vazio : <span>{textoSimples(valor, prop)}</span>;
-      if (prop.especie === "data" && typeof valor === "string") mostra = <span className={`data ${urgencia(valor)}`}>{textoSimples(valor, prop)}</span>;
-      if (prop.especie === "numero" && typeof valor === "number") mostra = <span style={{ fontVariantNumeric: "tabular-nums" }}>{textoSimples(valor, prop)}</span>;
+      const corta = linhaUnica ? "corta" : "";
+      let mostra = valor == null || valor === "" ? vazio : <span className={corta}>{textoSimples(valor, prop)}</span>;
+      if (prop.especie === "data" && typeof valor === "string") mostra = <span className={`data ${urgencia(valor)} ${corta}`}>{textoSimples(valor, prop)}</span>;
+      if (prop.especie === "numero" && typeof valor === "number") mostra = <span className={corta} style={{ fontVariantNumeric: "tabular-nums" }}>{textoSimples(valor, prop)}</span>;
       if (prop.especie === "url" && typeof valor === "string" && valor) {
         mostra = (
           <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
@@ -171,7 +175,10 @@ export function ValorProp({
       return (
         <div
           className={classe}
-          title={["url", "email", "telefone"].includes(prop.especie) && valor ? "Ctrl+clique para abrir" : undefined}
+          title={[
+            linhaUnica && valor != null && valor !== "" ? textoSimples(valor, prop) : "",
+            ["url", "email", "telefone"].includes(prop.especie) && valor ? "Ctrl+clique para abrir" : "",
+          ].filter(Boolean).join("\n") || undefined}
           onClick={(e) => {
             if (["url", "email", "telefone"].includes(prop.especie) && typeof valor === "string" && valor && (e.ctrlKey || e.metaKey)) {
               const u = prop.especie === "email" ? `mailto:${valor}` : prop.especie === "telefone" ? `tel:${valor.replace(/[^\d+]/g, "")}` : valor;
@@ -197,9 +204,9 @@ export function ValorProp({
         <>
           <div className={`${classe}${pop.ancora ? " editando" : ""}`} onClick={pop.abrir}>
             {lista.length === 0 ? vazio : (
-              <span className="tags">
+              <Lado linhaUnica={linhaUnica} classe="tags" dica={lista.join("\n")}>
                 {lista.map((n) => <Etiqueta key={n} opcao={achar(n)} status={prop.especie === "status"} />)}
-              </span>
+              </Lado>
             )}
           </div>
           {pop.ancora && (
@@ -232,10 +239,10 @@ export function ValorProp({
     }
 
     case "links":
-      return <ValorLinks valor={valor} aoMudar={aoMudar} classe={classe} />;
+      return <ValorLinks valor={valor} aoMudar={aoMudar} classe={classe} linhaUnica={linhaUnica} />;
 
     case "relacao":
-      return <ValorRelacao esquema={esquema} prop={prop} valor={valor} aoMudar={aoMudar} classe={classe} proprio={proprio} />;
+      return <ValorRelacao esquema={esquema} prop={prop} valor={valor} aoMudar={aoMudar} classe={classe} proprio={proprio} linhaUnica={linhaUnica} />;
   }
 }
 
@@ -276,7 +283,7 @@ function linksDe(valor: Valor | undefined): LinkItem[] {
 }
 
 /** Vários links por item, cada um com o selo da ferramenta. Clique abre; o + acrescenta. */
-function ValorLinks({ valor, aoMudar, classe }: { valor: Valor | undefined; aoMudar: (v: Valor) => void; classe: string }) {
+function ValorLinks({ valor, aoMudar, classe, linhaUnica }: { valor: Valor | undefined; aoMudar: (v: Valor) => void; classe: string; linhaUnica?: boolean }) {
   const pop = usePopover();
   const lista = linksDe(valor);
   const [url, setUrl] = useState("");
@@ -293,7 +300,7 @@ function ValorLinks({ valor, aoMudar, classe }: { valor: Valor | undefined; aoMu
     <>
       <div className={`${classe}${pop.ancora ? " editando" : ""}`} onClick={pop.abrir}>
         {lista.length === 0 ? <span className="vazio">Vazio</span> : (
-          <span className="links">
+          <Lado linhaUnica={linhaUnica} classe="links" dica={lista.map((l) => l.rotulo ?? l.url).join("\n")}>
             {lista.map((l, i) => {
               const f = ferramentaDo(l.url);
               return (
@@ -306,7 +313,7 @@ function ValorLinks({ valor, aoMudar, classe }: { valor: Valor | undefined; aoMu
                 </span>
               );
             })}
-          </span>
+          </Lado>
         )}
       </div>
       {pop.ancora && (
@@ -323,7 +330,7 @@ function ValorLinks({ valor, aoMudar, classe }: { valor: Valor | undefined; aoMu
 }
 
 /** Vários valores (lista de textos, números, datas...): chips; o + acrescenta, o x tira. */
-function ValorLista({ prop, valor, aoMudar, classe }: { prop: Propriedade; valor: Valor | undefined; aoMudar: (v: Valor) => void; classe: string }) {
+function ValorLista({ prop, valor, aoMudar, classe, linhaUnica }: { prop: Propriedade; valor: Valor | undefined; aoMudar: (v: Valor) => void; classe: string; linhaUnica?: boolean }) {
   const pop = usePopover();
   const lista: (string | number)[] = Array.isArray(valor) ? (valor as (string | number)[]) : valor == null || valor === "" ? [] : [valor as string];
   const [novo, setNovo] = useState("");
@@ -339,9 +346,9 @@ function ValorLista({ prop, valor, aoMudar, classe }: { prop: Propriedade; valor
     <>
       <div className={`${classe}${pop.ancora ? " editando" : ""}`} onClick={pop.abrir}>
         {lista.length === 0 ? <span className="vazio">Vazio</span> : (
-          <span className="tags">
+          <Lado linhaUnica={linhaUnica} classe="tags" dica={lista.map((x) => textoSimples(x, prop)).join("\n")}>
             {lista.map((x, i) => <span key={i} className="tag cor-gray">{textoSimples(x, prop)}</span>)}
-          </span>
+          </Lado>
         )}
       </div>
       {pop.ancora && (
@@ -358,6 +365,85 @@ function ValorLista({ prop, valor, aoMudar, classe }: { prop: Propriedade; valor
         </Popover>
       )}
     </>
+  );
+}
+
+/** Valores lado a lado: na tabela numa linha só (Enfileirados); fora dela, como sempre (quebrando). */
+function Lado({ linhaUnica, classe, dica, children }: { linhaUnica?: boolean; classe: string; dica: string; children: ReactNode[] }) {
+  return linhaUnica ? <Enfileirados dica={dica}>{children}</Enfileirados> : <span className={classe}>{children}</span>;
+}
+
+/**
+ * Valores numa linha só: mostra os que cabem e um "+N" para o resto (o tooltip lista todos).
+ * Os que não cabem ficam invisíveis no lugar (não mexem na largura da coluna); se nem o
+ * primeiro cabe, ele é cortado em "…".
+ */
+function Enfileirados({ dica, children }: { dica: string; children: ReactNode[] }) {
+  const caixa = useRef<HTMLSpanElement>(null);
+  const mais = useRef<HTMLSpanElement>(null);
+  const n = children.length;
+  const [cabe, setCabe] = useState<{ quantos: number; primeiro: number | null; esquerda: number }>({ quantos: n, primeiro: null, esquerda: 0 });
+  useLayoutEffect(() => {
+    const el = caixa.current;
+    if (!el) return;
+    const GAP = 4;
+    const medir = () => {
+      const filhos = [...el.querySelectorAll<HTMLElement>(":scope > .enf-item")];
+      const larg = el.clientWidth;
+      const reserva = (mais.current?.offsetWidth ?? 26) + GAP;
+      // largura natural de cada um: tira o corte do primeiro só para medir (sem pintar)
+      const w = filhos.map((f) => {
+        const corte = f.style.maxWidth;
+        f.style.maxWidth = "";
+        const x = f.scrollWidth;
+        f.style.maxWidth = corte;
+        return x;
+      });
+      const total = w.reduce((a, b) => a + b, 0) + GAP * Math.max(0, n - 1);
+      let quantos = n;
+      let x = 0;
+      if (total > larg) {
+        quantos = 0;
+        for (let i = 0; i < n; i++) {
+          const fim = x + (i ? GAP : 0) + w[i];
+          if (fim > larg - reserva) break;
+          x = fim;
+          quantos = i + 1;
+        }
+      }
+      let primeiro: number | null = null;
+      if (quantos === 0) {
+        quantos = 1;
+        primeiro = Math.max(24, larg - (n > 1 ? reserva : 0));
+        x = primeiro;
+      }
+      const esquerda = x + GAP;
+      setCabe((c) => (c.quantos === quantos && c.primeiro === primeiro && c.esquerda === esquerda ? c : { quantos, primeiro, esquerda }));
+    };
+    medir();
+    const ro = new ResizeObserver(medir);
+    ro.observe(el);
+    for (const f of el.children) ro.observe(f);
+    return () => ro.disconnect();
+  }, [n, dica]);
+  const resto = n - cabe.quantos;
+  return (
+    <span className="enfileirados" ref={caixa}>
+      {children.map((c, i) => (
+        <span
+          key={i}
+          className="enf-item"
+          style={{ visibility: i < cabe.quantos ? undefined : "hidden", maxWidth: i === 0 && cabe.primeiro != null ? cabe.primeiro : undefined }}
+        >
+          {c}
+        </span>
+      ))}
+      {n > 1 && (
+        <span ref={mais} className="enf-mais" title={dica} style={{ visibility: resto > 0 ? undefined : "hidden", left: cabe.esquerda }}>
+          +{Math.max(resto, 1)}
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -390,8 +476,8 @@ export function ChipItem({ esquema, r, codigo, remover }: {
   );
 }
 
-function ValorRelacao({ esquema, prop, valor, aoMudar, classe, proprio }: {
-  esquema: Esquema; prop: Propriedade; valor: Valor | undefined; aoMudar: (v: Valor) => void; classe: string; proprio?: string;
+function ValorRelacao({ esquema, prop, valor, aoMudar, classe, proprio, linhaUnica }: {
+  esquema: Esquema; prop: Propriedade; valor: Valor | undefined; aoMudar: (v: Valor) => void; classe: string; proprio?: string; linhaUnica?: boolean;
 }) {
   const pop = usePopover();
   const lista = codigos(valor);
@@ -402,9 +488,9 @@ function ValorRelacao({ esquema, prop, valor, aoMudar, classe, proprio }: {
     <>
       <div className={`${classe}${pop.ancora ? " editando" : ""}`} onClick={pop.abrir}>
         {lista.length === 0 ? <span className="vazio">Vazio</span> : (
-          <span className="rel-lista">
+          <Lado linhaUnica={linhaUnica} classe="rel-lista" dica={lista.map((c) => `#${c} ${resumos.get(c)?.titulo ?? ""}`.trim()).join("\n")}>
             {lista.map((c) => <ChipItem key={c} esquema={esquema} r={resumos.get(c) ?? null} codigo={c} remover={() => tirar(c)} />)}
-          </span>
+          </Lado>
         )}
       </div>
       {pop.ancora && (

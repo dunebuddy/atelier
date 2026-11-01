@@ -49,6 +49,8 @@ export interface ConfigProp {
   casas?: number | null;
   formato?: "numero" | "percentual" | "moeda";
   hora?: boolean;
+  /** na tabela, o valor quebra linha em vez de cortar em "…" (desligado por padrão) */
+  quebrar?: boolean;
 }
 
 /** Espécies que aceitam vários valores (config.lista). */
@@ -314,8 +316,10 @@ export interface FiltroVisao {
   /** id da propriedade → valores aceitos */
   props?: Record<string, string[]>;
   texto?: string;
-  /** mostrar itens com status de histórico */
+  /** antigo (até a 0.1.3: "mostrar o histórico"); não é mais lido */
   historico?: boolean;
+  /** esconder os itens com status de histórico (feitos, descartados…). Desligado por padrão: a visão mostra tudo. */
+  esconder_historico?: boolean;
   periodo?: Periodo | null;
   /** id da propriedade de data → janela relativa a hoje */
   datas?: Record<string, FiltroData>;

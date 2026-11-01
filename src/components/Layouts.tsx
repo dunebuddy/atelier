@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowDown, ArrowUp, FolderOpen, Layers, Maximize2, Type } from "lucide-react";
-import { api, Esquema, Item, Opcao, opcoesDe, Propriedade, Valor } from "../api";
+import { api, ConfigProp, Esquema, Item, Opcao, opcoesDe, Propriedade, Valor } from "../api";
 import { avisar, falhou, Rota } from "../ui";
 import { dataHora } from "../visao";
 import { MenuPasta } from "./MenuPasta";
@@ -29,6 +29,9 @@ function BotaoPasta({ pasta }: { pasta: string | null }) {
 }
 
 // ---------- tabela ----------
+
+/** "Quebrar linha na tabela" (config.quebrar): a coluna volta a quebrar; o padrão é uma linha só por item. */
+const quebra = (p: Propriedade) => !!(p.config as ConfigProp & { quebrar?: boolean } | undefined)?.quebrar;
 
 export function Tabela({
   esquema, itens, todos, colunas, mostrarTipo, ir, aoMudarEsquema, aoMudarItens,
@@ -100,9 +103,9 @@ export function Tabela({
                 </td>
                 {mostrarTipo && <td><div className="celula" style={{ color: "var(--texto-2)" }}>{t?.nome ?? "—"}</div></td>}
                 {colunas.map((p) => (
-                  <td key={p.id}>
+                  <td key={p.id} className={quebra(p) ? "quebra" : undefined}>
                     {doTipo.has(p.id) ? (
-                      <ValorProp classe="celula" esquema={esquema} prop={p} tipoId={it.tipo_id} valor={valorDe(it, p)} proprio={it.codigo} aoMudar={(v) => mudar(it, p.id, v)} aoMudarEsquema={aoMudarEsquema} />
+                      <ValorProp classe="celula" linhaUnica={!quebra(p)} esquema={esquema} prop={p} tipoId={it.tipo_id} valor={valorDe(it, p)} proprio={it.codigo} aoMudar={(v) => mudar(it, p.id, v)} aoMudarEsquema={aoMudarEsquema} />
                     ) : (
                       <div className="celula" />
                     )}

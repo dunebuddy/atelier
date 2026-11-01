@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ArrowLeftToLine, Bot, ChevronDown, ChevronLeft, ChevronRight, Columns2, FolderOpen, FolderTree, GalleryHorizontalEnd, LayoutPanelLeft,
   PanelTop, Rows2, SquareTerminal, X,
@@ -15,6 +16,7 @@ import { BotaoTerminal, TerminalJanela } from "./Terminal";
 import { VisaoTela } from "./Visao";
 import { VisivelContext } from "../visivel";
 import { Popover, usePopover } from "./Popover";
+import "../painel-arrastar.css";
 
 export interface Contexto {
   esquema: Esquema;
@@ -128,27 +130,75 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
     window.addEventListener("mouseup", soltar);
   };
 
-  const pegar = (j: Janela) => (e: React.DragEvent) => {
-    e.dataTransfer.setData("text/atelier-janela", j.id);
-    e.dataTransfer.effectAllowed = "move";
-    setArrastando(j.id);
+  // Arrastar janela por eventos de ponteiro, não pelo arrastar HTML5: no app instalado (WebView2) o soltar de
+  // arquivos do sistema que o Tauri liga bloqueia o arrastar HTML5 dentro da página ("não pode soltar").
+  // Alvos marcados com data-soltar-metade (+ data-soltar-antes numa aba; data-soltar-chave é o realce).
+  const fantasma = useRef<HTMLDivElement>(null);
+  const posFantasma = useRef({ x: 0, y: 0 });
+  const pegar = (j: Janela) => (e: React.PointerEvent<HTMLElement>) => {
+    // só o botão esquerdo, e não nos botões de dentro (fechar, larguras...)
+    if (e.button !== 0 || (e.target as Element).closest("button")) return;
+    const el = e.currentTarget;
+    const { pointerId: pid, clientX: x0, clientY: y0 } = e;
+    let ativo = false;
+    let alvo: { mi: number; antes?: string } | null = null;
+    const mover = (ev: PointerEvent) => {
+      if (ev.pointerId !== pid) return;
+      // só vira arrasto depois de andar uns pixels: clique normal continua ativando a aba
+      if (!ativo) {
+        if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 5) return;
+        ativo = true;
+        // com a captura, passar por cima do terminal ou de um iframe não rouba os eventos
+        try { el.setPointerCapture(pid); } catch { /* ponteiro já solto */ }
+        setArrastando(j.id);
+      }
+      posFantasma.current = { x: ev.clientX, y: ev.clientY };
+      if (fantasma.current) fantasma.current.style.transform = `translate(${ev.clientX + 12}px, ${ev.clientY + 10}px)`;
+      const t = document.elementFromPoint(ev.clientX, ev.clientY)?.closest<HTMLElement>("[data-soltar-metade]");
+      const dentro = !!t && !!caixa.current?.contains(t);
+      alvo = dentro ? { mi: Number(t.dataset.soltarMetade), antes: t.dataset.soltarAntes } : null;
+      setSobre(dentro ? t.dataset.soltarChave ?? null : null);
+    };
+    const fim = (soltar: boolean) => {
+      window.removeEventListener("pointermove", mover);
+      window.removeEventListener("pointerup", aoSoltar);
+      window.removeEventListener("pointercancel", aoCancelar);
+      window.removeEventListener("keydown", aoTecla, true);
+      if (!ativo) return;
+      try { el.releasePointerCapture(pid); } catch { /* já solto */ }
+      // o clique que vem logo depois do soltar não ativa a aba de origem
+      const engolir = (ev: MouseEvent) => { ev.stopPropagation(); ev.preventDefault(); };
+      window.addEventListener("click", engolir, true);
+      setTimeout(() => window.removeEventListener("click", engolir, true), 0);
+      setArrastando(null);
+      setSobre(null);
+      const a = alvo;
+      if (soltar && a) mudar((s) => P.mover(s, j.id, a.mi, a.antes));
+    };
+    const aoSoltar = (ev: PointerEvent) => { if (ev.pointerId === pid) fim(true); };
+    const aoCancelar = (ev: PointerEvent) => { if (ev.pointerId === pid) fim(false); };
+    const aoTecla = (ev: KeyboardEvent) => { if (ev.key === "Escape" && ativo) { ev.stopPropagation(); fim(false); } };
+    window.addEventListener("pointermove", mover);
+    window.addEventListener("pointerup", aoSoltar);
+    window.addEventListener("pointercancel", aoCancelar);
+    window.addEventListener("keydown", aoTecla, true);
   };
-  const soltarEm = (mi: number, antesDe?: string) => (e: React.DragEvent) => {
-    const id = e.dataTransfer.getData("text/atelier-janela");
-    setArrastando(null);
-    setSobre(null);
-    if (!id) return;
-    e.preventDefault();
-    mudar((s) => P.mover(s, id, mi, antesDe));
-  };
-  const aceitar = (chave: string) => (e: React.DragEvent) => {
-    if (!arrastando) return;
-    e.preventDefault();
-    setSobre(chave);
+  const alvo = (chave: string, mi: number, antesDe?: string) => ({
+    "data-soltar-chave": chave, "data-soltar-metade": mi, ...(antesDe ? { "data-soltar-antes": antesDe } : {}),
+  });
+  const janelaArrastada = arrastando ? P.acharJanela(estado, arrastando)?.j : undefined;
+
+  // menu do botão direito na aba
+  const [menu, setMenu] = useState<{ ancora: HTMLElement; id: string; mi: number } | null>(null);
+  const doMenu = (f: (s: EstadoPainel, id: string, mi: number) => EstadoPainel) => () => {
+    if (!menu) return;
+    const { id, mi } = menu;
+    setMenu(null);
+    mudar((s) => f(s, id, mi));
   };
 
   return (
-    <div className={`painel${arrastando ? " arrastando" : ""}${animar ? " animar" : ""}`} ref={caixa} onDragEnd={() => { setArrastando(null); setSobre(null); }}>
+    <div className={`painel${arrastando ? " arrastando" : ""}${animar ? " animar" : ""}`} ref={caixa}>
       {estado.metades.map((m, mi) => {
         const r = retMetade(mi);
         const focada = estado.foco === mi;
@@ -157,20 +207,18 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
             key={`cab${mi}`}
             className={`metade-cabeca${focada && duas ? " focada" : ""}${sobre === `m${mi}` ? " soltar" : ""}`}
             style={{ left: r.x, width: r.w, height: CABECA }}
-            onDragOver={aceitar(`m${mi}`)}
-            onDrop={soltarEm(mi)}
+            {...alvo(`m${mi}`, mi)}
             onMouseDown={() => !focada && mudar((s) => ({ ...s, foco: mi }))}
           >
             <div className="abas" onWheel={(e) => { (e.currentTarget as HTMLDivElement).scrollLeft += e.deltaY; }}>
               {m.janelas.map((j) => (
                 <div
                   key={j.id}
-                  className={`aba${j.id === m.ativa ? " ativa" : ""}${sobre === j.id ? " soltar-antes" : ""}${j.empilhada && m.modo === "fita" ? " empilhada" : ""}`}
-                  draggable
-                  onDragStart={pegar(j)}
-                  onDragOver={aceitar(j.id)}
-                  onDrop={(e) => { e.stopPropagation(); soltarEm(mi, j.id)(e); }}
+                  className={`aba${j.id === m.ativa ? " ativa" : ""}${sobre === j.id ? " soltar-antes" : ""}${j.empilhada && m.modo === "fita" ? " empilhada" : ""}${arrastando === j.id ? " arrastada" : ""}`}
+                  {...alvo(j.id, mi, j.id)}
+                  onPointerDown={pegar(j)}
                   onClick={() => mudar((s) => P.ativar(s, mi, j.id))}
+                  onContextMenu={(e) => { e.preventDefault(); setMenu({ ancora: e.currentTarget, id: j.id, mi }); }}
                   onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); mudar((s) => P.fechar(s, j.id)); } }}
                   title={j.titulo}
                 >
@@ -208,7 +256,7 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
       {estado.metades.map((m, mi) =>
         !m.janelas.length ? (
           <div key={`vazia${mi}`} className="metade-vazia" style={{ left: corpoDe(mi).x, top: CABECA, width: corpoDe(mi).w, bottom: 0 }}
-            onMouseDown={() => mudar((s) => ({ ...s, foco: mi }))} onDragOver={aceitar(`m${mi}`)} onDrop={soltarEm(mi)}>
+            onMouseDown={() => mudar((s) => ({ ...s, foco: mi }))} {...alvo(`m${mi}`, mi)}>
             Metade vazia. Clique aqui e escolha uma visão na barra ao lado, use Ctrl+K, abra um terminal ou arraste uma aba para cá.
           </div>
         ) : null,
@@ -239,7 +287,7 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
             onMouseDownCapture={() => { if (m.ativa !== j.id || estado.foco !== mi) mudar((s) => P.ativar(s, mi, j.id)); }}
           >
             {l.cabeca && m.janelas.length > 1 && (
-              <div className="janela-cabeca" draggable onDragStart={pegar(j)}>
+              <div className="janela-cabeca" onPointerDown={pegar(j)}>
                 <IconeJanela j={j} />
                 <span className="aba-rotulo">{j.titulo ?? "…"}</span>
                 {m.modo === "fita" && (
@@ -274,14 +322,36 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
 
       {arrastando && estado.metades.length === 1 && (
         <div className={`soltar-metade${sobre === "nova" ? " sobre" : ""}`} style={{ left: tam.w / 2, top: CABECA, width: tam.w / 2, bottom: 0 }}
-          onDragOver={aceitar("nova")} onDrop={soltarEm(1)}>
+          {...alvo("nova", 1)}>
           Solte aqui para abrir na metade da direita
         </div>
       )}
       {arrastando && duas && estado.metades.map((_, mi) => (
         <div key={`zona${mi}`} className={`soltar-metade${sobre === `z${mi}` ? " sobre" : ""}`} style={{ left: corpoDe(mi).x, top: CABECA, width: corpoDe(mi).w, bottom: 0 }}
-          onDragOver={aceitar(`z${mi}`)} onDrop={soltarEm(mi)} />
+          {...alvo(`z${mi}`, mi)} />
       ))}
+
+      {janelaArrastada && createPortal(
+        <div className="aba-fantasma" ref={fantasma} style={{ transform: `translate(${posFantasma.current.x + 12}px, ${posFantasma.current.y + 10}px)` }}>
+          <IconeJanela j={janelaArrastada} />
+          <span className="aba-rotulo">{janelaArrastada.titulo ?? "…"}</span>
+        </div>,
+        document.body,
+      )}
+
+      {menu && (
+        <Popover ancora={menu.ancora} aoFechar={() => setMenu(null)} largura={250}>
+          <button className="menu-item" onClick={doMenu(P.moverParaOutraMetade)}>
+            <Columns2 size={14} /> {duas ? "Mover para a outra metade" : "Mover para a metade da direita"}
+          </button>
+          <button className="menu-item" onClick={doMenu((s, id) => P.fechar(s, id))}>
+            <X size={14} /> Fechar
+          </button>
+          <button className="menu-item" onClick={doMenu(P.fecharOutras)}>
+            <X size={14} /> Fechar as outras desta metade
+          </button>
+        </Popover>
+      )}
     </div>
   );
 }

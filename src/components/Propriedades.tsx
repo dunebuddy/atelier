@@ -207,6 +207,7 @@ function ConfigGeral({ prop, aoMudarEsquema }: { prop: Propriedade; aoMudarEsque
       )}
       {prop.especie === "data" && caixa("Com hora", !!c.hora, (v) => gravar({ hora: v }))}
       {LISTAVEIS.includes(prop.especie) && caixa("Aceita vários valores (lista)", !!c.lista, (v) => gravar({ lista: v }))}
+      {caixa("Quebrar linha na tabela (em vez de cortar em …)", !!c.quebrar, (v) => gravar({ quebrar: v }))}
     </>
   );
 }

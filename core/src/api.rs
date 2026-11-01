@@ -149,8 +149,25 @@ async fn manutencao(b: Banco) {
     }
 }
 
+/// O que o MCP (outro processo) grava no banco aparece na tela sozinho: o SQLite muda o `data_version` da nossa
+/// conexão quando outra conexão grava (as gravações da própria tela não mexem nele). Conferido a cada segundo; quando
+/// muda, a tela recebe `{"acao": "mudou"}` e recarrega o que estiver à vista.
+async fn vigiar_banco(b: Banco) {
+    let mut ultimo: Option<(String, i64)> = None;
+    loop {
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        let Some(banc) = b.bancada_ativa() else { continue };
+        let Ok(v) = com(&b, |c| Ok(c.query_row("PRAGMA data_version", [], |r| r.get::<_, i64>(0))?)) else { continue };
+        if matches!(&ultimo, Some((cam, antes)) if *cam == banc.caminho && *antes != v) {
+            let _ = b.tela.send(json!({ "acao": "mudou" }).to_string());
+        }
+        ultimo = Some((banc.caminho, v));
+    }
+}
+
 pub async fn servir(banco: Banco) {
     tokio::spawn(manutencao(banco.clone()));
+    tokio::spawn(vigiar_banco(banco.clone()));
     let endereco = format!("127.0.0.1:{PORTA}");
     match tokio::net::TcpListener::bind(&endereco).await {
         Ok(l) => {

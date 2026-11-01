@@ -44,6 +44,15 @@ export function ehHistorico(e: Esquema, it: Item) {
     .some((p) => opcoesDe(e, p, it.tipo_id).find((o) => o.nome === it.props[p.id])?.historico);
 }
 
+/**
+ * O item aparece na visão? Com "esconder concluídos" ligado, o item em status de histórico sai — a não ser que o
+ * filtro peça aquele status de propósito (filtrar Status = Feito tem de mostrar os feitos).
+ */
+export function visivelNaVisao(e: Esquema, f: FiltroVisao, it: Item) {
+  if (!f.esconder_historico || !ehHistorico(e, it)) return true;
+  return Object.entries(f.props ?? {}).some(([pid, valores]) => valores.length > 0 && valores.includes(String(it.props[pid] ?? "")));
+}
+
 export function VisaoTela({
   esquema, visao, salvar, ir, aoMudarEsquema, aoApagar,
 }: {
@@ -112,7 +121,7 @@ export function VisaoTela({
 
   const ordenar = v.config?.ordenar;
   const visiveis = useMemo(() => {
-    const l = (itens ?? []).filter((i) => f.historico || !ehHistorico(esquema, i));
+    const l = (itens ?? []).filter((i) => visivelNaVisao(esquema, f, i));
     if (!ordenar) return l;
     // ordem fixa da visão (ex.: por prazo); sem valor vai para o fim
     const p = esquema.propriedades.find((x) => x.id === ordenar.prop);
@@ -129,7 +138,7 @@ export function VisaoTela({
       if (vb === null) return -1;
       return (va < vb ? -1 : 1) * (ordenar.asc ? 1 : -1);
     });
-  }, [itens, f.historico, esquema, ordenar?.prop, ordenar?.asc]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [itens, f.esconder_historico, JSON.stringify(f.props), esquema, ordenar?.prop, ordenar?.asc]); // eslint-disable-line react-hooks/exhaustive-deps
   const escondidos = (itens?.length ?? 0) - visiveis.length;
 
   const props = propsDaVisao(esquema, f);
@@ -163,7 +172,7 @@ export function VisaoTela({
           )}
           <div className="vista-sub">
             {v.layout === "linha" ? "Linha do tempo" : itens ? `${visiveis.length} ${visiveis.length === 1 ? "item" : "itens"}` : "…"}
-            {v.layout !== "linha" && escondidos > 0 && ` · ${escondidos} no histórico`}
+            {v.layout !== "linha" && escondidos > 0 && ` · ${escondidos} concluídos escondidos`}
           </div>
         </div>
         {salvar && aoApagar && (
@@ -209,9 +218,13 @@ export function VisaoTela({
             <ArrowUpDown size={14} /> {ordenar ? `${esquema.propriedades.find((p) => p.id === ordenar.prop)?.nome ?? "?"} ${ordenar.asc ? "↑" : "↓"}` : "Ordem"}
           </button>
         )}
-        {!v.fixa && v.layout !== "linha" && escondidos + (f.historico ? 1 : 0) > 0 && (
-          <button className="btn" onClick={() => mudar({ filtro: { ...f, historico: !f.historico } })} title="Itens com status de histórico (feitos, descartados…)">
-            {f.historico ? <EyeOff size={14} /> : <Eye size={14} />} {f.historico ? "Esconder histórico" : `Histórico (${escondidos})`}
+        {!v.fixa && v.layout !== "linha" && (f.esconder_historico || (itens ?? []).some((i) => ehHistorico(esquema, i))) && (
+          <button
+            className={`btn${f.esconder_historico ? " com-filtro" : ""}`}
+            onClick={() => mudar({ filtro: { ...f, esconder_historico: !f.esconder_historico } })}
+            title="Itens com status de histórico (feitos, descartados…). A escolha fica guardada nesta visão."
+          >
+            {f.esconder_historico ? <Eye size={14} /> : <EyeOff size={14} />} {f.esconder_historico ? `Mostrar concluídos (${escondidos})` : "Esconder concluídos"}
           </button>
         )}
         {v.layout !== "linha" && (
@@ -232,7 +245,7 @@ export function VisaoTela({
       )}
       {v.layout === "kanban" && itens && (
         agruparPor ? (
-          <Kanban esquema={esquema} itens={visiveis} agruparPor={agruparPor} tipoUnico={unicoTipo} tiposDaVisao={tiposDaVisao(esquema, f).map((t) => t.id)} mostrarHistorico={!!f.historico} ir={ir} aoMudarItens={(l) => setItens(l)} todos={itens} />
+          <Kanban esquema={esquema} itens={visiveis} agruparPor={agruparPor} tipoUnico={unicoTipo} tiposDaVisao={tiposDaVisao(esquema, f).map((t) => t.id)} mostrarHistorico={!f.esconder_historico} ir={ir} aoMudarItens={(l) => setItens(l)} todos={itens} />
         ) : (
           <div className="vazio-grande">Para ver em quadro, os tipos desta visão precisam de uma propriedade de seleção ou status.</div>
         )
@@ -455,7 +468,7 @@ function EditorFiltro({ esquema, filtro, aoMudar, ancora, aoFechar }: { esquema:
         );
       })}
       <div className="menu-sep" />
-      <button className="menu-item" onClick={() => aoMudar({ historico: f.historico })}>Limpar filtros</button>
+      <button className="menu-item" onClick={() => aoMudar({ esconder_historico: f.esconder_historico })}>Limpar filtros</button>
     </Popover>
   );
 }

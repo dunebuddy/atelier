@@ -16,39 +16,6 @@ Como usar:
 ## Caixa de entrada
 
 ### Bugs
-- **Arrastar aba de uma metade para a outra não funciona no app** (2026-11-01, Paulo, prioridade alta). O arrasto
-  começa (a aba clareia) mas mostra "não pode soltar". Causa: o `tauri.conf.json` não define `dragDropEnabled`, que
-  por padrão fica ligado (o Tauri recebe arquivos arrastados do sistema, usado em `PaginaItem.tsx` com
-  `onDragDropEvent`), e no Windows isso bloqueia o arrastar HTML5 dentro da página (abas em `Painel.tsx`:
-  `draggable`/`onDragStart`). No navegador de teste funcionava por não ter essa camada. Caminhos:
-  1. trocar o arrastar das abas para eventos de ponteiro (pointerdown/move/up) em vez de HTML5 drag — não depende do
-     Tauri e mantém o soltar arquivos do sistema como está (**recomendado**);
-  2. ou `dragDropEnabled: false` e receber arquivos do sistema pelo HTML5 (`dataTransfer.files`, enviando os bytes
-     pela rota de colar arquivo, sem o caminho original).
-  Junto: menu de botão direito na aba com "Mover para a outra metade" (e "Abrir na outra metade"), para não depender
-  só de arrastar.
-- **REGRA (prioridade alta, Paulo 2026-11-01): tudo o que for feito pelo MCP aparece na tela sozinho, sempre.** Nada
-  de trocar de bancada ou reabrir para ver. Não depender de cada ferramenta lembrar de avisar: o núcleo do app percebe
-  qualquer escrita no banco feita por outro processo (o MCP fala direto com o SQLite) e avisa a tela. Como: o núcleo
-  consulta `PRAGMA data_version` da conexão dele a cada ~1 s (barato; o número muda quando outra conexão grava) e,
-  quando muda, manda `{"acao": "mudou"}` pelo websocket da tela; a tela recarrega esquema, visões, contagens e as
-  páginas visíveis (as escondidas recarregam ao reaparecer, como já fazem). Também vale para troca de bancada e para
-  o `config.toml` mudado por fora (bancadas). Depois disso, o `recarregar` explícito do MCP vira só reforço.
-- **Tela não mostra tipos e propriedades criados pelo agente** (2026-11-01, uso real: bancada MDB). No banco e na API
-  estão lá (6 tipos, 13 propriedades), mas a tela só carrega o esquema ao abrir e ao trocar de bancada. Corrigir: o
-  MCP chama `tela` → `recarregar` depois de `criar_tipo`, `criar_propriedade`, `ligar_propriedade` (e dos futuros
-  apagar/renomear), como já faz com visões e lixeira; e no `App.tsx` o pedido `recarregar` (e o foco da janela)
-  também recarrega o esquema (`carregarEsquema`), não só as listas.
-- **Botão "Instalar" do aviso de atualização com o texto fora do centro** (2026-11-01, print do Paulo na 0.1.2 → 0.1.3).
-  O aviso em si ficou bom: **ele deve virar o padrão de aviso (toast) do app**, com título, texto, ações e o ×.
-
-- **Atualização da 0.1.2 para a 0.1.3 (2026-11-01):** o primeiro instalador travou ("não respondendo", provavelmente o
-  Avast segurando o instalador sem assinatura) e um segundo clique em Instalar abriu outro instalador, que terminou e
-  reabriu o app. Corrigir: o botão Instalar trava depois do clique e mostra o progresso (nunca dois instaladores); se o
-  instalador demorar, dizer que o antivírus pode estar inspecionando.
-- **Confirmar a atualização:** ao reabrir depois de atualizar, avisar "Atualizado para a X.Y.Z" (hoje não há sinal de
-  que deu certo; o Paulo teve de perguntar).
-
 - **Ícone velho na barra do sistema depois de atualizar para a 0.1.3** (2026-11-01, Paulo). Não corrigir sem montar
   a versão. O que já se sabe:
   - O executável instalado tem o ícone novo (extraído do `atelier.exe` e conferido) e o menu Iniciar mostra o novo.
@@ -86,31 +53,10 @@ Como usar:
   (painéis encostam na barra) e dar à barra uma linha fina no topo (`border-top: 1px solid var(--borda)`), para ela ser
   uma faixa própria com a pílula centrada; alternativa do Paulo: cor de fundo diferente na barra ou sem pílula.
 
-- **Tabela: células quebrando linha e esticando a linha** (2026-11-01, print do Paulo, visão Projeto da MDB). Texto
-  longo (Apontamento) quebra em várias linhas, e as listas (Envolvidos, Cervello, Links) empilham um valor embaixo do
-  outro. **Padrão: uma linha só** — texto cortado com "…" (texto inteiro no tooltip e ao abrir a célula), listas na
-  horizontal mostrando os que cabem e "+N" para o resto. **Opção por propriedade** (configuração da propriedade, ex.:
-  "Quebrar linha na tabela"), desligada por padrão, para quem quiser ver o texto inteiro. Onde: `src/components/Layouts.tsx`
-  (Tabela) e `src/components/Valor.tsx` (como cada espécie desenha), estilos em `src/styles.css`.
-
-- **Chip de item (relação) invade a célula vizinha na tabela** (2026-11-01, Paulo). O chip de link para item passa
-  por cima da próxima coluna. Corrigir junto com "tabela em uma linha": a célula corta o que não cabe
-  (`overflow: hidden`, `min-width: 0` no conteúdo), o chip ganha `max-width: 100%` com o título cortado em "…", e
-  vários chips seguem a regra dos "+N". Onde: `ChipItem`/`ValorRelacao` em `src/components/Valor.tsx` e `.celula` em
-  `src/styles.css`.
-
-- **Filtrar por status de histórico mostra lista vazia** (2026-11-01, Paulo, visão Task da MDB). A task "Preparação:
-  inventário da conta…" (#e1a0ca6) está "Feito", e "Feito" é status de histórico no tipo Task, então a visão a esconde
-  (11 de 12 aparecem; não é paginação, não há limite). Até aí é a regra. O bug: com o filtro Status = Feito, a lista
-  fica vazia, porque `Visao.tsx` (`visiveis`, ~linha 115) esconde o histórico mesmo quando o filtro pede um status de
-  histórico. Corrigir: se o filtro escolhe valores de histórico numa propriedade status, esses itens aparecem (ou o
-  filtro liga o histórico sozinho). E deixar mais visível que há itens escondidos (hoje só "· 1 no histórico" no
-  subtítulo e o botão "Histórico (1)").
-  **Decisão do Paulo:** esconder o histórico passa a ser **desligado por padrão** (a visão mostra tudo); quem quiser
-  liga "Esconder concluídos" e a escolha fica guardada na visão (no banco, como já é o filtro). Migration: visões
-  existentes passam a mostrar tudo, exceto se o Paulo tiver ligado de propósito.
-
 ### Melhorias pedidas
+- **Barra lateral: arrastar para reordenar visões e grupos** usa o arrastar HTML5 (`Sidebar.tsx`), o mesmo que o Tauri
+  bloqueia no Windows: provavelmente não funciona no app instalado. Trocar por eventos de ponteiro, como as abas do
+  painel na 0.1.4 (`Painel.tsx`).
 - **"Apontado por" com contagem e grupo clicável que vira visão** (2026-11-01, Paulo). Em `Relacoes.tsx`, cada grupo
   (o nome inverso da propriedade de relação: "Filhos" de Pai, "Gerou" de Nasceu de, "Itens do projeto" de Projeto, e
   "Mencionado em" para quem cita o #código) passa a mostrar a contagem, ex.: "Filhos (7)". Clicar no grupo abre uma
@@ -198,6 +144,17 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.1.4** (2026-11-01, correção expressa do que atrapalhava o uso):
+  - a tela mostra sozinha o que o agente faz pelo MCP: o núcleo vigia o `data_version` do SQLite a cada segundo e
+    manda `mudou`; a tela recarrega esquema, visões, bancadas e o que está à vista;
+  - arrastar aba entre as metades (eventos de ponteiro, sem o arrastar HTML5 que o Tauri bloqueia) e botão direito
+    na aba: "Mover para a outra metade", "Fechar", "Fechar as outras desta metade";
+  - histórico visível por padrão; "Esconder concluídos" guardado na visão (`esconder_historico`); filtro que pede um
+    status de histórico mostra esses itens mesmo escondendo;
+  - tabela em uma linha: texto cortado em "…" (inteiro no tooltip), listas com "+N", chip de item sem invadir a
+    vizinha; opção "Quebrar linha na tabela" por propriedade;
+  - aviso de versão nova refeito (título, mensagem, botões embaixo; o ícone do Instalar sumia pintado da cor do botão),
+    uma instalação de cada vez, e aviso "Atualizado para a versão X" ao reabrir.
 - **Avast** (2026-11-01, Paulo): exceção para `C:\Users\paulo\AppData\Local\atelier\*`; a abertura caiu de 12–15 s
   para instantânea.
 - **0.1.3** (2026-11-01): bancada limpa com a visão fixa Todos os itens; instância única e bandeja; ícone carimbo em A;

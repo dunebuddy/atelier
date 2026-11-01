@@ -242,3 +242,8 @@ Tudo do plano refeito foi feito e testado no app de teste (`ATELIER_HOME`), pela
   física (`e.code`, sem confusão com AltGr/ABNT2). Mudanças em `preferencias.atalhos` (config.toml). Configurações →
   Atalhos: clique e aperte a combinação; recusa conflito e tecla sem modificador; voltar ao padrão por atalho ou
   todos. A lista do Ctrl+/ vem do registro. Os de dentro do texto (/, #código, Ctrl+clique, Ctrl+Z) não mudam.
+- **Atualização testada de ponta a ponta (2026-10-31):** instalada a v0.1.1 da release; publicada a v0.1.2 pelo CI;
+  a 0.1.1 aberta com `ATELIER_ATUALIZAR_SOZINHO=1` (e `ATELIER_HOME` de teste) achou a 0.1.2, baixou, instalou em
+  modo silencioso e reabriu já na 0.1.2 (log em `%TEMP%\atelier-atualizacao.log`, `/api/saude` responde a versão).
+  O app ficou instalado em `%LOCALAPPDATA%\atelier` (0.1.2). Instalador mantido (como VS Code, Discord, Obsidian):
+  atualização sem clique, sem admin, e caminho fixo do `atelier-mcp` para os agentes.

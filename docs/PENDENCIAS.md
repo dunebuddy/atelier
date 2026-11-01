@@ -33,6 +33,14 @@ Como usar:
     (ou sair e entrar na conta). Se confirmar, decidir se o app/instalador força a renovação depois de atualizar (o
     instalador NSIS pode chamar `SHChangeNotify(SHCNE_ASSOCCHANGED)` no fim) ou se fica só como nota de "na primeira
     troca de ícone, reinicie o Explorer".
+  - **Causa achada na 0.1.4 (2026-11-01; o Paulo mostrou o ícone ainda errado já na 0.1.4).** Medido na janela
+    aberta: ela só tem o ícone **pequeno** (`WM_GETICON ICON_SMALL` = o A novo); o **grande** (`ICON_BIG`) está
+    vazio e a classe da janela também não tem ícone. Esse grande é o que a barra de tarefas usa. Sem ele, o Windows
+    cai no ícone guardado em cache para o exe, que ainda é o redemoinho padrão do Tauri das primeiras versões. A
+    hipótese 2 estava certa e foi descartada cedo demais; o cache só explica por que aparece *o velho*.
+    **Correção:** no `setup` (`src-tauri/src/lib.rs`), definir o ícone grande da janela principal com
+    `WM_SETICON ICON_BIG`, usando o ícone embutido no exe (`LoadImageW` do recurso, 32/48 px pela DPI). Depois de
+    instalar, conferir de novo com `WM_GETICON ICON_BIG`.
 
 - **Ditado ocupa o dobro do modelo na memória** (2026-11-01, Paulo: interface em 1,6 GB depois de baixar o
   Parakeet). Medido: o renderer do WebView2 (onde roda o Worker do ditado) foi a 1.484 MB e voltou a 70 MB quando o

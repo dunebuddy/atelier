@@ -94,6 +94,18 @@ Como usar:
   (Tabela) e `src/components/Valor.tsx` (como cada espécie desenha), estilos em `src/styles.css`.
 
 ### Melhorias pedidas
+- **Deixar claro em qual workspace se está** (2026-11-01, Paulo: abriu o explorador "do item" e veio a raiz da MDB;
+  provavelmente estava no workspace da bancada com o item aberto numa janela, e aí a regra é abrir na pasta do
+  workspace). Hoje o workspace só aparece no seletor da barra de título e no rodapé ("Workspace: …"), fácil de não
+  ver. Ideias para decidir com o Paulo:
+  1. o menu do terminal e do explorador diz de qual pasta se trata ("Pasta do workspace: bancada MDB" / "… do item
+     #d475363") e, se o item da janela em foco não é o do workspace, oferece também "Pasta deste item";
+  2. página de item aberta fora do próprio workspace mostra um aviso discreto com o botão "Abrir o workspace deste
+     item";
+  3. destaque visual do workspace atual (cor/ícone do item no seletor e uma faixa fina no painel), diferente para o
+     da bancada;
+  4. (mudança de regra, só com o ok dele) no workspace da bancada, as ferramentas usarem a pasta do item da janela em
+     foco.
 - **Ficha do item: coluna fixa à direita com rolagem própria** (2026-11-01, Paulo gostou da ficha). Hoje ela gruda no
   topo ao rolar (sticky), mas quando é mais alta que a tela o fim dela só aparece quando a página chega ao fim — numa
   página longa, demora. Quero: a página do item em duas colunas, cada uma com a sua barra de rolagem (texto à esquerda,

@@ -94,6 +94,15 @@ Como usar:
   (Tabela) e `src/components/Valor.tsx` (como cada espécie desenha), estilos em `src/styles.css`.
 
 ### Melhorias pedidas
+- **"Apontado por" com contagem e grupo clicável que vira visão** (2026-11-01, Paulo). Em `Relacoes.tsx`, cada grupo
+  (o nome inverso da propriedade de relação: "Filhos" de Pai, "Gerou" de Nasceu de, "Itens do projeto" de Projeto, e
+  "Mencionado em" para quem cita o #código) passa a mostrar a contagem, ex.: "Filhos (7)". Clicar no grupo abre uma
+  **visão avulsa** ao lado com esses itens (tabela, colunas do tipo, histórico escondido por padrão, filtros, busca),
+  com "Salvar como visão" para guardar no menu. Ex. do Paulo: "os filhos deste item que ainda não estão concluídos"
+  em um clique, sem criar visão à mão. Precisa de filtro de visão por relação ("Pai contém #código"), que hoje a visão
+  não tem: acrescentar em `db::Filtro`/`listar_itens` (`json_each` na propriedade) e no editor de filtro.
+- **Buscas inteligentes a partir de um item** (mesma conversa): atalhos prontos tipo "filhos em aberto", "o que este
+  item bloqueia", "itens do projeto por status". Começar pelo item acima e ver o que mais faz falta no uso.
 - **Deixar claro em qual workspace se está** (2026-11-01, Paulo: abriu o explorador "do item" e veio a raiz da MDB;
   provavelmente estava no workspace da bancada com o item aberto numa janela, e aí a regra é abrir na pasta do
   workspace). Hoje o workspace só aparece no seletor da barra de título e no rodapé ("Workspace: …"), fácil de não

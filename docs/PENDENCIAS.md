@@ -17,7 +17,7 @@ Como usar:
 
 ## Caixa de entrada
 
-> **Triagem de 2026-11-01:** tudo o que está abaixo já tem lugar no [`ROADMAP.md`](ROADMAP.md) (0.1.8 a 0.2.2; as
+> **Triagem de 2026-11-01:** tudo o que está abaixo já tem lugar no [`ROADMAP.md`](ROADMAP.md) (0.1.8 a 0.2.1; as
 > ideias antigas ficaram em "Ideias, sem data"). Pedido novo entra aqui e ganha lugar lá.
 
 ### Bugs
@@ -47,7 +47,7 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
-- **0.2.1** (2026-11-01, memória e desempenho):
+- **0.2.0, parte 2** (2026-11-01, memória e desempenho; saiu junto na 0.2.0):
   - PDF: um lugar do tamanho certo para cada página (sem o limite de 300) e só as que estão à vista, com uma página
     de folga, são desenhadas; a que sai de vista solta o desenho (IntersectionObserver na vista);
   - workspaces guardados: o da bancada, os abertos e os 40 de item usados por último (`info.usado`); cada janela

@@ -110,14 +110,14 @@ Um pacote só, porque tudo mexe no worker do ditado e na mesma tela de Configura
 - "Baixar" só baixa; indicador mostra a memória real; lista mostra quanto cada modelo ocupa carregado.
 - Escolher RAM ou VRAM (desabilitado sem placa dedicada).
 
-## 0.2.1 · Memória e desempenho · **saiu em 2026-11-01**
+## 0.2.0 (junto) · Memória e desempenho · **saiu em 2026-11-01, na 0.2.0**
 
 - PDF desenhando só as páginas à vista (hoje até 300 de uma vez).
 - Podar o histórico guardado dos workspaces (passos de navegação antigos e workspaces de itens apagados).
 - Fica de fora, de propósito: desmontar janelas escondidas (perderia a rolagem e o que estiver sendo editado; o
   ganho de memória não paga o risco no uso diário).
 
-## 0.2.2 · Item vira documento (pacote sozinho)
+## 0.2.1 · Item vira documento (pacote sozinho)
 
 Pedido do Paulo em 2026-11-01: a entidade central deixa de se chamar **item** e passa a se chamar **documento**. Nada
 muda no comportamento, só o nome: tela, mensagens, MCP (descrições e nomes das ferramentas, com os nomes antigos

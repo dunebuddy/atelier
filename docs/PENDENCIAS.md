@@ -18,6 +18,14 @@ Como usar:
 ## Caixa de entrada
 
 ### Bugs
+- **Atualizar dá erro quando o MCP está aberto** (2026-11-01, Paulo: "o instalador não tá matando o MCP"). O
+  `atelier-mcp.exe` não é processo do atelier: é aberto pelo Claude Code (e outros agentes) a cada sessão com o MCP
+  ligado. Com ele rodando, o instalador NSIS não consegue sobrescrever o arquivo e dá erro. Matar o processo
+  derrubaria o MCP das sessões abertas no meio do trabalho. Correção: gancho do NSIS antes de instalar
+  (`bundle.windows.nsis.installerHooks`, macro `NSIS_HOOK_PREINSTALL`) que **renomeia** o exe em uso para
+  `atelier-mcp.antigo-<n>.exe` (o Windows deixa renomear um exe aberto, só não deixa sobrescrever) e põe o novo no
+  lugar; a sessão aberta segue com o antigo até reiniciar, a próxima já pega o novo. Os `.antigo-*` são apagados
+  na instalação seguinte e ao abrir o app (se ninguém mais usa), e na desinstalação.
 
 - **Ditado ocupa o dobro do modelo na memória** (2026-11-01, Paulo: interface em 1,6 GB depois de baixar o
   Parakeet). Medido: o renderer do WebView2 (onde roda o Worker do ditado) foi a 1.484 MB e voltou a 70 MB quando o

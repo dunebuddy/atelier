@@ -18,6 +18,21 @@ Como usar:
 ## Caixa de entrada
 
 ### Bugs
+- **Muitas abas: as da direita somem e não dá para chegar nelas** (2026-11-01, Paulo). Causa: `.abas`
+  (`src/styles.css`) tem `overflow-x: auto` com a barra escondida (`scrollbar-width: none`), e a roda do mouse rola
+  na vertical, então não há como rolar as abas. Fazer, em `Painel.tsx`:
+  - **botão de lista à esquerda das abas** (pedido do Paulo): abre um popover com todas as abas da metade (ícone,
+    título, a ativa marcada; clicar ativa), no mesmo estilo do menu de histórico do botão voltar (clique direito);
+  - roda do mouse sobre as abas rola na horizontal;
+  - a aba ativa sempre rolada para dentro da vista (`scrollIntoView` ao trocar).
+- **Conteúdo largo: a barra de rolagem horizontal fica lá embaixo** (2026-11-01, Paulo). Ex.: tabela mais larga e
+  mais alta que o painel. A rolagem vertical é a da janela (`.janela-corpo`), mas a horizontal é a do cartão da
+  tabela (`.cartao-tabela`, `overflow-x: auto`), que só aparece no fim da tabela: para ir para a direita é preciso
+  descer até o fim, rolar e subir de novo. Quero: **as duas barras sempre à vista**, a vertical na lateral e a
+  horizontal no rodapé do painel. Caminho: na visão em tabela, o cartão da tabela vira a área que rola nas duas
+  direções e ocupa a altura que sobra na janela (cabeçalho da visão fica em cima, o cabeçalho da tabela gruda no
+  topo do cartão), em vez de a página inteira rolar. Conferir também a página do item com conteúdo largo (bloco de
+  código, tabela do Markdown): mesmo princípio, barra horizontal no rodapé visível.
 
 - **Ditado ocupa o dobro do modelo na memória** (2026-11-01, Paulo: interface em 1,6 GB depois de baixar o
   Parakeet). Medido: o renderer do WebView2 (onde roda o Worker do ditado) foi a 1.484 MB e voltou a 70 MB quando o

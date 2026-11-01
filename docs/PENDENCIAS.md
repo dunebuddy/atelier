@@ -59,6 +59,14 @@ Como usar:
   `.corpo-app` quando `fechada`, em `App.tsx`). Fazer junto com a pílula da barra de status (mesmo `padding`).
 
 ### Melhorias pedidas
+- **Permissões do WebView sem pedir** (2026-11-01, Paulo). Hoje o WebView2 abre o pedido dele (microfone para o
+  ditado, ler a área de transferência ao colar, etc.): uma caixa escura solta, às vezes fora da janela. O app é do
+  Paulo e só carrega a própria tela, então essas permissões já vêm concedidas. Como: no `setup` do `src-tauri/src/lib.rs`,
+  `webview.with_webview` → `CoreWebView2::add_PermissionRequested` (crate `webview2-com`) respondendo `ALLOW` sem
+  mostrar nada; no Linux, o sinal `permission-request` do WebKitGTK. **Só para a origem do próprio app**
+  (`tauri.localhost` / `localhost:1420`): o visualizador de HTML do explorador roda página de fora em iframe
+  (`localhost:7477`, com scripts) e esse continua sem permissão. Liberar só o que o app usa (microfone, área de
+  transferência, notificações); câmera, localização e o resto seguem negados, sem caixa.
 - **Configurações → Geral (janela e sistema)** (2026-11-01, Paulo). Juntar numa página só as opções de como o app se
   comporta no Windows (hoje "fechar vai para a bandeja" está escondido em Automação):
   - **Fechar (×)**: vai para a bandeja ou fecha de verdade;

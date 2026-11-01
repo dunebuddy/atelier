@@ -66,6 +66,14 @@ Como usar:
   painel cola na borda. Corrigir: com a barra fechada, folga de 8 px à esquerda, igual à da direita (classe no
   `.corpo-app` quando `fechada`, em `App.tsx`). Fazer junto com a pílula da barra de status (mesmo `padding`).
 
+- **Ordenar pela coluna numérica ordena como texto** (2026-11-01, Paulo: "0, 1, 10, 11…"). Causa: o clique no
+  cabeçalho da tabela (`Tabela` em `Layouts.tsx`, função `v` dentro de `if (ordem)`) passa todo valor por
+  `String(x).toLowerCase()`. O botão "Ordem" da visão (`Visao.tsx`) já compara número como número. Corrigir: ordenar
+  pela espécie da propriedade: número como número; data, criado em e atualizado em pela data; texto com
+  `localeCompare("pt-BR", { numeric: true })` (assim "Etapa 2" vem antes de "Etapa 10", e acento não atrapalha);
+  vazio sempre no fim. Melhor um comparador só, usado pelos dois lugares. Fazer junto com a reordenação de colunas
+  (mesmo pedido, mesma tabela).
+
 ### Melhorias pedidas
 - **Reordenar as colunas da tabela** (2026-11-01, Paulo: **relativamente prioritária**). Escolher a ordem: "essa
   coluna primeiro, depois essa", e a ordem fica guardada. Hoje a visão já guarda quais colunas aparecem

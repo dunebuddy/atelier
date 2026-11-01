@@ -59,6 +59,14 @@ Como usar:
   `.corpo-app` quando `fechada`, em `App.tsx`). Fazer junto com a pílula da barra de status (mesmo `padding`).
 
 ### Melhorias pedidas
+- **Configurações → Geral (janela e sistema)** (2026-11-01, Paulo). Juntar numa página só as opções de como o app se
+  comporta no Windows (hoje "fechar vai para a bandeja" está escondido em Automação):
+  - **Fechar (×)**: vai para a bandeja ou fecha de verdade;
+  - **Minimizar**: vai para a bandeja (some da barra de tarefas) ou minimiza normal;
+  - **Iniciar com o sistema** (desligado por padrão; plugin `tauri-plugin-autostart`), e junto **iniciar escondido na
+    bandeja**;
+  - talvez: mostrar ou não o ícone na bandeja.
+  A seção "Idioma" pode virar parte dessa página.
 - **Barra lateral: arrastar para reordenar visões e grupos** usa o arrastar HTML5 (`Sidebar.tsx`), o mesmo que o Tauri
   bloqueia no Windows: provavelmente não funciona no app instalado. Trocar por eventos de ponteiro, como as abas do
   painel na 0.1.4 (`Painel.tsx`).

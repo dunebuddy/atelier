@@ -286,8 +286,11 @@ body.redimensionando .sidebar { transition: none; }
 .ws-ponto { width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--texto-3); flex-shrink: 0; }
 .ws-ponto.vivo { background: var(--t-green); border-color: var(--t-green); }
 .barra-status { height: 24px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 11.5px; color: var(--texto-3); }
-.bs-ws { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bs-medida { display: flex; align-items: center; gap: 5px; color: var(--texto-3); font-size: 11.5px; padding: 1px 6px; border-radius: 6px; font-variant-numeric: tabular-nums; }
+.bs-ws { display: flex; align-items: center; gap: 5px; height: 18px; padding: 0 6px; border-radius: 6px; color: var(--texto-3); font-size: 11.5px; line-height: 1; min-width: 0; }
+.bs-ws:hover { background: var(--hover); color: var(--texto); }
+.bs-ws span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bs-ws .rotulo-fraco { color: var(--texto-3); opacity: .8; }
+.bs-medida { display: flex; align-items: center; gap: 5px; height: 18px; line-height: 1; color: var(--texto-3); font-size: 11.5px; padding: 0 6px; border-radius: 6px; font-variant-numeric: tabular-nums; }
 .bs-medida:hover { background: var(--hover); color: var(--texto); }
 .bs-barra { width: 64px; height: 6px; border-radius: 3px; background: var(--hover); overflow: hidden; display: inline-block; }
 .bs-barra > span { display: block; height: 100%; background: var(--acento); border-radius: 3px; }
@@ -403,11 +406,10 @@ body.redimensionando .sidebar { transition: none; }
   border-radius: 10px; transition: background 0.15s;
 }
 .metade-cabeca.soltar { background: var(--acento-suave); }
-.metade-cabeca.focada .seletor-modo { border-color: var(--acento); }
-.seletor-modo { display: flex; gap: 1px; padding: 2px; border: 1px solid var(--borda); border-radius: 9px; background: var(--bg-fundo); flex-shrink: 0; }
-.seletor-modo button { width: 28px; height: 24px; display: grid; place-items: center; border-radius: 7px; color: var(--texto-3); }
-.seletor-modo button:hover { color: var(--texto); background: var(--hover); }
-.seletor-modo button.ativo { color: var(--acento); background: var(--bg); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.seletor-modo { flex-shrink: 0; }
+.seletor-modo .btn-icone { width: auto; padding: 0 4px; gap: 1px; display: flex; align-items: center; }
+/* com o painel dividido, a metade com o foco se destaca pelo botão de arrumação */
+.metade-cabeca.focada .seletor-modo .btn-icone { color: var(--acento); }
 .abas { flex: 1; min-width: 0; display: flex; gap: 3px; overflow-x: auto; scrollbar-width: none; align-self: stretch; align-items: center; }
 .aba {
   display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px 0 10px; border-radius: 8px; max-width: 220px;
@@ -1046,3 +1048,6 @@ button.mencao:hover { text-decoration: underline; text-underline-offset: 2px; }
 .comando-entrada textarea { flex: 1; resize: none; min-height: 38px; line-height: 1.45; font: inherit; }
 .comando-dica { padding: 2px 14px 10px; color: var(--texto-3); font-size: 11.5px; display: flex; align-items: center; gap: 4px; }
 .comando-vazio { padding: 16px; color: var(--texto-2); display: flex; flex-direction: column; gap: 10px; align-items: flex-start; line-height: 1.5; }
+.sobre { display: flex; gap: 14px; align-items: center; margin-top: 8px; }
+.sobre .marca { width: 56px; height: 56px; margin: 0; }
+.sobre-nome { font-size: 18px; font-weight: 600; color: var(--texto); display: flex; align-items: center; gap: 8px; }

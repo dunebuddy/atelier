@@ -98,7 +98,9 @@ export function BarraStatus({ ws }: { ws: Workspaces }) {
 
   return (
     <footer className="barra-status">
-      <span className="bs-ws">{ws.info[ws.ativo]?.titulo}</span>
+      <button className="bs-ws" title="Workspace aberto agora (cada item tem o seu; o da bancada é o geral). Clique para ver todos (Ctrl+Shift+O)" onClick={() => window.dispatchEvent(new Event("atelier:ver-workspaces"))}>
+        <LayoutPanelLeft size={12} /> <span className="rotulo-fraco">Workspace:</span> <span>{ws.info[ws.ativo]?.titulo}</span>
+      </button>
       <span style={{ flex: 1 }} />
       <IndicadorDitado interfaceRam={m.interface} />
       <button className="bs-medida" onClick={pop.abrir} title={`Memória: ${mb(m.ram)} de ${mb(m.ram_maquina)} da máquina · CPU ${m.cpu.toFixed(0)}% (clique para ver por workspace)`}>

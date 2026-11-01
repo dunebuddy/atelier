@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, FileCode, FolderOpen, FolderPlus, Keyboard, Languages, LayoutPanelLeft, Mic, Package, Palette, Pencil, Plug, Plus, RefreshCw, Shapes, Timer, X } from "lucide-react";
+import { Check, Copy, FileCode, FolderOpen, FolderPlus, Keyboard, Languages, Info, LayoutPanelLeft, Mic, Package, Palette, Pencil, Plug, Plus, RefreshCw, Shapes, Timer, X } from "lucide-react";
 import { Agente, api, Bancada, Bancadas, Esquema, Integracoes, Preferencias, TemaArquivo, AgenteCli, UsoAgente } from "../api";
 import { SecaoAutomacao } from "./Automacao";
 import { SecaoAtalhos } from "./ConfigAtalhos";
@@ -7,9 +7,10 @@ import { procurarAtualizacao } from "./Atualizacao";
 import { avisar, falhou, Tema } from "../ui";
 import { abrirWorkspace } from "./Workspaces";
 import { SecaoDitado } from "./Ditado";
+import { Marca } from "./Marca";
 
 // as do app (engrenagem da barra de título) e as da bancada aberta (botão no rodapé da barra lateral)
-export type SecaoConfig = "aparencia" | "geral" | "bancadas" | "integracoes" | "ditado" | "automacao" | "editor" | "atalhos" | "bancada" | "tipos";
+export type SecaoConfig = "aparencia" | "geral" | "bancadas" | "integracoes" | "ditado" | "automacao" | "editor" | "atalhos" | "sobre" | "bancada" | "tipos";
 type Secao = SecaoConfig;
 
 const TEMAS: { id: Tema; nome: string; cores: string[] }[] = [
@@ -26,6 +27,11 @@ async function escolherPasta(inicial?: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+/** Abre um endereço no navegador do sistema (no navegador de teste, numa aba nova). */
+function abrirFora(url: string) {
+  import("@tauri-apps/plugin-opener").then((o) => o.openUrl(url)).catch(() => window.open(url, "_blank"));
 }
 
 function slug(s: string) {
@@ -83,6 +89,7 @@ export function Configuracoes({
               {item("editor", <FileCode size={15} />, "Editor de arquivos")}
               {item("atalhos", <Keyboard size={15} />, "Atalhos")}
               {item("automacao", <Timer size={15} />, "Automação")}
+              {item("sobre", <Info size={15} />, "Sobre")}
             </>
           )}
         </nav>
@@ -106,6 +113,26 @@ export function Configuracoes({
           {secao === "ditado" && <SecaoDitado />}
           {secao === "atalhos" && prefs && <SecaoAtalhos prefs={prefs} mudar={mudarPrefs} />}
           {secao === "automacao" && prefs && <SecaoAutomacao prefs={prefs} mudar={mudarPrefs} />}
+          {secao === "sobre" && (
+            <>
+              <h3>Sobre o atelier</h3>
+              <div className="sobre">
+                <Marca />
+                <div>
+                  <div className="sobre-nome">atelier <span className="tag cor-blue">versão {__VERSAO__}</span></div>
+                  <p className="dica" style={{ margin: "4px 0 0" }}>Gestão pessoal sob medida, com controle total para agentes de IA pelo MCP.</p>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
+                <button className="btn primario" onClick={procurarAtualizacao}>Procurar versão nova agora</button>
+                <button className="btn" onClick={() => abrirFora("https://github.com/dunebuddy/atelier/releases")}>O que mudou em cada versão</button>
+                <button className="btn" onClick={() => abrirFora("https://github.com/dunebuddy/atelier")}>Código no GitHub</button>
+              </div>
+              <p className="dica" style={{ marginTop: 14 }}>
+                O aviso automático de versão nova liga e desliga em Automação. As versões saem em github.com/dunebuddy/atelier/releases.
+              </p>
+            </>
+          )}
           {secao === "automacao" && prefs && (
             <>
               <h4 style={{ marginTop: 22 }}>Atualização</h4>

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
-  ArrowLeftToLine, Bot, ChevronLeft, ChevronRight, Columns2, FolderOpen, FolderTree, GalleryHorizontalEnd, LayoutPanelLeft,
+  ArrowLeftToLine, Bot, ChevronDown, ChevronLeft, ChevronRight, Columns2, FolderOpen, FolderTree, GalleryHorizontalEnd, LayoutPanelLeft,
   PanelTop, Rows2, SquareTerminal, X,
 } from "lucide-react";
 import { Esquema, Visao } from "../api";
@@ -14,6 +14,7 @@ import { PaginaItem } from "./PaginaItem";
 import { BotaoTerminal, TerminalJanela } from "./Terminal";
 import { VisaoTela } from "./Visao";
 import { VisivelContext } from "../visivel";
+import { Popover, usePopover } from "./Popover";
 
 export interface Contexto {
   esquema: Esquema;
@@ -34,6 +35,29 @@ export const MODOS: { id: Modo; nome: string; icone: React.ReactNode; atalho: st
 ];
 
 const FRACOES: Record<number, string> = { 1: "1/1", 2: "1/2", 3: "1/3", 4: "1/4" };
+
+/** Como arrumar as janelas da metade: um botão com o modo atual e a setinha (se ajusta uma vez e pronto). */
+function SeletorModo({ modo, aoEscolher }: { modo: Modo; aoEscolher: (m: Modo) => void }) {
+  const pop = usePopover();
+  const atual = MODOS.find((x) => x.id === modo) ?? MODOS[0];
+  return (
+    <span className="seletor-modo">
+      <button className="btn-icone" title={`Arrumação desta metade: ${atual.nome}`} onClick={pop.abrir}>
+        {atual.icone}<ChevronDown size={12} />
+      </button>
+      {pop.ancora && (
+        <Popover ancora={pop.ancora} aoFechar={pop.fechar} largura={290}>
+          <div className="menu-rotulo">Arrumar as janelas desta metade</div>
+          {MODOS.map((x) => (
+            <button key={x.id} className="menu-item" onClick={() => { aoEscolher(x.id); pop.fechar(); }} style={x.id === modo ? { fontWeight: 600 } : undefined}>
+              {x.icone} <span style={{ flex: 1 }}>{x.nome}</span> <kbd>{x.atalho}</kbd>
+            </button>
+          ))}
+        </Popover>
+      )}
+    </span>
+  );
+}
 
 function IconeJanela({ j }: { j: Janela }) {
   const r = rotaDe(j);
@@ -137,13 +161,6 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
             onDrop={soltarEm(mi)}
             onMouseDown={() => !focada && mudar((s) => ({ ...s, foco: mi }))}
           >
-            <div className="seletor-modo" title="Como arrumar as janelas desta metade">
-              {MODOS.map((x) => (
-                <button key={x.id} className={m.modo === x.id ? "ativo" : ""} title={`${x.nome} (${x.atalho})`} onClick={() => mudar((s) => P.mudarModo(s, mi, x.id))}>
-                  {x.icone}
-                </button>
-              ))}
-            </div>
             <div className="abas" onWheel={(e) => { (e.currentTarget as HTMLDivElement).scrollLeft += e.deltaY; }}>
               {m.janelas.map((j) => (
                 <div
@@ -169,6 +186,7 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
                 <button className="btn-icone" title="Próxima janela (Ctrl+Alt+→)" onClick={() => mudar((s) => P.focarVizinha({ ...s, foco: mi }, 1))}><ChevronRight size={15} /></button>
               </div>
             )}
+            <SeletorModo modo={m.modo} aoEscolher={(x) => mudar((s) => P.mudarModo(s, mi, x))} />
             <BotaoTerminal />
             {mi === estado.metades.length - 1 && (
               <button className="btn-icone" title={duas ? "Juntar as metades (Ctrl+Alt+\\)" : "Dividir o painel em dois (Ctrl+Alt+\\)"} onClick={() => mudar(P.dividir)}>

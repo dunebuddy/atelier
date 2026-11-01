@@ -37,8 +37,12 @@ Como usar:
     (`src-tauri/src/lib.rs`), embutido na compilação a partir da lista `bundle.icon` do `tauri.conf.json` (começa
     por `icons/32x32.png`); conferir qual arquivo o Tauri escolhe e se a janela define o ícone grande (`ICON_BIG`);
     (3) cache da barra de tarefas por AppUserModelID (`com.paulo.atelier`), que só renova ao sair e entrar na conta.
-  - Para verificar: passar o mouse na bandeja (some se for fantasma); fechar pelo "Sair" e abrir de novo; olhar se
-    o ícone velho está na bandeja, no botão da janela na barra de tarefas ou nos dois.
+  - **Afunilado (Paulo):** a bandeja está certa; o velho é o **botão do app na barra de tarefas**. Cai a hipótese 1
+    (fantasma seria na bandeja) e a 2 fica improvável (bandeja e janela usam o mesmo `default_window_icon`). Fica a 3:
+    cache da barra de tarefas por AppUserModelID, que não troca quando o exe muda. Confirmar reiniciando o Explorer
+    (ou sair e entrar na conta). Se confirmar, decidir se o app/instalador força a renovação depois de atualizar (o
+    instalador NSIS pode chamar `SHChangeNotify(SHCNE_ASSOCCHANGED)` no fim) ou se fica só como nota de "na primeira
+    troca de ícone, reinicie o Explorer".
 
 ### Melhorias pedidas
 - **Toast padrão:** o aviso de versão nova é o modelo; os outros avisos do app (`avisar`) devem seguir o mesmo visual.

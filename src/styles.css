@@ -159,15 +159,15 @@ kbd {
 }
 .bt-esq, .bt-dir { display: flex; align-items: center; gap: 2px; min-width: 0; }
 .bt-esq { flex: 1; }
-.bt-dir { flex: 1; justify-content: flex-end; gap: 4px; }
+/* à direita, como na barra do app do Claude: só ícones, discretos, do mesmo tamanho; depois os da janela */
+.bt-dir { flex: 1; justify-content: flex-end; gap: 2px; }
+.bt-dir > .bt-btn { min-width: 32px; height: 32px; padding: 0 8px; border-radius: 8px; color: var(--texto-3); }
 .marca { flex-shrink: 0; margin-right: 8px; }
 .bt-btn {
   height: 30px; min-width: 30px; padding: 0 7px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
   gap: 6px; color: var(--texto-2); flex-shrink: 0;
 }
 .bt-btn:hover:not(:disabled) { background: var(--hover); color: var(--texto); }
-.bt-btn.bt-novo { background: var(--acento); color: var(--acento-texto); padding: 0 11px 0 9px; font-weight: 600; font-size: 13px; }
-.bt-btn.bt-novo:hover:not(:disabled) { background: var(--acento); color: var(--acento-texto); filter: brightness(1.08); }
 .bt-btn.perigo { background: var(--c-red); color: var(--t-red); }
 
 .trilha { display: flex; align-items: center; min-width: 0; margin-left: 8px; overflow: hidden; }
@@ -190,7 +190,7 @@ kbd {
 .bt-busca:hover { border-color: var(--borda-forte); color: var(--texto-2); }
 .bt-busca span { flex: 1; text-align: left; white-space: nowrap; overflow: hidden; }
 
-.bt-janela { display: flex; height: 46px; margin-left: 6px; }
+.bt-janela { display: flex; height: 46px; margin-left: 12px; }
 .bt-janela button { width: 46px; height: 100%; display: grid; place-items: center; color: var(--texto-2); }
 .bt-janela button:hover { background: var(--hover); color: var(--texto); }
 .bt-janela button.fechar:hover { background: #c42b1c; color: #fff; }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Copy, Minus, PanelLeft, Plus, Search, Settings, Sparkles, Square, Trash2, X,
+  Copy, Minus, PanelLeft, Search, Settings, Sparkles, Square, Trash2, X,
 } from "lucide-react";
 import { api, Esquema, Item } from "../api";
 import { falhou, ler, Rota } from "../ui";
@@ -42,7 +42,8 @@ export function BarraTitulo({
   }, []);
   const [apagando, setApagando] = useState(false);
   const novo = usePopover();
-  const botaoNovo = useRef<HTMLButtonElement>(null);
+  // sem botão Novo na barra: o Ctrl+N abre o menu "Criar" embaixo da busca
+  const ancoraNovo = useRef<HTMLButtonElement>(null);
 
   useEffect(() => setApagando(false), [rota]);
 
@@ -59,7 +60,7 @@ export function BarraTitulo({
   useEffect(() => {
     const f = (e: KeyboardEvent) => {
       if (bate("busca", e)) { e.preventDefault(); setBuscando(true); }
-      if (bate("novo", e) && botaoNovo.current) { e.preventDefault(); novo.abrir({ currentTarget: botaoNovo.current }); }
+      if (bate("novo", e) && ancoraNovo.current) { e.preventDefault(); novo.abrir({ currentTarget: ancoraNovo.current }); }
     };
     window.addEventListener("keydown", f);
     return () => window.removeEventListener("keydown", f);
@@ -91,7 +92,7 @@ export function BarraTitulo({
         </nav>
       </div>
 
-      <button className="bt-busca" onClick={() => setBuscando(true)}>
+      <button ref={ancoraNovo} className="bt-busca" onClick={() => setBuscando(true)}>
         <Search size={14} /> <span>Buscar ou ir para…</span> <kbd>{combinacao("busca").replace(/\+/g, " ")}</kbd>
       </button>
 
@@ -102,12 +103,9 @@ export function BarraTitulo({
             title="Mover para a lixeira"
             onClick={() => (apagando ? aoApagarItem() : setApagando(true))}
           >
-            <Trash2 size={15} /> {apagando && <span style={{ fontSize: 12.5 }}>Confirmar</span>}
+            <Trash2 size={16} /> {apagando && <span style={{ fontSize: 12.5 }}>Confirmar</span>}
           </button>
         )}
-        <button ref={botaoNovo} className="bt-btn bt-novo" title="Novo item (Ctrl+N)" onClick={novo.abrir} disabled={!esquema}>
-          <Plus size={15} /> <span>Novo</span>
-        </button>
         <button className="bt-btn" title={`Comando para o agente (${combinacao("comando")})`} onClick={() => window.dispatchEvent(new Event("atelier:comando"))}><Sparkles size={16} /></button>
         <button className="bt-btn" title="Configurações do app (Ctrl+,)" onClick={abrirConfig}><Settings size={16} /></button>
         <div className="bt-janela">

@@ -51,11 +51,15 @@ export function ehHistorico(e: Esquema, it: Item) {
  */
 export function visivelNaVisao(e: Esquema, f: FiltroVisao, it: Item) {
   if (!f.esconder_historico || !ehHistorico(e, it)) return true;
-  return Object.entries(f.props ?? {}).some(([pid, valores]) => valores.length > 0 && valores.includes(String(it.props[pid] ?? "")));
+  // só filtro de status conta como "pediu de propósito" (filtro de relação, ex. "Pai contém #x", não)
+  return Object.entries(f.props ?? {}).some(([pid, valores]) =>
+    valores.length > 0
+    && e.propriedades.find((p) => String(p.id) === pid)?.especie === "status"
+    && valores.includes(String(it.props[pid] ?? "")));
 }
 
 export function VisaoTela({
-  esquema, visao, salvar, ir, aoMudarEsquema, aoApagar,
+  esquema, visao, salvar, ir, aoMudarEsquema, aoApagar, aoSalvarComo,
 }: {
   esquema: Esquema;
   visao: Visao;
@@ -64,6 +68,8 @@ export function VisaoTela({
   ir: (r: Rota) => void;
   aoMudarEsquema: () => Promise<void>;
   aoApagar?: () => void;
+  /** visão avulsa: "Salvar como visão" guarda no menu com o filtro de agora */
+  aoSalvarComo?: (v: Visao) => void;
 }) {
   const [v, setV] = useState(visao);
   useEffect(() => setV(visao), [visao]);
@@ -140,10 +146,10 @@ export function VisaoTela({
 
   const unicoTipo = f.tipos?.length === 1 ? f.tipos[0] : null;
 
-  const filtrosAtivos = (f.tipos?.length ?? 0) + (f.sem_tipo ? 1 : 0) + Object.values(f.props ?? {}).filter((l) => l.length).length + (f.periodo ? 1 : 0) + Object.keys(f.datas ?? {}).length;
+  const filtrosAtivos = (f.tipos?.length ?? 0) + (f.sem_tipo ? 1 : 0) + Object.values(f.props ?? {}).filter((l) => l.length).length + (f.periodo ? 1 : 0) + Object.keys(f.datas ?? {}).length + (f.livres?.length ?? 0);
 
   return (
-    <div className="vista">
+    <div className={`vista${v.layout === "tabela" ? " com-tabela" : ""}`}>
       <div className="vista-cabeca">
         <button className="tipo-chip grande" onClick={salvar ? pIcone.abrir : undefined} title={salvar ? "Trocar ícone" : undefined}>
           {v.icone || <Layers size={22} />}
@@ -167,6 +173,9 @@ export function VisaoTela({
         </div>
         {salvar && aoApagar && (
           <button className="btn-icone" onClick={pMenu.abrir} title="Mais"><MoreHorizontal size={17} /></button>
+        )}
+        {!salvar && aoSalvarComo && (
+          <button className="btn" onClick={() => aoSalvarComo(v)} title="Guardar esta lista no menu, com o filtro de agora">Salvar como visão</button>
         )}
       </div>
 
@@ -437,13 +446,25 @@ function EditorFiltro({ esquema, filtro, aoMudar, ancora, aoFechar }: { esquema:
       })}
       {relacoes.map((p) => {
         const fd = f.datas?.[p.id];
+        const livre = !!f.livres?.includes(p.id);
         return (
           <div key={p.id}>
             <div className="menu-rotulo">{p.nome}</div>
             <div className="filtro-chips">
-              <button className={`chip${!fd ? " ligado" : ""}`} onClick={() => mudarData(p.id, null)}>Qualquer</button>
+              <button className={`chip${!fd && !livre ? " ligado" : ""}`} onClick={() => { mudarData(p.id, null); }}>Qualquer</button>
               <button className={`chip${fd?.modo === "preenchido" ? " ligado" : ""}`} onClick={() => mudarData(p.id, { modo: "preenchido" })}>Preenchida</button>
               <button className={`chip${fd?.modo === "sem" ? " ligado" : ""}`} onClick={() => mudarData(p.id, { modo: "sem" })}>Vazia</button>
+              <button
+                className={`chip${livre ? " ligado" : ""}`}
+                title="Todos os itens ligados aqui já estão concluídos, ou não há nenhum. Ex.: em Bloqueado por, o que pode andar agora."
+                onClick={() => aoMudar({ ...f, livres: livre ? (f.livres ?? []).filter((x) => x !== p.id) : [...(f.livres ?? []), p.id] })}
+              >
+                Tudo concluído
+              </button>
+              {/* "contém #código" (vem das visões abertas a partir de um item) */}
+              {(f.props?.[p.id] ?? []).map((cod) => (
+                <button key={cod} className="chip ligado" title="Tirar do filtro" onClick={() => alternarValor(p.id, cod)}>contém #{cod} ×</button>
+              ))}
             </div>
           </div>
         );

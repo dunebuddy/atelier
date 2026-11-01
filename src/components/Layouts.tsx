@@ -121,6 +121,8 @@ export function Tabela({
    *  HTML5 não funciona no app instalado). */
   const pegar = (id: number) => (e: React.PointerEvent) => {
     if (e.button !== 0 || !aoReordenar) return;
+    // sem isso, arrastar vai selecionando o texto das outras colunas
+    e.preventDefault();
     const x0 = e.clientX;
     let antes: number | null = null;
     const mover = (ev: PointerEvent) => {

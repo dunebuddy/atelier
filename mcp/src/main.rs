@@ -127,6 +127,7 @@ fn ferramentas() -> Value {
                 "texto": { "type": "string" },
                 "tipo": { "type": "string", "description": "nome do tipo, ex.: Dívida" },
                 "filtros": { "type": "object", "description": "propriedade → valor, ex.: {\"Frente\": \"F2\"}", "additionalProperties": true },
+                "livres": { "type": "array", "items": { "type": "string" }, "description": "relações em que tudo o que está ligado já foi concluído (ou nada): [\"Bloqueado por\"] = o que pode andar agora" },
                 "incluir_historico": { "type": "boolean" },
                 "limite": { "type": "integer", "description": "padrão 50" }
             } }
@@ -219,12 +220,13 @@ fn ferramentas() -> Value {
         },
         {
             "name": "criar_visao",
-            "description": "Cria uma visão (uma lista salva no menu): nome, layout (tabela, lista, kanban, linha), tipos (nomes), filtros (propriedade → valores aceitos), sem_tipo (só itens sem tipo), texto, agrupar_por (kanban: nome da propriedade), grupo (pasta no menu), icone (emoji), ordenar ({propriedade, crescente}; null volta à ordem padrão), colunas (nomes das propriedades na ordem em que aparecem na tabela; [] volta ao padrão), larguras (coluna → px; Título, Tipo e Atualizado também; {} volta ao automático).",
+            "description": "Cria uma visão (uma lista salva no menu): nome, layout (tabela, lista, kanban, linha), tipos (nomes), filtros (propriedade → valores aceitos; numa relação, o código do item: {\"Pai\": [\"#abc1234\"]} = filhos dele), livres (relações em que tudo o que está ligado já foi concluído, ou não há nada: livres [\"Bloqueado por\"] = pode andar agora), sem_tipo (só itens sem tipo), texto, agrupar_por (kanban: nome da propriedade), grupo (pasta no menu), icone (emoji), ordenar ({propriedade, crescente}; null volta à ordem padrão), colunas (nomes das propriedades na ordem em que aparecem na tabela; [] volta ao padrão), larguras (coluna → px; Título, Tipo e Atualizado também; {} volta ao automático).",
             "inputSchema": { "type": "object", "properties": {
                 "nome": { "type": "string" },
                 "layout": { "type": "string", "enum": ["tabela", "lista", "kanban", "linha"] },
                 "tipos": { "type": "array", "items": { "type": "string" } },
                 "filtros": { "type": "object", "additionalProperties": true },
+                "livres": { "type": "array", "items": { "type": "string" } },
                 "sem_tipo": { "type": "boolean" },
                 "texto": { "type": "string" },
                 "agrupar_por": { "type": "string" },
@@ -243,6 +245,7 @@ fn ferramentas() -> Value {
                 "layout": { "type": "string", "enum": ["tabela", "lista", "kanban", "linha"] },
                 "tipos": { "type": "array", "items": { "type": "string" } },
                 "filtros": { "type": "object", "additionalProperties": true },
+                "livres": { "type": "array", "items": { "type": "string" } },
                 "sem_tipo": { "type": "boolean" }, "texto": { "type": "string" },
                 "agrupar_por": { "type": "string" }, "grupo": { "type": "string" }, "icone": { "type": "string" },
                 "ordenar": { "type": ["object", "null"], "properties": { "propriedade": { "type": "string" }, "crescente": { "type": "boolean" } } },
@@ -390,7 +393,7 @@ impl Mapa {
                 d[k] = json!(v);
             }
         }
-        let quer_filtro = ["tipos", "filtros", "sem_tipo", "texto"].iter().any(|k| a.get(*k).is_some());
+        let quer_filtro = ["tipos", "filtros", "sem_tipo", "texto", "livres"].iter().any(|k| a.get(*k).is_some());
         if quer_filtro {
             let mut f = json!({});
             if let Some(l) = a.get("tipos").and_then(|v| v.as_array()) {
@@ -400,10 +403,14 @@ impl Mapa {
                 let mut props = Map::new();
                 for (k, v) in o {
                     let pid = self.prop(k)?["id"].as_i64().unwrap_or(0);
-                    let vals: Vec<Value> = match v {
+                    let mut vals: Vec<Value> = match v {
                         Value::Array(l) => l.clone(),
                         outro => vec![outro.clone()],
                     };
+                    // relação: o valor é o código do item ("#abc1234" ou "abc1234")
+                    if self.prop(k)?["especie"] == "relacao" {
+                        vals = vals.iter().map(|x| json!(x.as_str().unwrap_or("").trim().trim_start_matches('#').to_lowercase())).collect();
+                    }
                     props.insert(pid.to_string(), json!(vals));
                 }
                 f["props"] = Value::Object(props);
@@ -413,6 +420,9 @@ impl Mapa {
             }
             if let Some(t) = s(a, "texto") {
                 f["texto"] = json!(t);
+            }
+            if let Some(l) = a.get("livres").and_then(|v| v.as_array()) {
+                f["livres"] = json!(l.iter().filter_map(|x| x.as_str()).map(|x| Ok(self.prop(x)?["id"].clone())).collect::<Result<Vec<_>, String>>()?);
             }
             d["filtro"] = f;
         }
@@ -463,6 +473,9 @@ impl Mapa {
         }
         if let Some(o) = f["props"].as_object() {
             h["props"] = Value::Object(o.iter().map(|(k, v)| (self.prop_nome(k), v.clone())).collect());
+        }
+        if let Some(l) = f["livres"].as_array() {
+            h["livres"] = json!(l.iter().map(|id| self.prop_nome(&id.to_string())).collect::<Vec<_>>());
         }
         h
     }
@@ -561,7 +574,7 @@ fn mesclar_config(d: &mut Value, antes: &Value) {
 fn post_api(caminho: &str, corpo: &Value) -> Result<Value, String> {
     use std::io::Read;
     use std::net::TcpStream;
-    let mut s = TcpStream::connect(("127.0.0.1", atelier_core::api::PORTA)).map_err(|_| "o app atelier não está aberto".to_string())?;
+    let mut s = TcpStream::connect(("127.0.0.1", atelier_core::api::porta())).map_err(|_| "o app atelier não está aberto".to_string())?;
     s.set_read_timeout(Some(std::time::Duration::from_secs(10))).ok();
     let b = corpo.to_string();
     let req = format!(
@@ -694,6 +707,12 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
                 tipo_id: s(a, "tipo").map(|t| mapa.tipo_id(t)).transpose()?,
                 texto: s(a, "texto").map(String::from),
                 props: filtros,
+                livres: a
+                    .get("livres")
+                    .and_then(|v| v.as_array())
+                    .map(|l| l.iter().filter_map(|x| x.as_str()).map(|x| mapa.prop(x).map(|p| p["id"].as_i64().unwrap_or(0))).collect::<Result<Vec<_>, _>>())
+                    .transpose()?
+                    .unwrap_or_default(),
                 ..Default::default()
             };
             let historico = a.get("incluir_historico").and_then(|v| v.as_bool()).unwrap_or(false);

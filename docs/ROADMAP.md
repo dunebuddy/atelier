@@ -41,7 +41,7 @@ O pacote que o Paulo marcou como prioritário, mais dois consertos pequenos que 
 Ficou para depois: a ordem das propriedades na ficha do item (confirmar com o Paulo) e o teste sem fechar o app
 dele (ver `PENDENCIAS.md`).
 
-## 0.1.6 · Relações viram visões + painel sem esconder nada
+## 0.1.6 · Relações viram visões + painel sem esconder nada · **saiu em 2026-11-01**
 
 O que mais vai facilitar o dia a dia: sair de um item e ver na hora a lista que interessa. Tudo depende de uma peça
 só, o **filtro por relação** no núcleo, por isso anda junto.

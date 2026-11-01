@@ -1,6 +1,7 @@
 // Cliente da API local do atelier (a mesma que o Claude e o MCP usam).
 
-export const BASE = "http://127.0.0.1:7477/api";
+// o teste sem janela (`bun run teste`) aponta para outra porta, ao lado do app aberto
+export const BASE: string = import.meta.env.VITE_ATELIER_API ?? "http://127.0.0.1:7477/api";
 
 export type Cor = "gray" | "brown" | "orange" | "yellow" | "green" | "blue" | "purple" | "pink" | "red";
 export const CORES: Cor[] = ["gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"];
@@ -323,6 +324,8 @@ export interface FiltroVisao {
   periodo?: Periodo | null;
   /** id da propriedade de data → janela relativa a hoje */
   datas?: Record<string, FiltroData>;
+  /** relações "livres": tudo o que está ligado nelas já foi concluído, ou não há nada (ex.: Bloqueado por → pode andar) */
+  livres?: number[];
 }
 
 export type Sentido = "aponta" | "apontado";
@@ -394,6 +397,7 @@ function queryFiltro(f: FiltroVisao, periodo: { de: string; ate: string } | null
   if (f.tipos?.length) p.set("tipos", f.tipos.join(","));
   if (f.sem_tipo) p.set("sem_tipo", "1");
   for (const [pid, vals] of Object.entries(f.props ?? {})) for (const v of vals) p.append(`p.${pid}`, v);
+  if (f.livres?.length) p.set("livre", f.livres.join(","));
   const texto = [f.texto, q].filter(Boolean).join(" ").trim();
   if (texto) p.set("q", texto);
   if (periodo) { p.set("de", periodo.de); p.set("ate", periodo.ate); }

@@ -1120,6 +1120,35 @@ pub struct Filtro {
     pub periodo: Option<(String, String)>,
     /// propriedade de data → intervalo (`AAAA-MM-DD`, cada ponta opcional) ou `None` = sem data preenchida
     pub datas: Vec<(i64, Option<(Option<String>, Option<String>)>)>,
+    /// propriedades de relação "livres": todos os itens ligados nela estão concluídos (status de histórico), ou não
+    /// há nenhum. Ex.: "Bloqueado por" livre = pode andar agora.
+    pub livres: Vec<i64>,
+    /// preenchido por quem consulta quando há `livres`: (tipo, propriedade de status, opções de histórico)
+    pub concluidos: Vec<(i64, i64, Vec<String>)>,
+}
+
+/// Onde está o "concluído" de cada tipo: as opções de histórico de cada propriedade de status (a do tipo, se ele
+/// tiver opções próprias, senão as da propriedade).
+fn concluidos(conn: &Connection) -> Res<Vec<(i64, i64, Vec<String>)>> {
+    let mut st = conn.prepare(
+        "SELECT tp.tipo_id, p.id, COALESCE(tp.opcoes, p.opcoes) FROM tipo_propriedades tp \
+         JOIN propriedades p ON p.id = tp.propriedade_id WHERE p.especie = 'status'",
+    )?;
+    let l = st
+        .query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?, r.get::<_, Option<String>>(2)?)))?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(l.into_iter()
+        .filter_map(|(t, p, ops)| {
+            let ops: Value = serde_json::from_str(ops.as_deref()?).ok()?;
+            let nomes: Vec<String> = ops
+                .as_array()?
+                .iter()
+                .filter(|o| o["historico"] == true)
+                .filter_map(|o| o["nome"].as_str().map(String::from))
+                .collect();
+            (!nomes.is_empty()).then_some((t, p, nomes))
+        })
+        .collect())
 }
 
 fn sql_filtro(f: &Filtro, sql: &mut String, args: &mut Vec<Box<dyn rusqlite::ToSql>>) {
@@ -1192,6 +1221,22 @@ fn sql_filtro(f: &Filtro, sql: &mut String, args: &mut Vec<Box<dyn rusqlite::ToS
         args.push(Box::new(de.clone()));
         args.push(Box::new(ate.clone()));
     }
+    // relação livre: nenhum item ligado (que exista e não esteja na lixeira) fora de um status de histórico
+    for pid in &f.livres {
+        let mut concluido = vec![];
+        for (t, sp, nomes) in &f.concluidos {
+            concluido.push(format!("(o.tipo_id = ? AND json_extract(o.props, '$.\"{sp}\"') IN ({}))", vec!["?"; nomes.len()].join(",")));
+            args.push(Box::new(*t));
+            for n in nomes {
+                args.push(Box::new(n.clone()));
+            }
+        }
+        let concluido = if concluido.is_empty() { "0".to_string() } else { concluido.join(" OR ") };
+        sql.push_str(&format!(
+            " AND NOT EXISTS (SELECT 1 FROM json_each(itens.props, '$.\"{pid}\"') j JOIN itens o ON o.codigo = ltrim(lower(j.value), '#') \
+             WHERE o.apagado_em IS NULL AND NOT ({concluido}))"
+        ));
+    }
 }
 
 /// Texto livre → uma consulta FTS5 por palavra, como prefixo (`"palav"*`).
@@ -1202,6 +1247,13 @@ fn termos_fts(q: &str) -> Vec<String> {
 pub fn listar_itens(conn: &Connection, f: &Filtro) -> Res<Vec<Item>> {
     let mut sql = String::from("SELECT * FROM itens WHERE 1=1");
     let mut args: Vec<Box<dyn rusqlite::ToSql>> = vec![];
+    let com_concluidos;
+    let f = if f.livres.is_empty() {
+        f
+    } else {
+        com_concluidos = Filtro { concluidos: concluidos(conn)?, ..clone_filtro(f) };
+        &com_concluidos
+    };
     sql_filtro(f, &mut sql, &mut args);
     sql.push_str(" ORDER BY atualizado_em DESC, id DESC");
     let mut st = conn.prepare(&sql)?;
@@ -1231,7 +1283,8 @@ pub fn linha_do_tempo(conn: &Connection, de: &str, ate: &str, f: &Filtro) -> Res
          FROM notas n JOIN itens ON itens.id = n.item_id WHERE n.apagado_em IS NULL AND substr(n.criado_em, 1, 10) BETWEEN ? AND ?",
     );
     let mut args: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(de.to_string()), Box::new(ate.to_string())];
-    let sem_periodo = Filtro { periodo: None, ..clone_filtro(f) };
+    let concl = if f.livres.is_empty() { vec![] } else { concluidos(conn)? };
+    let sem_periodo = Filtro { periodo: None, concluidos: concl, ..clone_filtro(f) };
     sql_filtro(&sem_periodo, &mut sql, &mut args);
     sql.push_str(" ORDER BY n.criado_em DESC, n.id DESC LIMIT 2000");
     let mut st = conn.prepare(&sql)?;
@@ -1255,6 +1308,8 @@ fn clone_filtro(f: &Filtro) -> Filtro {
         props: f.props.clone(),
         periodo: f.periodo.clone(),
         datas: f.datas.clone(),
+        livres: f.livres.clone(),
+        concluidos: f.concluidos.clone(),
     }
 }
 
@@ -1824,6 +1879,27 @@ mod testes {
         assert_eq!(tit(vec![(3, Some((None, Some("2026-11-06".into()))))]), ["semana que vem", "vencida"]);
         assert_eq!(tit(vec![(3, None)]), ["sem prazo"]);
         assert!(listar_visoes(&c).unwrap().iter().any(|v| v.nome == "Vence em breve"));
+    }
+
+    #[test]
+    fn pode_andar_agora() {
+        let c = banco();
+        let bloq = criar_propriedade(&c, &json!({"nome": "Bloqueado por", "especie": "relacao", "config": {"inverso": "Bloqueia"}})).unwrap();
+        // tipo 1 (semente): Status 1 com "Feita" e "Cancelada" de histórico
+        let novo = |t: &str| criar_item(&c, &json!({"titulo": t, "tipo_id": 1, "modelo_id": null, "props": {"1": "A fazer"}})).unwrap();
+        let (a, b, solta) = (novo("A"), novo("B"), novo("solta"));
+        ligar(&c, b, bloq, a, false, "Paulo").unwrap();
+        let livres = || {
+            let f = Filtro { tipos: vec![1], livres: vec![bloq], ..Default::default() };
+            let mut l: Vec<String> = listar_itens(&c, &f).unwrap().into_iter().map(|i| i.titulo).collect();
+            l.sort();
+            l
+        };
+        assert!(!livres().contains(&"B".to_string()), "B espera A");
+        assert!(livres().contains(&"solta".to_string()) && livres().contains(&"A".to_string()), "sem bloqueio pode andar");
+        atualizar_item(&c, a, &json!({"props": {"1": "Feita"}})).unwrap();
+        assert!(livres().contains(&"B".to_string()), "A feita: B pode andar");
+        let _ = solta;
     }
 
     #[test]

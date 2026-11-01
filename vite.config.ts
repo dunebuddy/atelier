@@ -25,7 +25,8 @@ export default defineConfig(() => ({
   clearScreen: false,
   // 2. tauri expects a fixed port, fail if that port is not available
   server: {
-    port: 1420,
+    // o teste sem janela (`bun run teste`) usa outra porta, para rodar ao lado do app aberto
+    port: Number(process.env.ATELIER_VITE_PORTA ?? 1420),
     strictPort: true,
     host: host || false,
     hmr: host

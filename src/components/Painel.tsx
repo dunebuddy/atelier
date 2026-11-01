@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  ArrowLeftToLine, Bot, ChevronDown, ChevronLeft, ChevronRight, Columns2, FolderOpen, FolderTree, GalleryHorizontalEnd, LayoutPanelLeft,
+  ArrowLeftToLine, Bot, ChevronDown, ChevronLeft, ChevronRight, Columns2, FolderOpen, FolderTree, GalleryHorizontalEnd, LayoutPanelLeft, List,
   PanelTop, Rows2, SquareTerminal, X,
 } from "lucide-react";
 import { Esquema, Visao } from "../api";
@@ -22,6 +22,8 @@ export interface Contexto {
   esquema: Esquema;
   visoes: Visao[];
   salvarVisao: (id: number, d: Partial<Visao>) => void;
+  /** cria uma visão no menu e devolve o id */
+  criarVisao: (d: Partial<Visao>) => Promise<number>;
   apagarVisao: (id: number) => Promise<void>;
   aoMudarEsquema: () => Promise<void>;
 }
@@ -188,6 +190,16 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
   });
   const janelaArrastada = arrastando ? P.acharJanela(estado, arrastando)?.j : undefined;
 
+  // lista de todas as abas de uma metade (as que não cabem ficam escondidas à direita)
+  const [listaAbas, setListaAbas] = useState<{ ancora: HTMLElement; mi: number } | null>(null);
+  // a aba ativa sempre à vista na faixa de abas
+  useEffect(() => {
+    for (const m of estado.metades) {
+      if (!m.ativa) continue;
+      caixa.current?.querySelector<HTMLElement>(`[data-aba="${CSS.escape(m.ativa)}"]`)?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+  }, [estado]);
+
   // menu do botão direito na aba
   const [menu, setMenu] = useState<{ ancora: HTMLElement; id: string; mi: number } | null>(null);
   const doMenu = (f: (s: EstadoPainel, id: string, mi: number) => EstadoPainel) => () => {
@@ -210,10 +222,16 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
             {...alvo(`m${mi}`, mi)}
             onMouseDown={() => !focada && mudar((s) => ({ ...s, foco: mi }))}
           >
-            <div className="abas" onWheel={(e) => { (e.currentTarget as HTMLDivElement).scrollLeft += e.deltaY; }}>
+            {m.janelas.length > 1 && (
+              <button className="btn-icone botao-abas" title="Todas as abas desta metade" onClick={(e) => setListaAbas({ ancora: e.currentTarget, mi })}>
+                <List size={15} />
+              </button>
+            )}
+            <div className="abas" onWheel={(e) => { (e.currentTarget as HTMLDivElement).scrollLeft += e.deltaY + e.deltaX; }}>
               {m.janelas.map((j) => (
                 <div
                   key={j.id}
+                  data-aba={j.id}
                   className={`aba${j.id === m.ativa ? " ativa" : ""}${sobre === j.id ? " soltar-antes" : ""}${j.empilhada && m.modo === "fita" ? " empilhada" : ""}${arrastando === j.id ? " arrastada" : ""}`}
                   {...alvo(j.id, mi, j.id)}
                   onPointerDown={pegar(j)}
@@ -339,6 +357,23 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
         document.body,
       )}
 
+      {listaAbas && estado.metades[listaAbas.mi] && (
+        <Popover ancora={listaAbas.ancora} aoFechar={() => setListaAbas(null)} largura={300}>
+          <div className="menu-rotulo">Abas desta metade</div>
+          {estado.metades[listaAbas.mi].janelas.map((j) => {
+            const ativa = j.id === estado.metades[listaAbas.mi].ativa;
+            return (
+              <button key={j.id} className="menu-item" style={ativa ? { fontWeight: 600 } : undefined}
+                onClick={() => { const mi = listaAbas.mi; setListaAbas(null); mudar((s) => P.ativar(s, mi, j.id)); }}>
+                <IconeJanela j={j} />
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{j.titulo ?? "…"}</span>
+                {ativa && <span className="dir">aberta</span>}
+              </button>
+            );
+          })}
+        </Popover>
+      )}
+
       {menu && (
         <Popover ancora={menu.ancora} aoFechar={() => setMenu(null)} largura={250}>
           <button className="menu-item" onClick={doMenu(P.moverParaOutraMetade)}>
@@ -386,6 +421,7 @@ function Conteudo({ j, ctx, visivel, mudar }: { j: Janela; ctx: Contexto; visive
   useEffect(() => {
     if (visao) rotular({ titulo: visao.nome, icone: visao.icone, tipo_id: null });
     else if (tipoDaLista) rotular({ titulo: tipoDaLista.nome, icone: tipoDaLista.icone, tipo_id: tipoDaLista.id });
+    else if (r.v === "consulta") rotular({ titulo: r.titulo, icone: r.icone ?? "🔗", tipo_id: null });
     else if (r.v === "lixeira") rotular({ titulo: "Lixeira", icone: "🗑️", tipo_id: null });
     else if (tipoConfig) rotular({ titulo: `Tipo: ${tipoConfig.nome}`, icone: tipoConfig.icone, tipo_id: null });
     else if (r.v === "terminal") rotular({ titulo: r.titulo ?? "terminal", tipo_id: null });
@@ -417,6 +453,21 @@ function Conteudo({ j, ctx, visivel, mudar }: { j: Janela; ctx: Contexto; visive
           aoMudarEsquema={ctx.aoMudarEsquema}
         />
       ) : null;
+    case "consulta":
+      return (
+        <VisaoTela
+          key={JSON.stringify(r.filtro)}
+          esquema={esquema}
+          visao={{ id: 0, nome: r.titulo, icone: r.icone ?? "🔗", ordem: 0, layout: "tabela", filtro: r.filtro, config: {} }}
+          salvar={null}
+          aoSalvarComo={async (v) => {
+            const id = await ctx.criarVisao({ nome: v.nome, icone: v.icone, layout: v.layout, filtro: v.filtro, config: v.config });
+            mudar((s) => P.substituir(s, j.id, { v: "visao", id }));
+          }}
+          ir={ir}
+          aoMudarEsquema={ctx.aoMudarEsquema}
+        />
+      );
     case "item":
       return (
         <PaginaItem

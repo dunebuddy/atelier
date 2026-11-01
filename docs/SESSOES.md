@@ -343,3 +343,20 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 ### Ponto de parada
 - Próximo pacote: **0.1.6 · Relações viram visões** (filtro por relação no núcleo, "Apontado por" com contagem e grupo
   clicável, buscas prontas, "pode andar agora").
+
+## 2026-11-01 (noite) — 0.1.6
+
+- **Teste sem janela** (pedido do Paulo, depois de eu fechar o app dele no meio do trabalho): `bun run teste` sobe a
+  API de teste na 7488 e a tela na 1430, com dados em `%TEMP%/atelier-teste`; abrir `http://localhost:1430` no
+  navegador interno. O app instalado continua aberto. O navegador interno escondido não tira print: testar lendo o
+  DOM (`javascript_tool`). Mudou o núcleo? Reiniciar o teste (o servidor é compilado ao subir).
+- **Ícone da barra de tarefas:** era o cache de ícones do Windows pelo caminho do exe; `SHChangeNotify` resolveu na
+  hora, e o app passou a mandar esse aviso ao abrir.
+- **0.1.6:** "Apontado por" com contagem e lista ao lado (rota `consulta`), filtro "Tudo concluído" (`livres`) no
+  núcleo, na tela e no MCP, lista de abas, barras de rolagem sempre à vista na tabela, arrastar coluna sem selecionar
+  texto.
+
+### Ponto de parada
+- Próximo pacote: **0.1.7 · Workspaces e navegação** (Abrir workspace em toda lista, clareza do workspace, arrastar na
+  barra lateral, espaço em disco, modo fita: completar a descrição com o Paulo).
+

@@ -16,6 +16,11 @@ use tower_http::cors::CorsLayer;
 
 pub const PORTA: u16 = 7477;
 
+/// A porta em uso: 7477, ou `ATELIER_PORTA` no teste sem janela (`bun run teste`), que roda ao lado do app aberto.
+pub fn porta() -> u16 {
+    std::env::var("ATELIER_PORTA").ok().and_then(|p| p.parse().ok()).unwrap_or(PORTA)
+}
+
 /// Estado do app: a conexão da bancada aberta e a lista de bancadas. Trocar de bancada troca a conexão.
 pub struct Estado {
     conn: Mutex<Connection>,
@@ -65,12 +70,14 @@ fn com<T>(b: &Banco, f: impl FnOnce(&Connection) -> db::Res<T>) -> db::Res<T> {
 }
 
 pub fn rotas(banco: Banco) -> Router {
+    let origens: Vec<HeaderValue> = crate::terminal::ORIGENS
+        .iter()
+        .map(|o| o.to_string())
+        .chain(std::env::var("ATELIER_ORIGEM").ok())
+        .filter_map(|o| HeaderValue::from_str(&o).ok())
+        .collect();
     let cors = CorsLayer::new()
-        .allow_origin([
-            HeaderValue::from_static("http://localhost:1420"),
-            HeaderValue::from_static("http://tauri.localhost"),
-            HeaderValue::from_static("tauri://localhost"),
-        ])
+        .allow_origin(origens)
         .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::PUT, Method::DELETE])
         .allow_headers([axum::http::header::CONTENT_TYPE]);
 
@@ -146,9 +153,9 @@ pub fn pedido_permitido(host: Option<&str>, origem: Option<&str>) -> bool {
         };
         let porta = h.rsplit_once(':').filter(|(antes, _)| !antes.is_empty() && !h.ends_with(']')).map(|(_, p)| p);
         matches!(nome.to_ascii_lowercase().as_str(), "127.0.0.1" | "localhost" | "[::1]")
-            && porta.is_none_or(|p| p == PORTA.to_string())
+            && porta.is_none_or(|p| p == crate::api::porta().to_string())
     });
-    host_ok && origem.is_none_or(|o| crate::terminal::ORIGENS.contains(&o))
+    host_ok && origem.is_none_or(crate::terminal::origem_permitida)
 }
 
 async fn guarda(req: axum::extract::Request, next: axum::middleware::Next) -> Response {
@@ -221,7 +228,7 @@ async fn vigiar_banco(b: Banco) {
 pub async fn servir(banco: Banco) {
     tokio::spawn(manutencao(banco.clone()));
     tokio::spawn(vigiar_banco(banco.clone()));
-    let endereco = format!("127.0.0.1:{PORTA}");
+    let endereco = format!("127.0.0.1:{}", porta());
     match tokio::net::TcpListener::bind(&endereco).await {
         Ok(l) => {
             if let Err(e) = axum::serve(l, rotas(banco)).await {
@@ -325,6 +332,9 @@ fn filtro_de(q: &[(String, String)]) -> Filtro {
                 Some((pid, Some((opc(de), opc(ate)))))
             })
             .collect(),
+        // livre=<id>,<id>: relações em que tudo o que está ligado já foi concluído (ou não há nada)
+        livres: um("livre").map(|s| s.split(',').filter_map(|x| x.trim().parse().ok()).collect()).unwrap_or_default(),
+        ..Default::default()
     }
 }
 
@@ -865,7 +875,7 @@ async fn falta(State(b): State<Banco>, Json(d): Json<Value>) -> R {
 /// Websocket por onde a tela recebe os pedidos acima (só da janela do atelier).
 async fn tela_eventos(State(b): State<Banco>, ws: axum::extract::WebSocketUpgrade, headers: axum::http::HeaderMap) -> axum::response::Response {
     let origem = headers.get("origin").and_then(|v| v.to_str().ok()).unwrap_or("");
-    if !crate::terminal::ORIGENS.contains(&origem) {
+    if !crate::terminal::origem_permitida(origem) {
         return (StatusCode::FORBIDDEN, "origem não permitida").into_response();
     }
     let mut rx = b.tela.subscribe();

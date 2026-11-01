@@ -18,21 +18,6 @@ Como usar:
 ## Caixa de entrada
 
 ### Bugs
-- **Muitas abas: as da direita somem e não dá para chegar nelas** (2026-11-01, Paulo). Causa: `.abas`
-  (`src/styles.css`) tem `overflow-x: auto` com a barra escondida (`scrollbar-width: none`), e a roda do mouse rola
-  na vertical, então não há como rolar as abas. Fazer, em `Painel.tsx`:
-  - **botão de lista à esquerda das abas** (pedido do Paulo): abre um popover com todas as abas da metade (ícone,
-    título, a ativa marcada; clicar ativa), no mesmo estilo do menu de histórico do botão voltar (clique direito);
-  - roda do mouse sobre as abas rola na horizontal;
-  - a aba ativa sempre rolada para dentro da vista (`scrollIntoView` ao trocar).
-- **Conteúdo largo: a barra de rolagem horizontal fica lá embaixo** (2026-11-01, Paulo). Ex.: tabela mais larga e
-  mais alta que o painel. A rolagem vertical é a da janela (`.janela-corpo`), mas a horizontal é a do cartão da
-  tabela (`.cartao-tabela`, `overflow-x: auto`), que só aparece no fim da tabela: para ir para a direita é preciso
-  descer até o fim, rolar e subir de novo. Quero: **as duas barras sempre à vista**, a vertical na lateral e a
-  horizontal no rodapé do painel. Caminho: na visão em tabela, o cartão da tabela vira a área que rola nas duas
-  direções e ocupa a altura que sobra na janela (cabeçalho da visão fica em cima, o cabeçalho da tabela gruda no
-  topo do cartão), em vez de a página inteira rolar. Conferir também a página do item com conteúdo largo (bloco de
-  código, tabela do Markdown): mesmo princípio, barra horizontal no rodapé visível.
 
 - **Ditado ocupa o dobro do modelo na memória** (2026-11-01, Paulo: interface em 1,6 GB depois de baixar o
   Parakeet). Medido: o renderer do WebView2 (onde roda o Worker do ditado) foi a 1.484 MB e voltou a 70 MB quando o
@@ -59,12 +44,6 @@ Como usar:
   `.corpo-app` quando `fechada`, em `App.tsx`). Fazer junto com a pílula da barra de status (mesmo `padding`).
 
 ### Melhorias pedidas
-- **Testar sem fechar o atelier do Paulo** (2026-11-01, Paulo: "eu estava trabalhando… testar em uma versão
-  separada, headless de preferência"). Hoje o teste usa `bun run tauri dev`, que precisa da porta 7477 e da instância
-  única, então o app instalado tem de fechar. Fazer: a porta vir de `ATELIER_PORTA` (núcleo, MCP e `BASE` da tela via
-  `VITE_ATELIER_API`), a origem do Vite de teste aceita por `ATELIER_ORIGEM`, um exemplo `core/examples/servidor.rs`
-  que sobe só a API (sem janela) e um script `bun run teste` com Vite em outra porta, para abrir no navegador
-  interno. Até lá: **perguntar ao Paulo antes de fechar o app dele.**
 - **Ordem das propriedades na ficha do item** (sobra do pedido de colunas da 0.1.5): o Paulo falou em ordem "dentro
   do item ou da visão"; a da visão saiu na 0.1.5. Confirmar com ele se quer reordenar também na ficha (a ordem vem
   do tipo).
@@ -102,15 +81,6 @@ Como usar:
 - **Barra lateral: arrastar para reordenar visões e grupos** usa o arrastar HTML5 (`Sidebar.tsx`), o mesmo que o Tauri
   bloqueia no Windows: provavelmente não funciona no app instalado. Trocar por eventos de ponteiro, como as abas do
   painel na 0.1.4 (`Painel.tsx`).
-- **"Apontado por" com contagem e grupo clicável que vira visão** (2026-11-01, Paulo). Em `Relacoes.tsx`, cada grupo
-  (o nome inverso da propriedade de relação: "Filhos" de Pai, "Gerou" de Nasceu de, "Itens do projeto" de Projeto, e
-  "Mencionado em" para quem cita o #código) passa a mostrar a contagem, ex.: "Filhos (7)". Clicar no grupo abre uma
-  **visão avulsa** ao lado com esses itens (tabela, colunas do tipo, histórico escondido por padrão, filtros, busca),
-  com "Salvar como visão" para guardar no menu. Ex. do Paulo: "os filhos deste item que ainda não estão concluídos"
-  em um clique, sem criar visão à mão. Precisa de filtro de visão por relação ("Pai contém #código"), que hoje a visão
-  não tem: acrescentar em `db::Filtro`/`listar_itens` (`json_each` na propriedade) e no editor de filtro.
-- **Buscas inteligentes a partir de um item** (mesma conversa): atalhos prontos tipo "filhos em aberto", "o que este
-  item bloqueia", "itens do projeto por status". Começar pelo item acima e ver o que mais faz falta no uso.
 - **Deixar claro em qual workspace se está** (2026-11-01, Paulo: abriu o explorador "do item" e veio a raiz da MDB;
   provavelmente estava no workspace da bancada com o item aberto numa janela, e aí a regra é abrir na pasta do
   workspace). Hoje o workspace só aparece no seletor da barra de título e no rodapé ("Workspace: …"), fácil de não
@@ -176,9 +146,6 @@ Como usar:
   clicável a partir de um molde configurado na propriedade (`https://…/{valor}`). Vale para texto e número;
   editar continua editando só o número. Serve para os sistemas da empresa sem pôr nome nem endereço deles no código:
   o molde fica na propriedade, no banco do Paulo.
-- **Visão "pode andar agora"** (recurso, precisa do ok). Tasks não concluídas cujos itens em "Bloqueado por" estão
-  todos concluídos, ou que não têm bloqueio. Hoje o filtro só aceita "propriedade = valores". Proposta genérica:
-  filtro de relação "todos os ligados estão concluídos (status de histórico) ou não há nenhum", no app e no MCP.
 
 ### Recursos (mudam comportamento: precisam do ok do Paulo antes)
 - Desmontar janelas que não são terminal em workspaces escondidos e abas inativas (ganho alto de memória; perde a
@@ -207,6 +174,22 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.1.6** (2026-11-01, relações viram visões + painel sem esconder nada):
+  - "Apontado por" com contagem ("Filhos 5") e grupo clicável: abre ao lado uma visão avulsa (rota `consulta`) com os
+    itens daquele grupo, os tipos deles, concluídos escondidos e "Salvar como visão"; "Mencionado em" também;
+  - filtro "Tudo concluído" nas relações (`livres` no núcleo e na tela): todos os ligados estão em status de histórico,
+    ou não há nenhum. Em "Bloqueado por" = pode andar agora. MCP: `livres` em `criar_visao`/`atualizar_visao`/`buscar`,
+    e filtro de relação pelo código do item (`{"Pai": ["#abc1234"]}`);
+  - o editor de filtro mostra "contém #código" nas relações; filtro de relação não conta mais como "pediu os
+    concluídos de propósito";
+  - abas: botão com a lista de todas as abas da metade, roda do mouse rola as abas, a ativa sempre à vista;
+  - visão em tabela: a tabela rola dentro do cartão, que ocupa a altura da janela; as duas barras sempre à vista e o
+    cabeçalho grudado no topo;
+  - arrastar coluna não seleciona mais o texto da tabela;
+  - o app avisa o Windows que o exe mudou ao abrir (o ícone da barra de tarefas renova depois de atualizar);
+  - teste sem janela: `bun run teste` sobe só a API (porta 7488, dados em `%TEMP%/atelier-teste`) e a tela no Vite
+    (porta 1430), ao lado do atelier aberto (`ATELIER_PORTA`, `ATELIER_ORIGEM`, `VITE_ATELIER_API`,
+    `core/examples/servidor.rs`).
 - **0.1.5** (2026-11-01, tabela de verdade + blindagem):
   - servidor local só atende esta máquina e a tela do app: `Host` de fora (DNS rebinding) e `Origin` de fora (site no
     navegador, HTML aberto no explorador) levam 403; o MCP e o curl continuam passando;

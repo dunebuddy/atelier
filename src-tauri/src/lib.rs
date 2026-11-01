@@ -27,6 +27,13 @@ fn ajustar_janela(janela: &tauri::WebviewWindow) {
     use windows::Win32::UI::WindowsAndMessaging::{SendMessageW, HICON, ICON_BIG, WM_SETICON};
 
     if let (Ok(hwnd), Ok(exe)) = (janela.hwnd(), std::env::current_exe()) {
+        // o Windows guarda o ícone do exe em cache pelo caminho e não renova quando a atualização troca o arquivo:
+        // avisar o Explorer que o exe mudou faz a barra de tarefas pegar o ícone novo (conferido na 0.1.5)
+        unsafe {
+            use windows::Win32::UI::Shell::{SHChangeNotify, SHCNE_UPDATEITEM, SHCNF_PATHW};
+            let caminho = HSTRING::from(exe.as_os_str());
+            SHChangeNotify(SHCNE_UPDATEITEM, SHCNF_PATHW, Some(caminho.as_ptr() as *const _), None);
+        }
         let mut grande = HICON::default();
         let n = unsafe { ExtractIconExW(&HSTRING::from(exe.as_os_str()), 0, Some(&mut grande), None, 1) };
         if n > 0 && !grande.is_invalid() {

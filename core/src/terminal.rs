@@ -19,6 +19,11 @@ use std::io::{Read, Write};
 
 pub const ORIGENS: &[&str] = &["http://localhost:1420", "http://tauri.localhost", "tauri://localhost"];
 
+/// A tela do app, ou a do teste sem janela (`ATELIER_ORIGEM`, o Vite de teste em outra porta).
+pub fn origem_permitida(o: &str) -> bool {
+    ORIGENS.contains(&o) || std::env::var("ATELIER_ORIGEM").is_ok_and(|x| x == o)
+}
+
 /// O que o botão de terminal oferece: os shells da máquina e os agentes ligados como "Terminal" (com o MCP).
 pub async fn programas() -> Json<Value> {
     let prefs = crate::bancada::carregar().preferencias;
@@ -48,7 +53,7 @@ fn shell() -> (String, bool) {
 /// `GET /api/terminal?cwd=<pasta>&programa=<id do agente ou vazio>&shell=<id>&cols=&rows=` (websocket)
 pub async fn terminal(ws: WebSocketUpgrade, headers: HeaderMap, Query(q): Query<HashMap<String, String>>) -> Response {
     let origem = headers.get("origin").and_then(|v| v.to_str().ok()).unwrap_or("");
-    if !ORIGENS.contains(&origem) {
+    if !origem_permitida(origem) {
         return (StatusCode::FORBIDDEN, "origem não permitida").into_response();
     }
     let programa = q.get("programa").cloned().unwrap_or_default();

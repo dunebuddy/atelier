@@ -31,6 +31,8 @@
 }
 
 /* colunas: arrastar o cabeçalho muda a ordem; a alça na borda muda a largura (guardadas na visão) */
+/* o cabeçalho não seleciona texto: arrastar coluna ou alça não pinta a tabela de azul */
+.tabela thead { user-select: none; }
 .tabela th.movel { touch-action: none; }
 .tabela th.arrastada { opacity: .45; }
 .tabela th.soltar-antes { box-shadow: inset 2px 0 0 var(--acento); }
@@ -48,3 +50,10 @@
 table.tabela.larguras-fixas { table-layout: fixed; }
 .tabela.larguras-fixas th { overflow: hidden; text-overflow: ellipsis; }
 .tabela.larguras-fixas th .th-in { overflow: hidden; }
+
+/* visão em tabela: a tabela rola dentro do próprio cartão, que ocupa a altura que sobra na janela. Assim as duas
+   barras ficam sempre à vista (a vertical na lateral e a horizontal no rodapé do cartão), em vez de a horizontal só
+   aparecer no fim da tabela. Com poucas linhas o cartão fica do tamanho delas. */
+.vista.com-tabela { height: 100%; display: flex; flex-direction: column; padding-bottom: 16px; box-sizing: border-box; }
+.vista.com-tabela > * { flex-shrink: 0; }
+.vista.com-tabela > .cartao-tabela { flex: 0 1 auto; min-height: 160px; overflow: auto; }

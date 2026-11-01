@@ -443,6 +443,11 @@ export default function App() {
   const ctx: Contexto = {
     esquema,
     visoes,
+    criarVisao: async (d) => {
+      const { id } = await api.criarVisao(d);
+      await carregarVisoes();
+      return id;
+    },
     salvarVisao: (id, d) => {
       setVisoes((l) => l?.map((x) => (x.id === id ? { ...x, ...d } : x)) ?? l);
       api.atualizarVisao(id, d).catch(falhou);

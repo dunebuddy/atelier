@@ -1,9 +1,12 @@
+import type { FiltroVisao } from "./api";
 // Pequenos utilitários de interface compartilhados.
 
 export type Rota =
   | { v: "inicio" }
   | { v: "lixeira" }
   | { v: "visao"; id: number }
+  /** visão avulsa, não salva: o filtro vem junto (ex.: "Filhos de X", aberta do "Apontado por" de um item) */
+  | { v: "consulta"; titulo: string; icone?: string; filtro: FiltroVisao }
   | { v: "lista"; tipo: number | null }
   | { v: "item"; id: number }
   | { v: "tipo"; id: number }

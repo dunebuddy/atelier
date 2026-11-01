@@ -418,6 +418,7 @@ body.redimensionando .sidebar { transition: none; }
 .seletor-modo .btn-icone { width: auto; padding: 0 4px; gap: 1px; display: flex; align-items: center; }
 /* com o painel dividido, a metade com o foco se destaca pelo botão de arrumação */
 .metade-cabeca.focada .seletor-modo .btn-icone { color: var(--acento); }
+.metade-cabeca .botao-abas { flex-shrink: 0; }
 .abas { flex: 1; min-width: 0; display: flex; gap: 3px; overflow-x: auto; scrollbar-width: none; align-self: stretch; align-items: center; }
 .aba {
   display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px 0 10px; border-radius: 8px; max-width: 220px;
@@ -914,6 +915,12 @@ button.quando.editada:hover { color: var(--acento); }
 .rel-grupo { padding: 2px 6px 8px; }
 .rel-rotulo { font-size: 12px; color: var(--texto-3); margin-bottom: 4px; }
 .rel-rotulo::first-letter { text-transform: uppercase; }
+/* o grupo abre a lista ao lado: rótulo clicável com a contagem */
+.rel-abrir { display: inline-flex; align-items: center; gap: 5px; padding: 1px 6px 1px 4px; margin-left: -4px; border-radius: 6px; cursor: pointer; }
+.rel-abrir:hover { background: var(--hover); color: var(--texto); }
+.rel-abrir svg { opacity: 0; transition: opacity .12s; }
+.rel-abrir:hover svg { opacity: 1; }
+.rel-conta { font-size: 11px; font-weight: 600; color: var(--texto-2); background: var(--hover); border-radius: 999px; padding: 0 6px; line-height: 16px; }
 .rel-lista { display: flex; flex-direction: column; gap: 4px; }
 .rel-chip { display: flex; align-items: center; border: 1px solid var(--borda); border-radius: 8px; background: var(--bg-elev); min-width: 0; }
 .rel-chip > button:first-child { display: flex; align-items: center; gap: 6px; padding: 3px 8px; flex: 1; min-width: 0; text-align: left; }

@@ -22,33 +22,7 @@ Como usar:
 
 ### Bugs
 
-- **Ditado ocupa o dobro do modelo na memória** (2026-11-01, Paulo: interface em 1,6 GB depois de baixar o
-  Parakeet). Medido: o renderer do WebView2 (onde roda o Worker do ditado) foi a 1.484 MB e voltou a 70 MB quando o
-  modelo descarregou (5 min sem uso: a descarga funciona). Causa: o `parakeet.js` (`node_modules/parakeet.js/src/hub.js`,
-  `getModelFile`) monta o arquivo inteiro num Blob, entrega ao ONNX Runtime por `URL.createObjectURL` e nunca revoga o
-  link, então o Blob (~680 MB) fica preso ao lado da cópia que o ORT faz na memória WASM. Corrigir:
-  1. ler os arquivos do modelo (IndexedDB) como bytes, passar ao ORT via `fromUrls`/sessão própria e soltar a cópia JS
-     (esperado ~750–850 MB; abaixo do tamanho do modelo não dá no WASM);
-  2. "Baixar" nas Configurações só baixa (hoje também carrega e deixa na memória);
-  3. o indicador da barra de status mostrar a memória real (hoje repete o tamanho do arquivo, "~681 MB");
-  4. talvez mostrar na lista de modelos quanto cada um ocupa carregado, não só o tamanho do download.
-  Mais longe: rodar o ditado no núcleo Rust lendo o arquivo do disco (como o Handy); exige toolchain MSVC/clang.
-
 ### Melhorias pedidas
-- **Ditado: escolher onde o modelo roda, RAM (CPU) ou VRAM (placa de vídeo)** (2026-11-01, Paulo). Em
-  Configurações → Ditado, uma opção "Processador (RAM)" / "Placa de vídeo (VRAM)". Hoje tudo roda na CPU via WASM
-  (`src/ditado.worker.ts`: `backend: "wasm"` no Parakeet, `device: "wasm"` no Whisper). Na GPU seria WebGPU
-  (`backend: "webgpu"` / `device: "webgpu"`). Cuidados:
-  - o Parakeet em 8 bits dá resultado errado no WebGPU: na GPU precisa do encoder fp16/fp32 (download de 1,2–2,4 GB),
-    então a escolha muda o arquivo a baixar; mostrar isso na tela;
-  - detectar a placa (`navigator.gpu.requestAdapter()`, nome/memória quando disponível) e avisar quando a placa é
-    integrada (ex.: a Intel UHD 770 desta máquina usa a própria RAM como VRAM: não economiza nada);
-  - se o WebGPU falhar ao carregar, cair para a CPU sozinho e avisar.
-  - **Decisão do Paulo:** a opção é um menu. Se a máquina não tem placa dedicada com VRAM própria (ex.: só a Intel
-    UHD 770 daqui), "Placa de vídeo (VRAM)" aparece **desabilitada**, com o motivo, e fica só RAM. Na máquina dele com
-    RTX, a opção fica disponível. A detecção tem de ser confiável: nome do adaptador (`requestAdapter().info`) e, se
-    der, a memória dedicada lida pelo núcleo (no Windows, `HardwareInformation.qwMemorySize` do registro ou DXGI);
-    placa integrada (Intel UHD/Iris, AMD Radeon integrada) conta como sem VRAM.
 
 ### Pedidos do agente (de `pedidos-ao-atelier.md`, triados com o Paulo em 2026-11-01)
 
@@ -75,6 +49,17 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.0** (2026-11-01, ditado):
+  - o Parakeet não deixa mais a cópia do modelo presa: o worker monta o modelo com `getParakeetModel` +
+    `ParakeetModel.fromUrls` e solta os links `blob:` que o parakeet.js criava e nunca revogava (era o "dobro");
+  - "Baixar" só baixa (Parakeet: guarda os arquivos; Whisper: monta e desmonta o pipeline) e o Worker é encerrado;
+    o modelo carrega no primeiro ditado;
+  - indicador da barra de status com a memória medida de verdade (interface agora menos a interface antes de o
+    modelo subir) e onde ele roda; a lista de modelos mostra quanto cada um ocupou carregado (maior medida);
+  - Configurações → Ditado → "Onde o modelo roda": Processador (RAM) ou Placa de vídeo (VRAM, WebGPU; Parakeet com
+    encoder em 32 bits, outro download). A placa é lida no registro do Windows (`/api/sistema/placas`,
+    `HardwareInformation.qwMemorySize`); integrada (Intel UHD/Iris, Radeon de processador) ou sem WebGPU deixa a
+    opção desabilitada com o motivo. Se a placa falhar ao carregar, volta sozinho para o processador e avisa.
 - **0.1.9** (2026-11-01, acabamento e comportamento da janela):
   - barra de status como faixa própria (linha fina em cima, pílula no meio) e painéis encostando nela; com a barra
     lateral escondida, o painel tem a mesma folga dos dois lados;

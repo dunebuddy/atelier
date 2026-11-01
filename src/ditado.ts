@@ -25,6 +25,18 @@ export function catalogo(): ModeloDitado[] {
   return [...daqui, ...de_la.filter((m) => !daqui.some((x) => x.id === m.id))];
 }
 
+/** Onde o modelo roda: processador (RAM) ou placa de vídeo (VRAM, pelo WebGPU). */
+export type Dispositivo = "cpu" | "gpu";
+export const dispositivo = (): Dispositivo => ler<Dispositivo>("ditado.dispositivo", "cpu");
+export function mudarDispositivo(d: Dispositivo) {
+  if (d === dispositivo()) return;
+  guardar("ditado.dispositivo", d);
+  // o modelo carregado é do outro jeito: sai da memória; o próximo ditado carrega do jeito novo
+  descarregar();
+}
+/** o que o modelo ocupa carregado, medido na última vez (MB), por modelo e dispositivo */
+export const memoriaMedida = (id: string): number | null => ler<Record<string, number>>("ditado.memoria", {})[`${id}@${dispositivo()}`] ?? null;
+
 export const modeloEscolhido = (): string => ler("ditado.modelo", "");
 export const baixados = (): string[] => ler<string[]>("ditado.baixados", []);
 const avisarMudanca = () => window.dispatchEvent(new Event("atelier:ditado"));
@@ -44,9 +56,10 @@ export function modeloAtual(): ModeloDitado | null {
 
 type Resposta =
   | { t: "progresso"; arquivo: string; feito: number; total: number }
-  | { t: "pronto"; id: string }
-  | { t: "texto"; texto: string }
+  | { t: "pronto"; id: string; dispositivo: Dispositivo }
+  | { t: "texto"; texto: string; dispositivo: Dispositivo }
   | { t: "apagado"; id: string }
+  | { t: "caiu"; erro: string }
   | { t: "erro"; erro: string };
 
 let worker: Worker | null = null;
@@ -60,6 +73,22 @@ export interface EstadoDitado {
   modelo: ModeloDitado;
   desde: number;
   ultimoUso: number;
+  /** onde ficou de verdade (a placa pode ter falhado e caído para o processador) */
+  dispositivo: Dispositivo;
+  /** memória da interface antes de o modelo subir: a diferença para agora é o que o modelo ocupa */
+  ramAntes: number | null;
+}
+// a barra de status mede a memória da interface a cada poucos segundos e conta aqui (para medir o modelo)
+let ramInterface: number | null = null;
+export function anotarRamInterface(n: number | null) {
+  ramInterface = n;
+  // guarda o maior valor medido para este modelo: é o que a lista de modelos mostra
+  if (estado && n != null && estado.ramAntes != null) {
+    const mb = Math.round(Math.max(0, n - estado.ramAntes) / 1048576);
+    const todas = ler<Record<string, number>>("ditado.memoria", {});
+    const k = `${estado.modelo.id}@${estado.dispositivo}`;
+    if (mb > (todas[k] ?? 0)) guardar("ditado.memoria", { ...todas, [k]: mb });
+  }
 }
 let estado: EstadoDitado | null = null;
 let relogio: number | undefined;
@@ -71,8 +100,11 @@ export function mudarMinutos(n: number) {
 export const estadoDitado = () => estado;
 
 /** Marca uso agora e reprograma a descarga. */
-function usado(m?: ModeloDitado) {
-  if (m) estado = { modelo: m, desde: estado?.modelo.id === m.id ? estado.desde : Date.now(), ultimoUso: Date.now() };
+function usado(m?: ModeloDitado, onde: Dispositivo = dispositivo()) {
+  if (m) {
+    const mesmo = estado?.modelo.id === m.id;
+    estado = { modelo: m, desde: mesmo ? estado!.desde : Date.now(), ultimoUso: Date.now(), dispositivo: onde, ramAntes: mesmo ? estado!.ramAntes : ramAntesDoWorker };
+  }
   else if (estado) estado = { ...estado, ultimoUso: Date.now() };
   window.clearTimeout(relogio);
   const min = minutosParaDescarregar();
@@ -91,6 +123,8 @@ export function descarregar() {
   avisarMudanca();
 }
 let ouvinteProgresso: ((p: { arquivo: string; feito: number; total: number }) => void) | null = null;
+/** memória da interface quando o Worker deste modelo nasceu */
+let ramAntesDoWorker: number | null = null;
 
 function pedir<T>(msg: { t: string; modelo: ModeloDitado; [k: string]: unknown }, transferir: Transferable[] = []): Promise<T> {
   const vez = fila.then(() => new Promise<T>((ok, erro) => {
@@ -103,20 +137,24 @@ function pedir<T>(msg: { t: string; modelo: ModeloDitado; [k: string]: unknown }
       }
       modeloNoWorker = msg.modelo.id;
     }
-    worker ??= new Worker(new URL("./ditado.worker.ts", import.meta.url), { type: "module" });
+    if (!worker) {
+      ramAntesDoWorker = ramInterface;
+      worker = new Worker(new URL("./ditado.worker.ts", import.meta.url), { type: "module" });
+    }
     worker.onmessage = (e: MessageEvent<Resposta>) => {
       const d = e.data;
       if (d.t === "progresso") { ouvinteProgresso?.(d); return; }
+      if (d.t === "caiu") { avisar(`A placa de vídeo não carregou o ditado (${d.erro}); ficou no processador.`, undefined, true); return; }
       if (d.t === "erro") erro(new Error(d.erro));
       else ok(d as T);
     };
-    worker.postMessage(msg, transferir);
+    worker.postMessage({ ...msg, dispositivo: dispositivo() }, transferir);
   }));
   fila = vez.catch(() => {});
   return vez;
 }
 
-/** Baixa (se ainda não tem) e carrega o modelo. `progresso` recebe 0–1. */
+/** Só baixa (se ainda não tem): o modelo não fica na memória; o primeiro ditado carrega. `progresso` recebe 0–1. */
 export async function baixar(m: ModeloDitado, progresso?: (fracao: number) => void) {
   const arquivos = new Map<string, { feito: number; total: number }>();
   ouvinteProgresso = (p) => {
@@ -125,12 +163,15 @@ export async function baixar(m: ModeloDitado, progresso?: (fracao: number) => vo
     arquivos.forEach((a) => { feito += a.feito; total += a.total; });
     if (total) progresso?.(feito / total);
   };
+  const jaCarregado = estado != null;
   try {
-    await pedir({ t: "carregar", modelo: m });
+    await pedir({ t: "baixar", modelo: m });
   } finally {
     ouvinteProgresso = null;
   }
-  usado(m);
+  // o Worker que só baixou não guarda nada que preste: encerra (a memória volta), a não ser que outro modelo estivesse
+  // carregado nele para ditar
+  if (!jaCarregado) { worker?.terminate(); worker = null; modeloNoWorker = null; fila = Promise.resolve(); }
   guardar("ditado.baixados", [...new Set([...baixados(), m.id])]);
   avisarMudanca();
 }
@@ -147,14 +188,14 @@ export async function apagar(m: ModeloDitado) {
 /** Deixa o modelo escolhido na memória (o primeiro ditado fica rápido). */
 export function preparar() {
   const m = modeloAtual();
-  if (m) pedir({ t: "carregar", modelo: m }).then(() => usado(m)).catch(() => {});
+  if (m) pedir<{ dispositivo: Dispositivo }>({ t: "carregar", modelo: m }).then((r) => usado(m, r.dispositivo)).catch(() => {});
 }
 
 export async function transcrever(audio: Float32Array): Promise<string> {
   const m = modeloAtual();
   if (!m) throw new Error("Nenhum modelo de ditado escolhido (Configurações → Ditado).");
-  const r = await pedir<{ texto: string }>({ t: "transcrever", modelo: m, audio }, [audio.buffer]);
-  usado(m);
+  const r = await pedir<{ texto: string; dispositivo: Dispositivo }>({ t: "transcrever", modelo: m, audio }, [audio.buffer]);
+  usado(m, r.dispositivo);
   return r.texto;
 }
 

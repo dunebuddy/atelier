@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Download, Loader2, Mic, Square, Trash2 } from "lucide-react";
+import { api } from "../api";
 import * as D from "../ditado";
 import { avisar, falhou } from "../ui";
 import "../ditado.css";
@@ -94,6 +95,21 @@ export function SecaoDitado() {
   const escolhido = D.modeloEscolhido();
   const baixados = D.baixados();
   const carregado = D.estadoDitado();
+  // placa de vídeo com memória própria? sem ela, "Placa de vídeo" fica desabilitada (a integrada usa a RAM)
+  const [placas, setPlacas] = useState<{ nome: string; vram_mb: number; dedicada: boolean }[] | null>(null);
+  const [webgpu, setWebgpu] = useState<string | null>(null);
+  useEffect(() => {
+    api.placasDeVideo().then(setPlacas).catch(() => setPlacas([]));
+    const gpu = (navigator as Navigator & { gpu?: { requestAdapter: () => Promise<{ info?: { description?: string; vendor?: string } } | null> } }).gpu;
+    if (!gpu) { setWebgpu(""); return; }
+    gpu.requestAdapter().then((a) => setWebgpu(a ? a.info?.description || a.info?.vendor || "placa" : "")).catch(() => setWebgpu(""));
+  }, []);
+  const dedicada = placas?.find((p) => p.dedicada) ?? null;
+  const podeGpu = !!dedicada && webgpu !== "" && webgpu !== null;
+  const motivo = placas === null || webgpu === null ? "procurando a placa de vídeo…"
+    : !dedicada ? `sem placa de vídeo dedicada (${placas.map((p) => p.nome).join(", ") || "nenhuma achada"}: usa a própria RAM, não economiza nada)`
+    : webgpu === "" ? "o WebView desta máquina não tem WebGPU" : "";
+  const dispositivo = D.dispositivo();
 
   const baixar = async (m: D.ModeloDitado) => {
     setBaixando({ id: m.id, fracao: 0 });
@@ -141,7 +157,10 @@ export function SecaoDitado() {
               <input type="radio" checked={escolhido === m.id} disabled={!tem} onChange={() => D.escolher(m.id)} />
               <div className="ditado-info">
                 <strong>{m.nome}{m.recomendado && <span className="tag cor-green">recomendado</span>}{carregado?.modelo.id === m.id && <span className="tag cor-blue">na memória</span>}</strong>
-                <small>{m.nota} · {m.idiomas} · ~{m.tamanho_mb >= 1000 ? `${(m.tamanho_mb / 1000).toFixed(1)} GB` : `${m.tamanho_mb} MB`}</small>
+                <small>
+                  {m.nota} · {m.idiomas} · download ~{m.tamanho_mb >= 1000 ? `${(m.tamanho_mb / 1000).toFixed(1)} GB` : `${m.tamanho_mb} MB`}
+                  {D.memoriaMedida(m.id) != null && ` · carregado ocupa ~${D.memoriaMedida(m.id)} MB`}
+                </small>
                 {b && <span className="ditado-barra"><span style={{ width: `${Math.round(b.fracao * 100)}%` }} /></span>}
               </div>
               {tem ? (
@@ -159,10 +178,23 @@ export function SecaoDitado() {
         })}
       </div>
 
+      <h4>Onde o modelo roda</h4>
+      <label className="ditado-tempo">
+        <select className="campo" value={dispositivo === "gpu" && podeGpu ? "gpu" : "cpu"} onChange={(e) => D.mudarDispositivo(e.target.value as D.Dispositivo)}>
+          <option value="cpu">Processador (RAM)</option>
+          <option value="gpu" disabled={!podeGpu}>Placa de vídeo (VRAM){dedicada ? ` · ${dedicada.nome}, ${Math.round(dedicada.vram_mb / 1024)} GB` : ""}</option>
+        </select>
+      </label>
+      <p className="dica">
+        {podeGpu
+          ? "Na placa de vídeo o ditado sai da RAM e fica mais rápido. O Parakeet na placa usa o modelo em 32 bits (o de 8 bits erra no WebGPU): é outro download, bem maior (~2,4 GB). Se a placa falhar ao carregar, o ditado volta sozinho para o processador e avisa."
+          : `Placa de vídeo indisponível: ${motivo}.`}
+      </p>
+
       <h4>Memória</h4>
       <p className="dica">
-        O modelo carrega quando você dita e sai da memória depois de um tempo sem uso (a barra de status mostra enquanto
-        ele está carregado).
+        Baixar só guarda no disco; o modelo carrega quando você dita e sai da memória depois de um tempo sem uso (a
+        barra de status mostra enquanto ele está carregado, com a memória medida de verdade).
       </p>
       <label className="ditado-tempo">
         Descarregar depois de
@@ -193,26 +225,28 @@ function TesteDitado() {
 export function IndicadorDitado({ interfaceRam }: { interfaceRam: number | null }) {
   useDitado();
   const [, setTique] = useState(0);
-  const base = useRef<{ id: string; ram: number } | null>(null);
   const e = D.estadoDitado();
+  // a medida da interface vai para o ditado: a diferença desde antes de o modelo subir é o que ele ocupa
+  useEffect(() => D.anotarRamInterface(interfaceRam), [interfaceRam]);
   useEffect(() => {
     if (!e) return;
     const t = window.setInterval(() => setTique((n) => n + 1), 15_000);
     return () => window.clearInterval(t);
   }, [e]);
-  if (!e) { base.current = null; return null; }
-  // memória da interface quando o modelo subiu: a diferença é (mais ou menos) o modelo
-  if (interfaceRam != null && base.current?.id !== e.modelo.id) base.current = { id: e.modelo.id, ram: interfaceRam - e.modelo.tamanho_mb * 1024 * 1024 };
-  const ram = interfaceRam != null && base.current ? Math.max(0, interfaceRam - base.current.ram) : e.modelo.tamanho_mb * 1024 * 1024;
+  if (!e) return null;
+  // medida de verdade: a interface agora menos a interface antes de o modelo subir (sem a medida de antes, "…")
+  const ram = interfaceRam != null && e.ramAntes != null ? Math.max(0, interfaceRam - e.ramAntes) : null;
+  const mb = ram != null ? `~${Math.round(ram / 1048576)} MB` : "…";
+  const onde = e.dispositivo === "gpu" ? "na placa de vídeo" : "no processador";
   const min = D.minutosParaDescarregar();
   const resta = min > 0 ? Math.max(0, Math.ceil((e.ultimoUso + min * 60_000 - Date.now()) / 60_000)) : null;
   return (
     <button
       className="bs-medida ditado-indicador"
       onClick={D.descarregar}
-      title={`Ditado: ${e.modelo.nome} na memória (~${Math.round(ram / 1048576)} MB, na CPU; sem placa de vídeo)${resta != null ? ` · descarrega em ${resta} min sem uso` : ""}. Clique para descarregar agora.`}
+      title={`Ditado: ${e.modelo.nome} carregado ${onde} (a interface cresceu ${mb} desde que ele subiu)${resta != null ? ` · descarrega em ${resta} min sem uso` : ""}. Clique para descarregar agora.`}
     >
-      <Mic size={12} /> {e.modelo.nome} · ~{Math.round(ram / 1048576)} MB{resta != null ? ` · ${resta} min` : ""}
+      <Mic size={12} /> {e.modelo.nome} · {mb}{e.dispositivo === "gpu" ? " · placa" : ""}{resta != null ? ` · ${resta} min` : ""}
     </button>
   );
 }

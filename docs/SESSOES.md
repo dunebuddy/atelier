@@ -387,3 +387,10 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   soltar a versão, e olhar o console (`read_console_messages`).
 - A ficha só fica à direita com a janela larga (> 860 px de container); o navegador interno é estreito, então ali
   ela aparece empilhada, como manda a regra.
+
+## 2026-11-01 (noite) — 0.2.0
+
+- Ditado testado sem janela: Whisper Tiny (baixar 7 s, transcrever 5 s) e Parakeet v3 (baixar 20 s sem carregar,
+  carregar e transcrever 7 s). A economia de memória não dá para medir no teste (a "interface" medida lá é o
+  servidor de teste); conferir no app pelo indicador. A opção da placa de vídeo só aparece habilitada na máquina com
+  placa dedicada (a desta máquina é a Intel UHD 770): o caminho WebGPU não foi testado aqui.

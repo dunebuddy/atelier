@@ -293,6 +293,8 @@ export const api = {
   /** renomear (os itens acompanham), cor, histórico ou apagar uma opção de seleção/status */
   mudarOpcao: (prop: number, d: { tipo_id?: number | null; opcao: string; nome?: string; cor?: string; historico?: boolean; apagar?: boolean }) =>
     req("POST", `/propriedades/${prop}/opcao`, d),
+  /** placas de vídeo e a memória própria de cada uma (para o ditado na VRAM) */
+  placasDeVideo: () => req<{ nome: string; vram_mb: number; dedicada: boolean }[]>("GET", "/sistema/placas"),
   tamanhoDoItem: (id: number) => req<{ proprio: number; com_filhos: number; filhos: number }>("GET", `/itens/${id}/tamanho`),
   tamanhoDaBancada: () => req<{ bytes: number }>("GET", "/bancadas/tamanho"),
   itensDaVisao: (f: FiltroVisao, periodo: { de: string; ate: string } | null, q?: string) =>

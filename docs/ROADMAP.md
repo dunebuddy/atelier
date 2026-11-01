@@ -102,7 +102,7 @@ inteiro, então os itens que pediam o ok dele entram.)
 - Terminal mata a árvore inteira de processos (hoje um agente aberto no terminal pode continuar rodando depois
   que o app fecha).
 
-## 0.2.0 · Ditado
+## 0.2.0 · Ditado · **saiu em 2026-11-01**
 
 Um pacote só, porque tudo mexe no worker do ditado e na mesma tela de Configurações.
 

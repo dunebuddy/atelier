@@ -130,6 +130,7 @@ pub fn rotas(banco: Banco) -> Router {
         .route("/api/agentes", get(agentes))
         .route("/api/tela", post(tela))
         .route("/api/sistema", get(|| async { Json(tokio::task::spawn_blocking(crate::sistema::medir).await.unwrap_or_default()) }))
+        .route("/api/sistema/placas", get(|| async { Json(json!(tokio::task::spawn_blocking(crate::sistema::placas_de_video).await.unwrap_or_default())) }))
         .route("/api/exportar", post(exportar))
         .route("/api/tela/eventos", get(tela_eventos))
         .route("/api/tela/estado", post(tela_estado))

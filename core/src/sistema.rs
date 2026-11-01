@@ -126,3 +126,58 @@ mod testes {
         assert!(super::medir()["sessoes"]["7"].is_null());
     }
 }
+
+/// As placas de vídeo e quanta memória própria (VRAM) cada uma tem, para o ditado escolher entre processador e placa.
+/// Placa integrada (Intel UHD/Iris, Radeon de processador) usa a RAM como se fosse VRAM: conta como sem VRAM. No
+/// Windows lê o registro do driver (`HardwareInformation.qwMemorySize`); fora dele, devolve vazio (a tela decide pelo
+/// nome que o navegador der).
+pub fn placas_de_video() -> Vec<Value> {
+    #[cfg(windows)]
+    {
+        use windows::core::HSTRING;
+        use windows::Win32::System::Registry::{RegGetValueW, HKEY_LOCAL_MACHINE, RRF_RT_ANY};
+        let classe = r"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}";
+        let ler = |sub: &str, nome: &str| -> Option<Vec<u8>> {
+            let chave = HSTRING::from(format!(r"{classe}\{sub}"));
+            let valor = HSTRING::from(nome);
+            let mut tam = 0u32;
+            unsafe {
+                RegGetValueW(HKEY_LOCAL_MACHINE, &chave, &valor, RRF_RT_ANY, None, None, Some(&mut tam)).ok().ok()?;
+                let mut buf = vec![0u8; tam as usize];
+                RegGetValueW(HKEY_LOCAL_MACHINE, &chave, &valor, RRF_RT_ANY, None, Some(buf.as_mut_ptr() as *mut _), Some(&mut tam)).ok().ok()?;
+                buf.truncate(tam as usize);
+                Some(buf)
+            }
+        };
+        let texto = |b: Vec<u8>| -> String {
+            let u: Vec<u16> = b.chunks_exact(2).map(|c| u16::from_le_bytes([c[0], c[1]])).take_while(|&c| c != 0).collect();
+            String::from_utf16_lossy(&u)
+        };
+        let mut placas = vec![];
+        for i in 0..64 {
+            let sub = format!("{i:04}");
+            let Some(nome) = ler(&sub, "DriverDesc").map(texto) else { continue };
+            let bytes = ler(&sub, "HardwareInformation.qwMemorySize")
+                .or_else(|| ler(&sub, "HardwareInformation.MemorySize"))
+                .map(|b| {
+                    let mut a = [0u8; 8];
+                    a[..b.len().min(8)].copy_from_slice(&b[..b.len().min(8)]);
+                    u64::from_le_bytes(a)
+                })
+                .unwrap_or(0);
+            let n = nome.to_lowercase();
+            // adaptadores virtuais (área de trabalho remota, vídeo básico) não são placa
+            if n.starts_with("microsoft") || placas.iter().any(|p: &Value| p["nome"] == nome.as_str()) {
+                continue;
+            }
+            let integrada = (n.contains("intel") && !n.contains("arc")) || n.contains("radeon(tm) graphics") || n.contains("vega")
+                || bytes < 1 << 30;
+            placas.push(json!({ "nome": nome, "vram_mb": bytes / (1 << 20), "dedicada": !integrada }));
+        }
+        placas
+    }
+    #[cfg(not(windows))]
+    {
+        vec![]
+    }
+}

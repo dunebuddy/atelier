@@ -106,6 +106,9 @@ Como usar:
   histórico. Corrigir: se o filtro escolhe valores de histórico numa propriedade status, esses itens aparecem (ou o
   filtro liga o histórico sozinho). E deixar mais visível que há itens escondidos (hoje só "· 1 no histórico" no
   subtítulo e o botão "Histórico (1)").
+  **Decisão do Paulo:** esconder o histórico passa a ser **desligado por padrão** (a visão mostra tudo); quem quiser
+  liga "Esconder concluídos" e a escolha fica guardada na visão (no banco, como já é o filtro). Migration: visões
+  existentes passam a mostrar tudo, exceto se o Paulo tiver ligado de propósito.
 
 ### Melhorias pedidas
 - **"Apontado por" com contagem e grupo clicável que vira visão** (2026-11-01, Paulo). Em `Relacoes.tsx`, cada grupo

@@ -84,6 +84,11 @@ Como usar:
   - gravar a ordem em `config.colunas` da visão; marcar uma coluna nova põe no fim, sem reordenar as outras;
   - a coluna Título continua fixa na primeira posição;
   - o mesmo vale para a Lista compacta, que usa as mesmas `colunas`.
+  - **Redimensionar as colunas** (mesmo dia, Paulo: "tem que ser persistente"): alça na borda direita do cabeçalho;
+    arrastar muda a largura e duplo clique volta ao automático. Hoje a tabela não tem largura nenhuma guardada (a
+    coluna se ajusta ao conteúdo). Gravar em `config.larguras` da visão (`{ id da coluna: px }`, Título incluído),
+    com largura mínima; com larguras definidas, `table-layout: fixed` e o texto que não cabe corta com reticências
+    (combina com a linha única). No MCP, `atualizar_visao` aceita `larguras` também.
   Hoje só as visões têm tabela. "Dentro do item" pode querer dizer a ordem das propriedades na ficha do item, que
   vem do tipo: confirmar com o Paulo se é para reordenar lá também.
 - **Permissões do WebView sem pedir** (2026-11-01, Paulo). Hoje o WebView2 abre o pedido dele (microfone para o

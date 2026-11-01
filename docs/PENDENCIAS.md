@@ -18,6 +18,19 @@ Como usar:
 ## Caixa de entrada
 
 ### Bugs
+- **A ordem escolhida não se mantém: item mexido pula para o topo** (2026-11-01, Paulo: "mando ordenar de um jeito
+  e, depois que o agente ou qualquer um muda um item, ele vai para o topo"). O que o código faz hoje:
+  - há **duas** ordens: o clique no cabeçalho da tabela (`Tabela` em `Layouts.tsx`) guarda a ordem só na memória da
+    tela (não na visão), e o botão "Ordem" grava na visão (`config.ordenar`). Sem nenhuma das duas, a visão vem do
+    núcleo por **última atualização** (`listar_itens`: `ORDER BY atualizado_em DESC`), então qualquer mudança, de
+    quem for, joga o item para o topo;
+  - a ordenação é estável: itens empatados (mesmo status, mesma data, vazio) ficam na ordem de chegada, que é a
+    de última atualização, e o item mexido sobe dentro do grupo dele.
+  Correção: (1) **clicar no cabeçalho grava a ordem na visão**, a mesma do botão "Ordem" (uma fonte só; a seta no
+  cabeçalho mostra qual vale); (2) **desempate fixo** que não depende de atualização (título em ordem natural, depois
+  o código), para nada pular quando muda; (3) decidir com o Paulo a ordem **padrão** de visão sem ordem escolhida:
+  hoje "última atualização" (o que mexeu sobe), alternativa "criação" (fica parado). Conferir no app dele qual
+  visão era e se a ordem estava no cabeçalho ou no botão.
 - **Atualizar dá erro quando o MCP está aberto** (2026-11-01, Paulo: "o instalador não tá matando o MCP"). O
   `atelier-mcp.exe` não é processo do atelier: é aberto pelo Claude Code (e outros agentes) a cada sessão com o MCP
   ligado. Com ele rodando, o instalador NSIS não consegue sobrescrever o arquivo e dá erro. Matar o processo

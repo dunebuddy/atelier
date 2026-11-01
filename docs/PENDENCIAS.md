@@ -44,6 +44,18 @@ Como usar:
     instalador NSIS pode chamar `SHChangeNotify(SHCNE_ASSOCCHANGED)` no fim) ou se fica só como nota de "na primeira
     troca de ícone, reinicie o Explorer".
 
+- **Ditado ocupa o dobro do modelo na memória** (2026-11-01, Paulo: interface em 1,6 GB depois de baixar o
+  Parakeet). Medido: o renderer do WebView2 (onde roda o Worker do ditado) foi a 1.484 MB e voltou a 70 MB quando o
+  modelo descarregou (5 min sem uso: a descarga funciona). Causa: o `parakeet.js` (`node_modules/parakeet.js/src/hub.js`,
+  `getModelFile`) monta o arquivo inteiro num Blob, entrega ao ONNX Runtime por `URL.createObjectURL` e nunca revoga o
+  link, então o Blob (~680 MB) fica preso ao lado da cópia que o ORT faz na memória WASM. Corrigir:
+  1. ler os arquivos do modelo (IndexedDB) como bytes, passar ao ORT via `fromUrls`/sessão própria e soltar a cópia JS
+     (esperado ~750–850 MB; abaixo do tamanho do modelo não dá no WASM);
+  2. "Baixar" nas Configurações só baixa (hoje também carrega e deixa na memória);
+  3. o indicador da barra de status mostrar a memória real (hoje repete o tamanho do arquivo, "~681 MB");
+  4. talvez mostrar na lista de modelos quanto cada um ocupa carregado, não só o tamanho do download.
+  Mais longe: rodar o ditado no núcleo Rust lendo o arquivo do disco (como o Handy); exige toolchain MSVC/clang.
+
 ### Melhorias pedidas
 - **Título e × fixos nas janelas que sobem (modais)** (2026-11-01, Paulo): nas Configurações (ex.: Integrações), ao
   rolar, o título da seção e o × somem junto. Deixar o cabeçalho (título + ×) fixo no alto e só o conteúdo rolar,

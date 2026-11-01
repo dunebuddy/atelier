@@ -26,6 +26,20 @@ Como usar:
 - **Confirmar a atualização:** ao reabrir depois de atualizar, avisar "Atualizado para a X.Y.Z" (hoje não há sinal de
   que deu certo; o Paulo teve de perguntar).
 
+- **Ícone velho na barra do sistema depois de atualizar para a 0.1.3** (2026-11-01, Paulo). Não corrigir sem montar
+  a versão. O que já se sabe:
+  - O executável instalado tem o ícone novo (extraído do `atelier.exe` e conferido) e o menu Iniciar mostra o novo.
+  - Não há atalho fixado na barra de tarefas (`...\Quick Launch\User Pinned\TaskBar` só tem Explorer e Edge).
+  - Durante a atualização ficou um `atelier.exe` preso (aberto às 14:35, sem caminho legível); foi encerrado à mão.
+  - O cache de ícones do Windows já foi atualizado (`ie4uinit -show`).
+  - Hipóteses, nesta ordem: (1) ícone "fantasma" na bandeja do processo encerrado, que só some ao passar o mouse;
+    (2) a janela pega o ícone grande de outro lugar: a bandeja e a janela usam `app.default_window_icon()`
+    (`src-tauri/src/lib.rs`), embutido na compilação a partir da lista `bundle.icon` do `tauri.conf.json` (começa
+    por `icons/32x32.png`); conferir qual arquivo o Tauri escolhe e se a janela define o ícone grande (`ICON_BIG`);
+    (3) cache da barra de tarefas por AppUserModelID (`com.paulo.atelier`), que só renova ao sair e entrar na conta.
+  - Para verificar: passar o mouse na bandeja (some se for fantasma); fechar pelo "Sair" e abrir de novo; olhar se
+    o ícone velho está na bandeja, no botão da janela na barra de tarefas ou nos dois.
+
 ### Melhorias pedidas
 - **Toast padrão:** o aviso de versão nova é o modelo; os outros avisos do app (`avisar`) devem seguir o mesmo visual.
 

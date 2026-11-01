@@ -64,6 +64,12 @@ Como usar:
   uma faixa própria com a pílula centrada; alternativa do Paulo: cor de fundo diferente na barra ou sem pílula.
 
 ### Melhorias pedidas
+- **MCP: apagar propriedade (e o resto do esquema)** (2026-11-01, uso real: o agente tirou "Projeto" dos tipos mas não
+  conseguiu apagá-la, e ela ficou sobrando na bancada). Hoje o MCP cria tipo/propriedade e liga/desliga propriedade de
+  tipo (`ligar_propriedade` com `remover`), mas não apaga nem renomeia. Acrescentar: `apagar_propriedade` (avisar
+  quantos itens têm valor nela e pedir confirmação ao usuário antes, como em `apagar_visao`), `renomear_propriedade`,
+  `apagar_tipo` e `renomear_tipo`, usando as funções que a tela já usa (`db::apagar_propriedade`, `db::apagar_tipo`...).
+  Conferir também o que mais a tela faz e o MCP não (opções de seleção: renomear, mudar cor, apagar; modelos).
 - **MCP: criar bancada** (2026-11-01, primeiro uso real do Paulo, pedindo pelo agente do `daily-work`). O MCP lista e
   troca de bancada, mas não cria. Acrescentar `criar_bancada { nome, pasta? }` (pasta padrão: `~/atelier/bancadas/<slug>`),
   usando a rota que já existe (`POST /api/bancadas`, que nasce limpa), com `abrir: true` opcional; sem o app aberto,

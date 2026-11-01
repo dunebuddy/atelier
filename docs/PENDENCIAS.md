@@ -97,7 +97,9 @@ Como usar:
 - **Ficha do item: coluna fixa à direita com rolagem própria** (2026-11-01, Paulo gostou da ficha). Hoje ela gruda no
   topo ao rolar (sticky), mas quando é mais alta que a tela o fim dela só aparece quando a página chega ao fim — numa
   página longa, demora. Quero: a página do item em duas colunas, cada uma com a sua barra de rolagem (texto à esquerda,
-  ficha à direita, altura da janela, `overflow: auto`). Onde: `src/components/PaginaItem.tsx` e o estilo da ficha em
+  ficha à direita, altura da janela, `overflow: auto`). **Detalhe do Paulo:** com a janela estreita, a ficha em cima
+  do texto (como hoje) está ótima, manter; quando a janela é larga o bastante para ela caber à direita, ela fica fixa à
+  direita e sempre à vista enquanto a página rola. Onde: `src/components/PaginaItem.tsx` e o estilo da ficha em
   `src/styles.css`. Conferir junto: num print, o texto da página parecia cortado na beirada encostada na ficha
   ("sa-", "sh ."), talvez a ficha por cima do texto.
 - **MCP: apagar propriedade (e o resto do esquema)** (2026-11-01, uso real: o agente tirou "Projeto" dos tipos mas não

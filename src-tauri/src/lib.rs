@@ -1,15 +1,7 @@
 use atelier_core::{api, bancada};
 use tauri::menu::{Menu, MenuItem};
-use tauri::tray::TrayIconBuilder;
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{Emitter, Manager, WindowEvent};
-
-/// Mostra o ícone da bandeja quando a captura global está ligada (a tela chama ao mudar a preferência).
-#[tauri::command]
-fn bandeja(app: tauri::AppHandle, visivel: bool) {
-    if let Some(t) = app.tray_by_id("atelier") {
-        let _ = t.set_visible(visivel);
-    }
-}
 
 fn trazer_para_frente(app: &tauri::AppHandle) {
     if let Some(w) = app.get_webview_window("main") {
@@ -55,21 +47,28 @@ pub fn run() {
     let estado = api::Estado::iniciar().unwrap_or_else(|e| panic!("não abri a bancada: {e}"));
 
     tauri::Builder::default()
+        // um atelier só: abrir de novo traz para a frente o que já está aberto (vem primeiro, antes de tudo)
+        .plugin(tauri_plugin_single_instance::init(|app, _, _| trazer_para_frente(app)))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![bandeja])
         .setup(move |app| {
             tauri::async_runtime::spawn(api::servir(estado));
 
-            // bandeja: só aparece com a captura global ligada
+            // bandeja: clique traz a janela; o menu tem Capturar, Abrir e Sair
             let capturar = MenuItem::with_id(app, "capturar", "Capturar…", true, None::<&str>)?;
             let abrir = MenuItem::with_id(app, "abrir", "Abrir o atelier", true, None::<&str>)?;
             let sair = MenuItem::with_id(app, "sair", "Sair", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&capturar, &abrir, &sair])?;
-            let mut tray = TrayIconBuilder::with_id("atelier").tooltip("atelier").menu(&menu).on_menu_event(|app, ev| match ev.id().as_ref() {
+            let mut tray = TrayIconBuilder::with_id("atelier").tooltip("atelier").menu(&menu).show_menu_on_left_click(false)
+                .on_tray_icon_event(|t, ev| {
+                    if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = ev {
+                        trazer_para_frente(t.app_handle());
+                    }
+                })
+                .on_menu_event(|app, ev| match ev.id().as_ref() {
                 "capturar" => {
                     trazer_para_frente(app);
                     let _ = app.emit("atelier:capturar", ());
@@ -81,8 +80,7 @@ pub fn run() {
             if let Some(icone) = app.default_window_icon() {
                 tray = tray.icon(icone.clone());
             }
-            let t = tray.build(app)?;
-            let _ = t.set_visible(bancada::carregar().preferencias.captura.ativo);
+            tray.build(app)?;
 
             // teste da atualização sem clicar: ATELIER_ATUALIZAR_SOZINHO=1 procura, instala e reinicia sozinho,
             // anotando cada passo em %TEMP%/atelier-atualizacao.log (no uso normal, a tela pergunta antes)
@@ -93,10 +91,9 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|janela, ev| {
-            // com a captura ligada (e "fechar esconde"), fechar só esconde: o atalho continua valendo
+            // "fechar vai para a bandeja" (Configurações → Automação): o × só esconde; sair é pelo menu da bandeja
             if let WindowEvent::CloseRequested { api, .. } = ev {
-                let c = bancada::carregar().preferencias.captura;
-                if c.ativo && c.bandeja {
+                if bancada::carregar().preferencias.captura.bandeja {
                     api.prevent_close();
                     let _ = janela.hide();
                 }

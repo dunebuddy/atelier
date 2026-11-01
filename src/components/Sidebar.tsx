@@ -1,5 +1,6 @@
+import type { SecaoConfig } from "./Configuracoes";
 import { useEffect, useState } from "react";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, History, ListTree, Plus, Settings, Settings2, Trash2 } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, History, ListTree, Plus, Settings2, Trash2 } from "lucide-react";
 import { api, Bancadas, Esquema, Visao } from "../api";
 import { falhou, guardar, ler, Rota } from "../ui";
 import { datasDo } from "../visao";
@@ -28,7 +29,7 @@ export function Sidebar({
   rota: Rota;
   ir: (r: Rota) => void;
   bancadas: Bancadas | null;
-  abrirConfig: (secao?: "aparencia" | "bancadas" | "tipos") => void;
+  abrirConfig: (secao?: SecaoConfig) => void;
   trocarBancada: (caminho: string) => void;
   fechada: boolean;
   aoMudarVisoes: () => Promise<void>;
@@ -175,10 +176,6 @@ export function Sidebar({
               </div>
             );
           })}
-          <button className="sb-item" onClick={novaVisao} style={{ color: "var(--texto-3)" }}>
-            <span className="tipo-chip vazio"><Plus size={14} /></span>
-            <span className="rotulo">Nova visão</span>
-          </button>
         </div>
         <div className="sb-secao">
           <button className={`sb-item${rota.v === "lixeira" ? " ativo" : ""}`} onClick={() => ir({ v: "lixeira" })} style={{ color: "var(--texto-3)" }}>
@@ -198,11 +195,8 @@ export function Sidebar({
           </span>
           <ChevronsUpDown size={14} />
         </button>
-        <button className="btn-icone" title="Tipos e modelos" onClick={() => abrirConfig("tipos")}>
+        <button className="btn-icone" title="Configurações da bancada (tipos, modelos, workspace)" onClick={() => abrirConfig("bancada")}>
           <Settings2 size={16} />
-        </button>
-        <button className="btn-icone" title="Configurações (Ctrl+,)" onClick={() => abrirConfig()}>
-          <Settings size={17} />
         </button>
       </div>
 

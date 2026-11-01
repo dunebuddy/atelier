@@ -1,4 +1,5 @@
-// Workspaces: cada item tem o seu (vazio até ser usado), além do "Geral". Um workspace é o estado do painel de
+// Workspaces: cada item tem o seu (vazio até ser usado), além do da bancada ("Bancada", chave "geral"), cuja
+// pasta é a raiz da bancada (o agente aberto ali coordena tudo). Terminal aberto num workspace nasce na pasta dele. Um workspace é o estado do painel de
 // trabalho (metades, janelas, terminais). Fica guardado por bancada: ao reabrir o app, as janelas voltam (os
 // terminais voltam parados). Os workspaces abertos nesta sessão ficam vivos por trás quando se troca de um para outro.
 import * as P from "./painel";
@@ -29,12 +30,12 @@ export function carregar(bancada: string): Workspaces {
   if (!g?.estados?.[GERAL]) {
     // primeira vez: o painel de antes vira o "Geral"
     const geral = P.restaurar(ler<EstadoPainel | null>("painel", null), ler<Rota>("rota", { v: "inicio" }));
-    return { ativo: GERAL, estados: { [GERAL]: geral }, info: { [GERAL]: { titulo: "Geral" } }, abertos: [GERAL] };
+    return { ativo: GERAL, estados: { [GERAL]: geral }, info: { [GERAL]: { titulo: "Bancada" } }, abertos: [GERAL] };
   }
   const estados: Record<string, EstadoPainel> = {};
   for (const [k, e] of Object.entries(g.estados)) estados[k] = P.restaurar(e, k === GERAL ? { v: "inicio" } : { v: "item", id: itemDa(k) ?? 0 });
   const ativo = estados[g.ativo] ? g.ativo : GERAL;
-  return { ativo, estados, info: { [GERAL]: { titulo: "Geral" }, ...g.info }, abertos: [ativo] };
+  return { ativo, estados, info: { ...g.info, [GERAL]: { titulo: "Bancada" } }, abertos: [ativo] };
 }
 
 export function salvar(bancada: string, w: Workspaces) {
@@ -61,7 +62,7 @@ export function fechar(w: Workspaces, chave: string): Workspaces {
   return { ...w, abertos: abertos.includes(ativo) ? abertos : [...abertos, ativo], ativo };
 }
 
-/** Esquece: some da lista (o do item volta a ser vazio). O "Geral" não sai. */
+/** Esquece: some da lista (o do item volta a ser vazio). O da bancada não sai. */
 export function esquecer(w: Workspaces, chave: string): Workspaces {
   if (chave === GERAL) return w;
   const f = fechar(w, chave);

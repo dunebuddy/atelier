@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Activity, ArrowUpDown, FileDown, ChevronLeft, ChevronRight, Columns3, Eye, EyeOff, Filter, Layers, List, MoreHorizontal, Plus, Search,
+  Activity, ArrowUpDown, FileDown, ChevronLeft, ChevronRight, Columns3, Eye, EyeOff, Filter, Layers, List, MoreHorizontal, Search,
   SlidersHorizontal, Table2, Trash2,
 } from "lucide-react";
 import { api, Esquema, FiltroData, FiltroVisao, Item, Layout, opcoesDe, Propriedade, propsDoTipo, Visao } from "../api";
@@ -70,7 +70,6 @@ export function VisaoTela({
   const pColunas = usePopover();
   const pMenu = usePopover();
   const pIcone = usePopover();
-  const pNovo = usePopover();
   const pOrdem = usePopover();
 
   const periodo = f.periodo ?? (v.layout === "linha" ? "hoje" : null);
@@ -130,15 +129,6 @@ export function VisaoTela({
   const agruparPor = esquema.propriedades.find((p) => p.id === v.config?.agrupar_por) ?? agrupaveis.find((p) => p.especie === "status") ?? agrupaveis[0];
 
   const unicoTipo = f.tipos?.length === 1 ? f.tipos[0] : null;
-  const criar = async (tipo_id: number | null, props?: Record<string, string>) => {
-    pNovo.fechar();
-    try {
-      const it = await api.criarItem({ tipo_id, ...(props ? { props } : {}) });
-      ir({ v: "item", id: it.id });
-    } catch (e) {
-      falhou(e);
-    }
-  };
 
   const filtrosAtivos = (f.tipos?.length ?? 0) + (f.sem_tipo ? 1 : 0) + Object.values(f.props ?? {}).filter((l) => l.length).length + (f.periodo ? 1 : 0) + Object.keys(f.datas ?? {}).length;
 
@@ -192,9 +182,11 @@ export function VisaoTela({
             <button className="btn-icone" onClick={() => setDesloca((d) => d + 1)} disabled={desloca >= 0} title="Próximo"><ChevronRight size={16} /></button>
           </div>
         )}
-        <button className={`btn${filtrosAtivos ? " com-filtro" : ""}`} onClick={pFiltro.abrir}>
-          <Filter size={14} /> Filtro{filtrosAtivos ? ` · ${filtrosAtivos}` : ""}
-        </button>
+        {!v.fixa && (
+          <button className={`btn${filtrosAtivos ? " com-filtro" : ""}`} onClick={pFiltro.abrir}>
+            <Filter size={14} /> Filtro{filtrosAtivos ? ` · ${filtrosAtivos}` : ""}
+          </button>
+        )}
         {v.layout === "kanban" && agrupaveis.length > 0 && (
           <button className="btn" onClick={pAgrupar.abrir}><SlidersHorizontal size={14} /> Agrupar: {agruparPor?.nome}</button>
         )}
@@ -206,7 +198,7 @@ export function VisaoTela({
             <ArrowUpDown size={14} /> {ordenar ? `${esquema.propriedades.find((p) => p.id === ordenar.prop)?.nome ?? "?"} ${ordenar.asc ? "↑" : "↓"}` : "Ordem"}
           </button>
         )}
-        {v.layout !== "linha" && escondidos + (f.historico ? 1 : 0) > 0 && (
+        {!v.fixa && v.layout !== "linha" && escondidos + (f.historico ? 1 : 0) > 0 && (
           <button className="btn" onClick={() => mudar({ filtro: { ...f, historico: !f.historico } })} title="Itens com status de histórico (feitos, descartados…)">
             {f.historico ? <EyeOff size={14} /> : <Eye size={14} />} {f.historico ? "Esconder histórico" : `Histórico (${escondidos})`}
           </button>
@@ -216,23 +208,20 @@ export function VisaoTela({
             <FileDown size={14} /> Exportar
           </button>
         )}
-        <button className="btn primario" onClick={(e) => (unicoTipo != null ? criar(unicoTipo) : pNovo.abrir(e))}>
-          <Plus size={15} /> Novo
-        </button>
       </div>
 
       {v.layout === "linha" && datas && (
         <LinhaDoTempo esquema={esquema} filtro={f} de={datas.de} ate={datas.ate} ir={ir} recarga={recarga} capturar={desloca === 0 && (periodo === "hoje")} />
       )}
       {v.layout === "tabela" && itens && (
-        <Tabela esquema={esquema} itens={visiveis} colunas={colunas} mostrarTipo={unicoTipo == null} ir={ir} aoMudarEsquema={aoMudarEsquema} aoMudarItens={(l) => setItens(l)} todos={itens} aoNovo={(e) => (unicoTipo != null ? criar(unicoTipo) : pNovo.abrir(e))} />
+        <Tabela esquema={esquema} itens={visiveis} colunas={colunas} mostrarTipo={unicoTipo == null} ir={ir} aoMudarEsquema={aoMudarEsquema} aoMudarItens={(l) => setItens(l)} todos={itens} />
       )}
       {v.layout === "lista" && itens && (
         <ListaCompacta esquema={esquema} itens={visiveis} colunas={colunas} ir={ir} />
       )}
       {v.layout === "kanban" && itens && (
         agruparPor ? (
-          <Kanban esquema={esquema} itens={visiveis} agruparPor={agruparPor} tipoUnico={unicoTipo} tiposDaVisao={tiposDaVisao(esquema, f).map((t) => t.id)} mostrarHistorico={!!f.historico} ir={ir} aoMudarItens={(l) => setItens(l)} todos={itens} aoCriar={(valor) => criar(unicoTipo, valor ? { [agruparPor.id]: valor } : undefined)} />
+          <Kanban esquema={esquema} itens={visiveis} agruparPor={agruparPor} tipoUnico={unicoTipo} tiposDaVisao={tiposDaVisao(esquema, f).map((t) => t.id)} mostrarHistorico={!!f.historico} ir={ir} aoMudarItens={(l) => setItens(l)} todos={itens} />
         ) : (
           <div className="vazio-grande">Para ver em quadro, os tipos desta visão precisam de uma propriedade de seleção ou status.</div>
         )
@@ -301,20 +290,6 @@ export function VisaoTela({
               {ordenar?.prop === p.id && <span className="dir">{ordenar.asc ? "↑" : "↓"}</span>}
             </button>
           ))}
-        </Popover>
-      )}
-
-      {pNovo.ancora && (
-        <Popover ancora={pNovo.ancora} aoFechar={pNovo.fechar} largura={230}>
-          <div className="menu-rotulo">Criar</div>
-          {tiposDaVisao(esquema, f).map((t) => (
-            <button key={t.id} className="menu-item" onClick={() => criar(t.id)}>
-              <span className="tipo-chip pequeno">{t.icone}</span> {t.nome}
-            </button>
-          ))}
-          <button className="menu-item" onClick={() => criar(null)}>
-            <span className="tipo-chip pequeno">·</span> Sem tipo (caixa de entrada)
-          </button>
         </Popover>
       )}
 

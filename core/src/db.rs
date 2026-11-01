@@ -43,7 +43,12 @@ pub fn abrir(caminho: &Path) -> Res<Connection> {
     }
     let conn = Connection::open(caminho)?;
     conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;")?;
+    let antes: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
     migrar(&conn)?;
+    // bancada nasce limpa: as sementes das migrations antigas (Task, Dívida, Hoje...) saem de bancada ainda sem itens
+    if antes < 12 && conn.query_row("SELECT NOT EXISTS (SELECT 1 FROM itens)", [], |r| r.get::<_, bool>(0))? {
+        limpar_sementes(&conn)?;
+    }
     Ok(conn)
 }
 
@@ -304,6 +309,15 @@ const MIGRACOES: &[&str] = &[
       DELETE FROM busca WHERE origem = 'n' AND ref = old.id;
     END;
     "#,
+    // 12 — "Todos os itens" é a visão fixa de toda bancada: não sai e não filtra (mostra até o histórico; muda só o
+    //      jeito de mostrar)
+    r#"
+    ALTER TABLE visoes ADD COLUMN fixa INTEGER NOT NULL DEFAULT 0;
+    UPDATE visoes SET fixa = 1, filtro = '{"historico":true}'
+      WHERE id = (SELECT id FROM visoes WHERE nome = 'Todos os itens' ORDER BY id LIMIT 1);
+    INSERT INTO visoes (nome, icone, ordem, layout, filtro, fixa, criado_em)
+      SELECT 'Todos os itens', '🗂️', 0, 'tabela', '{"historico":true}', 1, datetime('now') WHERE NOT EXISTS (SELECT 1 FROM visoes WHERE fixa = 1);
+    "#,
 ];
 
 // ---------- relações ----------
@@ -530,16 +544,15 @@ pub fn referencias_do_item(conn: &Connection, id: i64) -> Res<(Value, Value)> {
 
 pub const LAYOUTS: &[&str] = &["tabela", "lista", "kanban", "linha"];
 
-/// Bancada "em branco": tira os tipos de trabalho que as migrations semeiam (Task, Dívida...), os modelos e as
-/// propriedades deles, e as visões desses tipos. Ficam a propriedade Status (base de todo tipo novo) e as visões
-/// gerais (Hoje, Caixa de entrada, Todos os itens). Só roda em bancada sem itens.
+/// Bancada limpa: tira o que as migrations semeiam (tipos Task, Dívida..., modelos, propriedades e visões). Ficam a
+/// propriedade Status (base de todo tipo novo) e a visão fixa Todos os itens. Só roda em bancada sem itens.
 pub fn limpar_sementes(conn: &Connection) -> Res<()> {
     let itens: i64 = conn.query_row("SELECT COUNT(*) FROM itens", [], |r| r.get(0))?;
     if itens > 0 {
         return Err(Erro::Invalido("a bancada já tem itens; os tipos não foram tirados".into()));
     }
     let tx = conn.unchecked_transaction()?;
-    tx.execute("DELETE FROM visoes WHERE json_extract(filtro, '$.tipos') IS NOT NULL OR json_extract(filtro, '$.datas') IS NOT NULL", [])?;
+    tx.execute("DELETE FROM visoes WHERE fixa = 0", [])?;
     tx.execute("DELETE FROM tipos", [])?;
     tx.execute("DELETE FROM propriedades WHERE especie <> 'status'", [])?;
     tx.execute("UPDATE propriedades SET opcoes = '[]'", [])?;
@@ -558,15 +571,17 @@ pub struct Visao {
     pub layout: String,
     pub filtro: Value,
     pub config: Value,
+    /// a visão Todos os itens: não se apaga nem se filtra
+    pub fixa: bool,
 }
 
 pub fn listar_visoes(conn: &Connection) -> Res<Vec<Visao>> {
-    let mut st = conn.prepare("SELECT id, nome, icone, ordem, layout, filtro, config, grupo FROM visoes ORDER BY ordem, id")?;
+    let mut st = conn.prepare("SELECT id, nome, icone, ordem, layout, filtro, config, grupo, fixa FROM visoes ORDER BY fixa DESC, ordem, id")?;
     let v = st
         .query_map([], |r| {
             Ok(Visao {
                 id: r.get(0)?, nome: r.get(1)?, icone: r.get(2)?, ordem: r.get(3)?, layout: r.get(4)?,
-                filtro: json_col(r.get(5)?), config: json_col(r.get(6)?), grupo: r.get(7)?,
+                filtro: json_col(r.get(5)?), config: json_col(r.get(6)?), grupo: r.get(7)?, fixa: r.get(8)?,
             })
         })?
         .collect::<Result<_, _>>()?;
@@ -605,7 +620,11 @@ pub fn atualizar_visao(conn: &Connection, id: i64, dados: &Value) -> Res<()> {
         let g = g.as_str().map(str::trim).filter(|s| !s.is_empty());
         conn.execute("UPDATE visoes SET grupo = ? WHERE id = ?", params![g, id])?;
     }
+    let fixa: bool = conn.query_row("SELECT fixa FROM visoes WHERE id = ?", [id], |r| r.get(0))?;
     for campo in ["filtro", "config"] {
+        if fixa && campo == "filtro" {
+            continue;
+        }
         if let Some(v @ Value::Object(_)) = dados.get(campo) {
             conn.execute(&format!("UPDATE visoes SET {campo} = ? WHERE id = ?"), params![v.to_string(), id])?;
         }
@@ -615,6 +634,9 @@ pub fn atualizar_visao(conn: &Connection, id: i64, dados: &Value) -> Res<()> {
 
 pub fn apagar_visao(conn: &Connection, id: i64) -> Res<()> {
     existe(conn, "visoes", id)?;
+    if conn.query_row("SELECT fixa FROM visoes WHERE id = ?", [id], |r| r.get::<_, bool>(0))? {
+        return Err(Erro::Invalido("Todos os itens é a visão fixa da bancada; não sai".into()));
+    }
     conn.execute("DELETE FROM visoes WHERE id = ?", [id])?;
     Ok(())
 }
@@ -1730,7 +1752,7 @@ mod testes {
     fn visoes_semente_e_tipo_novo_ganha_visao() {
         let c = banco();
         let nomes: Vec<String> = listar_visoes(&c).unwrap().into_iter().map(|v| v.nome).collect();
-        assert_eq!(&nomes[..4], &["Hoje", "Caixa de entrada", "Todos os itens", "Quadro de tasks"]);
+        assert_eq!(&nomes[..4], &["Todos os itens", "Hoje", "Caixa de entrada", "Quadro de tasks"]);
         let t = criar_tipo(&c, &json!({"nome": "Reunião"})).unwrap();
         assert!(listar_visoes(&c).unwrap().iter().any(|v| v.nome == "Reunião" && v.filtro["tipos"] == json!([t])));
         apagar_tipo(&c, t).unwrap();
@@ -1745,7 +1767,13 @@ mod testes {
         assert!(e["tipos"].as_array().unwrap().is_empty());
         assert_eq!(e["propriedades"].as_array().unwrap().len(), 1, "fica só o Status");
         let nomes: Vec<String> = listar_visoes(&c).unwrap().into_iter().map(|v| v.nome).collect();
-        assert_eq!(nomes, ["Hoje", "Caixa de entrada", "Todos os itens"]);
+        assert_eq!(nomes, ["Todos os itens"]);
+        // a fixa não sai nem filtra
+        let fixa = listar_visoes(&c).unwrap()[0].id;
+        assert!(apagar_visao(&c, fixa).is_err());
+        atualizar_visao(&c, fixa, &json!({"filtro": {"tipos": [1]}, "layout": "lista"})).unwrap();
+        let v = &listar_visoes(&c).unwrap()[0];
+        assert_eq!((v.filtro.clone(), v.layout.as_str()), (json!({"historico": true}), "lista"));
         // e dá para começar o mundo do zero
         let t = criar_tipo(&c, &json!({"nome": "Personagem", "icone": "🧙"})).unwrap();
         let id = criar_item(&c, &json!({"titulo": "Elara", "tipo_id": t})).unwrap();

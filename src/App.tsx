@@ -3,7 +3,8 @@ import { api, BASE, Bancadas, Esquema, Preferencias, TemaArquivo, Visao } from "
 import { aplicarTema } from "./tema";
 import { BarraTitulo } from "./components/BarraTitulo";
 import { Configuracoes, SecaoConfig } from "./components/Configuracoes";
-import { EscolherAgente } from "./components/Terminal";
+import { abrirTerminal, definirPastaDoWorkspace, EscolherAgente } from "./components/Terminal";
+import { ComandoAgente, descreverTela, PedidoTela } from "./components/Comando";
 import { AvisoAtualizacao } from "./components/Atualizacao";
 import { CapturaGlobal } from "./components/Captura";
 import { Atalhos } from "./components/Atalhos";
@@ -39,6 +40,7 @@ function rotuloSimples(r: Rota): string {
     case "lixeira": return "Lixeira";
     case "terminal": return r.titulo ?? "terminal";
     case "arquivos": return r.titulo ?? "arquivos";
+    case "pastas": return r.titulo ?? "pastas";
     default: return r.v;
   }
 }
@@ -89,6 +91,12 @@ export default function App() {
   useEffect(() => {
     if (bancadaAtual) setWs(W.carregar(bancadaAtual));
   }, [bancadaAtual]);
+  // terminal e agente nascem na pasta do workspace: a do item (criada na hora, se ainda não tem) ou a raiz da bancada
+  const wsAtivo = ws?.ativo;
+  useEffect(() => {
+    const id = wsAtivo ? W.itemDa(wsAtivo) : null;
+    definirPastaDoWorkspace(async () => (id != null ? (await api.criarPasta(id)).pasta : bancadaAtual ?? undefined));
+  }, [wsAtivo, bancadaAtual]);
   useEffect(() => {
     if (!ws || !bancadaAtual) return;
     const t = window.setTimeout(() => W.salvar(bancadaAtual, ws), 300);
@@ -252,26 +260,90 @@ export default function App() {
     window.addEventListener("atelier:abrir", f);
     return () => window.removeEventListener("atelier:abrir", f);
   }, [ir, abrirAoLado]);
-  // pedidos do MCP para a tela (abrir, recarregar, filtrar, destacar)
+  // pedidos para a tela, vindos do MCP (o agente) e do Comando: a lista está em core/src/api.rs (ACOES_TELA)
+  const pedidoDaTela = (d: PedidoTela) => {
+    const naMetade = (f: (s: EstadoPainel) => EstadoPainel) => setPainel((s) => {
+      if (d.metade == null) return f(s);
+      const n = d.metade > 0 && s.metades.length < 2 ? P.dividir(s) : s;
+      return f({ ...n, foco: Math.min(d.metade, n.metades.length - 1) });
+    });
+    switch (d.acao) {
+      case "abrir":
+        if (!d.rota) return;
+        if (d.metade != null) setPainel((s) => P.abrirNaMetade(s, d.rota!, d.metade!, d.ao_lado));
+        else (d.ao_lado ? abrirAoLado : ir)(d.rota);
+        return;
+      case "workspace":
+        setWs((w) => (w ? W.abrir(w, d.item ? W.chaveItem(d.item.id) : W.GERAL, d.item ? { titulo: d.item.titulo || "Sem título" } : undefined) : w));
+        return;
+      case "fechar_workspace":
+        setWs((w) => (w ? W.fechar(w, d.item ? W.chaveItem(d.item.id) : w.ativo) : w));
+        return;
+      case "visao_geral": setVerWs(true); return;
+      case "dividir": setPainel((s) => (s.metades.length > 1 ? s : P.dividir(s))); return;
+      case "juntar": setPainel(P.juntar); return;
+      case "modo": naMetade((s) => P.mudarModo(s, s.foco, d.modo as P.Modo)); return;
+      case "fechar": naMetade((s) => P.fecharJanelas(s, d.janela ?? "atual")); return;
+      case "focar": naMetade((s) => s); return;
+      case "terminal":
+        naMetade((s) => s);
+        // espera o foco mudar de metade antes de abrir
+        window.setTimeout(() => abrirTerminal(d.cwd ?? undefined, d.programa ?? undefined, d.titulo ?? undefined, d.shell ?? undefined), 0);
+        return;
+      case "barra_lateral": setFechada(!d.mostrar); return;
+      case "tema": if (d.tema) setTema(d.tema); return;
+      case "zoom": if (d.zoom) mudarPrefs({ zoom: d.zoom }); return;
+      case "configuracoes": setConfig((d.secao as SecaoConfig) ?? "aparencia"); return;
+      case "busca": window.dispatchEvent(new CustomEvent("atelier:busca", { detail: d.texto ?? "" })); return;
+      case "bancada": return;
+      case "recarregar": window.dispatchEvent(new Event("focus")); return;
+      case "filtrar": window.dispatchEvent(new CustomEvent("atelier:filtrar", { detail: { texto: d.texto ?? "" } })); return;
+      case "destacar": if (d.codigo) destacar(d.codigo); return;
+      case "falta": avisar(`O agente ainda não sabe fazer isto pelo atelier: “${d.texto}”. Ficou anotado em pedidos-ao-atelier.md.`); return;
+    }
+  };
+  // outras telas pedem as Configurações numa seção (ex.: o Comando sem agente → Integrações)
+  useEffect(() => {
+    const f = (e: Event) => setConfig(((e as CustomEvent<string>).detail as SecaoConfig) || "aparencia");
+    window.addEventListener("atelier:config", f);
+    return () => window.removeEventListener("atelier:config", f);
+  }, []);
+  const pedidoRef = useRef(pedidoDaTela);
+  pedidoRef.current = pedidoDaTela;
+  // os pedidos vão em fila: o que vem logo depois de uma troca de bancada espera ela terminar (o agente costuma
+  // trocar e já mandar abrir alguma coisa)
+  const fila = useRef(Promise.resolve());
+  const enfileirar = (d: PedidoTela) => {
+    fila.current = fila.current.then(async () => {
+      if (d.acao === "bancada") {
+        await aposTrocarBancadaRef.current();
+        await new Promise((r) => window.setTimeout(r, 300));
+      } else pedidoRef.current(d);
+    }).catch(() => {});
+  };
+  const aposTrocarBancadaRef = useRef(aposTrocarBancada);
+  aposTrocarBancadaRef.current = aposTrocarBancada;
   useEffect(() => {
     let ws: WebSocket | null = null;
     let parar = false;
     let espera = 0;
     const ligar = () => {
       ws = new WebSocket(BASE.replace(/^http/, "ws") + "/tela/eventos");
-      ws.onmessage = (m) => {
-        const d = JSON.parse(String(m.data)) as { acao: string; rota?: Rota; ao_lado?: boolean; texto?: string; codigo?: string };
-        if (d.acao === "abrir" && d.rota) (d.ao_lado ? abrirAoLado : ir)(d.rota);
-        if (d.acao === "recarregar") window.dispatchEvent(new Event("focus"));
-        if (d.acao === "filtrar") window.dispatchEvent(new CustomEvent("atelier:filtrar", { detail: { texto: d.texto ?? "" } }));
-        if (d.acao === "destacar" && d.codigo) destacar(d.codigo);
-      };
+      ws.onmessage = (m) => enfileirar(JSON.parse(String(m.data)) as PedidoTela);
       ws.onopen = () => { espera = 0; };
       ws.onclose = () => { if (!parar) window.setTimeout(ligar, Math.min(10000, (espera = espera * 2 || 500))); };
     };
     ligar();
     return () => { parar = true; ws?.close(); };
-  }, [ir, abrirAoLado]);
+  }, []);
+
+  // o que está na tela, em texto: vai para a API (o agente consulta com tela → estado) e para o Comando
+  const descricaoTela = useMemo(() => (ws ? descreverTela(ws, bancadas, visoes) : ""), [ws, bancadas, visoes]);
+  useEffect(() => {
+    if (!descricaoTela) return;
+    const t = window.setTimeout(() => api.estadoDaTela(descricaoTela).catch(() => {}), 400);
+    return () => window.clearTimeout(t);
+  }, [descricaoTela]);
 
   const passo = (n: number) => setPainel((e) => { const a = janelaAtiva(e); return a ? P.irParaPasso(e, a.id, a.pos + n) : e; });
   const voltar = () => passo(-1);
@@ -379,6 +451,7 @@ export default function App() {
         ir={ir}
         trilha={trilha}
         alternarMenu={() => setFechada((f) => !f)}
+        abrirConfig={() => setConfig("aparencia")}
         workspace={
           <SeletorWorkspace
             ws={ws}
@@ -387,7 +460,6 @@ export default function App() {
             esquecer={(k) => setWs((w) => (w ? W.esquecer(w, k) : w))}
           />
         }
-        abrirConfig={() => setConfig("aparencia")}
         aoApagarItem={
           rota.v === "item"
             ? async () => {
@@ -449,8 +521,10 @@ export default function App() {
           aoTrocarBancada={aposTrocarBancada}
           prefs={prefs}
           mudarPrefs={mudarPrefs}
+          bancada={bancadas?.ativa ?? null}
         />
       )}
+      <ComandoAgente descricao={descricaoTela} />
       <BarraStatus ws={ws} />
       <CapturaGlobal prefs={prefs} />
       <EscolherAgente />

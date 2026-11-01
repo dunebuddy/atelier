@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowDown, ArrowUp, FolderOpen, Layers, Maximize2, Plus, Type } from "lucide-react";
+import { ArrowDown, ArrowUp, FolderOpen, Layers, Maximize2, Type } from "lucide-react";
 import { api, Esquema, Item, Opcao, opcoesDe, Propriedade, Valor } from "../api";
 import { avisar, falhou, Rota } from "../ui";
 import { dataHora } from "../visao";
@@ -31,7 +31,7 @@ function BotaoPasta({ pasta }: { pasta: string | null }) {
 // ---------- tabela ----------
 
 export function Tabela({
-  esquema, itens, todos, colunas, mostrarTipo, ir, aoMudarEsquema, aoMudarItens, aoNovo,
+  esquema, itens, todos, colunas, mostrarTipo, ir, aoMudarEsquema, aoMudarItens,
 }: {
   esquema: Esquema;
   itens: Item[];
@@ -41,7 +41,6 @@ export function Tabela({
   ir: (r: Rota) => void;
   aoMudarEsquema: () => Promise<void>;
   aoMudarItens: (l: Item[]) => void;
-  aoNovo: (e: React.MouseEvent<HTMLElement>) => void;
 }) {
   const [ordem, setOrdem] = useState<{ col: string; asc: boolean } | null>(null);
   const mudar = useMudarProp(todos, aoMudarItens, esquema);
@@ -113,11 +112,6 @@ export function Tabela({
               </tr>
             );
           })}
-          <tr className="linha-nova">
-            <td colSpan={colunas.length + (mostrarTipo ? 3 : 2)}>
-              <div className="celula" onClick={aoNovo}><Plus size={14} style={{ marginRight: 6 }} /> Novo</div>
-            </td>
-          </tr>
         </tbody>
       </table>
       {linhas.length === 0 && <div className="vazio-grande">Nada por aqui com esse filtro.</div>}
@@ -167,7 +161,7 @@ function Resumo({ esquema, prop, item }: { esquema: Esquema; prop: Propriedade; 
 // ---------- quadro (kanban) ----------
 
 export function Kanban({
-  esquema, itens, todos, agruparPor, tipoUnico, tiposDaVisao, mostrarHistorico, ir, aoMudarItens, aoCriar,
+  esquema, itens, todos, agruparPor, tipoUnico, tiposDaVisao, mostrarHistorico, ir, aoMudarItens,
 }: {
   esquema: Esquema;
   itens: Item[];
@@ -178,7 +172,6 @@ export function Kanban({
   mostrarHistorico: boolean;
   ir: (r: Rota) => void;
   aoMudarItens: (l: Item[]) => void;
-  aoCriar: (valor: string | null) => void;
 }) {
   const mudar = useMudarProp(todos, aoMudarItens, esquema);
   const [sobre, setSobre] = useState<string | null>(null);
@@ -245,7 +238,6 @@ export function Kanban({
               </div>
             );
           })}
-          <button className="kb-novo" onClick={() => aoCriar(chave)}><Plus size={13} /> Novo</button>
         </div>
       </div>
     );

@@ -98,6 +98,22 @@
   color-scheme: dark;
 }
 
+/* Marca (carimbo hanko): derivada do tema. Um tema em arquivo pode sobrescrever
+   com marca-fundo, marca-moldura, marca-letra e marca-travessa em [cores]. */
+[data-tema] {
+  --marca-fundo: var(--bg);
+  --marca-moldura: var(--acento);
+  --marca-letra: var(--texto);
+  --marca-travessa: var(--marca-letra);
+}
+/* nos claros o carimbo fica escuro (cor do texto) e as cores são as vivas, não as escurecidas */
+[data-tema="claro"] {
+  --marca-fundo: var(--texto);
+  --marca-moldura: var(--acento);
+  --marca-letra: var(--bg);
+  --marca-travessa: var(--marca-letra);
+}
+
 * { box-sizing: border-box; }
 
 html, body, #root { height: 100%; margin: 0; }
@@ -150,8 +166,8 @@ kbd {
   gap: 6px; color: var(--texto-2); flex-shrink: 0;
 }
 .bt-btn:hover:not(:disabled) { background: var(--hover); color: var(--texto); }
-.bt-btn.destaque { background: var(--acento); color: var(--acento-texto); padding: 0 11px 0 9px; font-weight: 600; font-size: 13px; }
-.bt-btn.destaque:hover:not(:disabled) { background: var(--acento); color: var(--acento-texto); filter: brightness(1.08); }
+.bt-btn.bt-novo { background: var(--acento); color: var(--acento-texto); padding: 0 11px 0 9px; font-weight: 600; font-size: 13px; }
+.bt-btn.bt-novo:hover:not(:disabled) { background: var(--acento); color: var(--acento-texto); filter: brightness(1.08); }
 .bt-btn.perigo { background: var(--c-red); color: var(--t-red); }
 
 .trilha { display: flex; align-items: center; min-width: 0; margin-left: 8px; overflow: hidden; }
@@ -406,9 +422,10 @@ body.redimensionando .sidebar { transition: none; }
 .aba button:hover { background: var(--hover); color: var(--t-red); }
 .j-emoji { font-size: 13px; line-height: 1; }
 .fita-nav { display: flex; gap: 1px; }
-.divisor { position: absolute; top: 0; bottom: 0; cursor: ew-resize; z-index: 3; border-radius: 3px; }
-.divisor:hover { background: var(--acento-suave); }
-.metade-vazia { position: absolute; display: grid; place-items: center; color: var(--texto-3); font-size: 13.5px; border: 1px dashed var(--borda-forte); border-radius: 14px; }
+/* alça para arrastar entre as metades (e entre o principal e a pilha do tile) */
+.alca-painel { position: absolute; top: 0; bottom: 0; cursor: ew-resize; z-index: 3; border-radius: 3px; }
+.alca-painel:hover, .alca-painel:active { background: var(--acento-suave); }
+.metade-vazia { position: absolute; display: grid; place-items: center; text-align: center; padding: 16px; color: var(--texto-3); font-size: 13.5px; border: 1px dashed var(--borda-forte); border-radius: 14px; }
 
 .janela {
   position: absolute; display: flex; flex-direction: column; background: var(--bg); border-radius: 14px;
@@ -533,8 +550,6 @@ table.tabela { border-collapse: separate; border-spacing: 0; min-width: 100%; fo
 tr:hover .celula.titulo .abrir { opacity: 1; }
 .celula .vazio { color: var(--texto-3); opacity: 0; }
 tr:hover .celula .vazio, .prop-valor .vazio { opacity: 1; }
-.linha-nova td { color: var(--texto-3); }
-.linha-nova .celula:hover { color: var(--acento); }
 .vazio-grande { text-align: center; padding: 48px 0; color: var(--texto-3); }
 .id-item { color: var(--texto-3); font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; flex-shrink: 0; }
 
@@ -797,8 +812,6 @@ button.tipo-chip.grande:hover { border-color: var(--acento); }
 .kb-props:empty { display: none; }
 .kb-rodape { display: flex; align-items: center; gap: 6px; }
 .kb-rodape .data-hora { margin-left: auto; font-size: 11px; }
-.kb-novo { display: flex; align-items: center; gap: 6px; padding: 5px 6px; border-radius: 8px; color: var(--texto-3); font-size: 13px; }
-.kb-novo:hover { background: var(--hover); color: var(--texto); }
 
 /* linha do tempo */
 .linha-do-tempo { max-width: 900px; }
@@ -1013,3 +1026,23 @@ button.mencao:hover { text-decoration: underline; text-underline-offset: 2px; }
 .ex-pdf { flex: 1; background: var(--bg-fundo); padding-bottom: 20px; }
 .ex-pdf > div:last-child { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 8px 12px; }
 .ex-pdf-pagina { background: white; box-shadow: var(--sombra); border-radius: 3px; }
+
+/* Comando para o agente: caixa flutuante no alto, sem escurecer o app (dá para ver o agente trabalhando) */
+.comando { position: fixed; top: 52px; left: 50%; transform: translateX(-50%); width: min(680px, calc(100vw - 32px)); z-index: 60;
+  background: var(--bg-elevado, var(--bg)); border: 1px solid var(--borda-forte); border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,.35);
+  display: flex; flex-direction: column; max-height: min(70vh, 640px); }
+.comando-cabeca { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--borda); color: var(--texto); }
+.comando-cabeca .espaco { flex: 1; }
+.comando-agente { width: auto; padding: 3px 8px; font-size: 12.5px; }
+.comando-conversa { overflow-y: auto; padding: 10px 14px; display: flex; flex-direction: column; gap: 12px; }
+.comando-pedido { align-self: flex-end; background: var(--acento-suave); color: var(--texto); padding: 7px 11px; border-radius: 12px 12px 4px 12px; white-space: pre-wrap; max-width: 85%; margin-left: auto; width: fit-content; }
+.comando-resposta { color: var(--texto); padding: 6px 2px 0; white-space: pre-wrap; line-height: 1.5; }
+.comando-resposta.erro { color: var(--t-red); }
+.comando-tempo { color: var(--texto-3); font-size: 12px; }
+.comando-trabalhando { display: flex; align-items: center; gap: 10px; color: var(--texto-2); font-size: 13px; }
+.comando-trabalhando .pontinho { width: 8px; height: 8px; border-radius: 50%; background: var(--acento); animation: pulsar 1s ease-in-out infinite; }
+@keyframes pulsar { 50% { opacity: .25; } }
+.comando-entrada { display: flex; gap: 8px; align-items: flex-end; padding: 10px 12px 4px; border-top: 1px solid var(--borda); }
+.comando-entrada textarea { flex: 1; resize: none; min-height: 38px; line-height: 1.45; font: inherit; }
+.comando-dica { padding: 2px 14px 10px; color: var(--texto-3); font-size: 11.5px; display: flex; align-items: center; gap: 4px; }
+.comando-vazio { padding: 16px; color: var(--texto-2); display: flex; flex-direction: column; gap: 10px; align-items: flex-start; line-height: 1.5; }

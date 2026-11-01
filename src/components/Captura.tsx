@@ -40,8 +40,6 @@ export function CapturaGlobal({ prefs }: { prefs: Preferencias | null }) {
           });
           registrado = atalho;
         }
-        const { invoke } = await import("@tauri-apps/api/core");
-        await invoke("bandeja", { visivel: ativo });
       } catch (e) {
         if (ativo) falhou(`Não consegui registrar o atalho "${atalho}": ${e}`);
       }

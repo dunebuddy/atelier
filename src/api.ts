@@ -258,7 +258,7 @@ export const api = {
 
   bancadas: () => req<Bancadas>("GET", "/bancadas"),
   /** inicio: "vazia" (sem tipos) ou "trabalho" (Task, Dívida, Pendência...). Só vale para bancada nova. */
-  criarBancada: (d: { nome: string; caminho: string; ativar?: boolean; inicio?: "vazia" | "trabalho" }) => req<Bancada>("POST", "/bancadas", d),
+  criarBancada: (d: { nome: string; caminho: string; ativar?: boolean }) => req<Bancada>("POST", "/bancadas", d),
   ativarBancada: (caminho: string) => req<Bancada>("POST", "/bancadas/ativar", { caminho }),
   renomearBancada: (caminho: string, nome: string) => req("PATCH", "/bancadas", { caminho, nome }),
   removerBancada: (caminho: string) => req("DELETE", "/bancadas", { caminho }),
@@ -282,6 +282,15 @@ export const api = {
 
   integracoes: () => req<Integracoes>("GET", "/integracoes"),
   agentes: () => req<{ agentes: AgenteCli[]; shells: { id: string; nome: string; caminho: string }[] }>("GET", "/agentes"),
+  /** Comando do app: o agente faz o pedido pelo MCP; responde quando termina. `sinal` cancela. */
+  comando: (d: { agente: string; pedido: string; contexto: string; conversa: { pedido: string; resposta: string }[] }, sinal?: AbortSignal) =>
+    fetch(BASE + "/comando", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(d), signal: sinal })
+      .then(async (r) => {
+        const dados = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(dados.erro ?? `erro ${r.status}`);
+        return dados as { saida: string; segundos: number };
+      }),
+  estadoDaTela: (texto: string) => req("POST", "/tela/estado", { texto }),
   testarAgente: (id: string) => req<{ ok: boolean; versao?: string; erro?: string | null }>("POST", `/agentes/${id}/testar`),
   /** chama o agente sem terminal e espera a resposta (até 10 min); `sinal` cancela (o processo morre junto) */
   executar: (d: { agente: string; prompt: string; uso: "prompt" | "executor"; item?: number }, sinal?: AbortSignal) =>
@@ -327,6 +336,8 @@ export interface Visao {
   nome: string;
   /** grupo no menu lateral */
   grupo?: string | null;
+  /** Todos os itens: não sai nem filtra */
+  fixa?: boolean;
   icone: string;
   ordem: number;
   layout: Layout;
@@ -419,12 +430,15 @@ export interface AgenteCli {
   terminal: boolean;
   executor: boolean;
   prompt: boolean;
+  /** recebe os comandos do app (botão e atalho na barra de título) */
+  comando: boolean;
 }
 
 export interface UsoAgente {
   terminal?: boolean;
   executor?: boolean;
   prompt?: boolean;
+  comando?: boolean;
   exec?: string | null;
 }
 

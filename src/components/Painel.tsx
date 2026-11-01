@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
-  ArrowLeftToLine, Bot, ChevronLeft, ChevronRight, Columns2, FolderOpen, GalleryHorizontalEnd, LayoutPanelLeft,
+  ArrowLeftToLine, Bot, ChevronLeft, ChevronRight, Columns2, FolderOpen, FolderTree, GalleryHorizontalEnd, LayoutPanelLeft,
   PanelTop, Rows2, SquareTerminal, X,
 } from "lucide-react";
 import { Esquema, Visao } from "../api";
@@ -8,7 +8,7 @@ import * as P from "../painel";
 import { EstadoPainel, Janela, Lugar, Modo, rotaDe } from "../painel";
 import { Rota } from "../ui";
 import { ConfigTipo } from "./ConfigTipo";
-import { Explorador } from "./Explorador";
+import { ArvoreArquivos, Explorador } from "./Explorador";
 import { Lixeira } from "./Lixeira";
 import { PaginaItem } from "./PaginaItem";
 import { BotaoTerminal, TerminalJanela } from "./Terminal";
@@ -38,6 +38,7 @@ function IconeJanela({ j }: { j: Janela }) {
   const r = rotaDe(j);
   if (r.v === "terminal") return r.programa ? <Bot size={13} /> : <SquareTerminal size={13} />;
   if (r.v === "arquivos") return <FolderOpen size={13} />;
+  if (r.v === "pastas") return <FolderTree size={13} />;
   return <span className="j-emoji">{j.icone ?? "·"}</span>;
 }
 
@@ -166,7 +167,7 @@ export function PainelTrabalho({ estado, mudar, ctx }: { estado: EstadoPainel; m
                 <button className="btn-icone" title="Próxima janela (Ctrl+Alt+→)" onClick={() => mudar((s) => P.focarVizinha({ ...s, foco: mi }, 1))}><ChevronRight size={15} /></button>
               </div>
             )}
-            {mi === estado.metades.length - 1 && <BotaoTerminal />}
+            <BotaoTerminal />
             {mi === estado.metades.length - 1 && (
               <button className="btn-icone" title={duas ? "Juntar as metades (Ctrl+Alt+\\)" : "Dividir o painel em dois (Ctrl+Alt+\\)"} onClick={() => mudar(P.dividir)}>
                 {duas ? <ArrowLeftToLine size={15} /> : <Columns2 size={15} />}
@@ -176,18 +177,19 @@ export function PainelTrabalho({ estado, mudar, ctx }: { estado: EstadoPainel; m
         );
       })}
 
-      {duas && <div className="divisor" style={{ left: retMetade(0).w, width: 6 }} onMouseDown={arrastarDivisao} />}
+      {duas && <div className="alca-painel" title="Arraste para mudar o tamanho das metades" style={{ left: retMetade(0).w - 1, width: 8 }} onMouseDown={arrastarDivisao} />}
 
       {estado.metades.map((m, mi) =>
         m.modo === "tile" && m.janelas.length > 1 ? (
-          <div key={`prop${mi}`} className="divisor tile" style={{ left: corpoDe(mi).x + corpoDe(mi).w * m.proporcao - 3, top: CABECA, width: 6, bottom: 0 }} onMouseDown={arrastarProporcao(mi)} />
+          <div key={`prop${mi}`} className="alca-painel" style={{ left: corpoDe(mi).x + corpoDe(mi).w * m.proporcao - 3, top: CABECA, width: 6, bottom: 0 }} onMouseDown={arrastarProporcao(mi)} />
         ) : null,
       )}
 
       {estado.metades.map((m, mi) =>
         !m.janelas.length ? (
-          <div key={`vazia${mi}`} className="metade-vazia" style={{ left: corpoDe(mi).x, top: CABECA, width: corpoDe(mi).w, bottom: 0 }}>
-            Nada aberto. Escolha uma visão na barra ao lado ou use Ctrl+K.
+          <div key={`vazia${mi}`} className="metade-vazia" style={{ left: corpoDe(mi).x, top: CABECA, width: corpoDe(mi).w, bottom: 0 }}
+            onMouseDown={() => mudar((s) => ({ ...s, foco: mi }))} onDragOver={aceitar(`m${mi}`)} onDrop={soltarEm(mi)}>
+            Metade vazia. Clique aqui e escolha uma visão na barra ao lado, use Ctrl+K, abra um terminal ou arraste uma aba para cá.
           </div>
         ) : null,
       )}
@@ -294,6 +296,7 @@ function Conteudo({ j, ctx, visivel, mudar }: { j: Janela; ctx: Contexto; visive
     else if (r.v === "lixeira") rotular({ titulo: "Lixeira", icone: "🗑️", tipo_id: null });
     else if (tipoConfig) rotular({ titulo: `Tipo: ${tipoConfig.nome}`, icone: tipoConfig.icone, tipo_id: null });
     else if (r.v === "terminal") rotular({ titulo: r.titulo ?? "terminal", tipo_id: null });
+    else if (r.v === "pastas") rotular({ titulo: r.titulo ?? r.raiz.split(/[\\/]/).filter(Boolean).pop() ?? "pastas", tipo_id: null });
     else if (r.v === "arquivos") rotular({ titulo: r.titulo ?? r.raiz.split(/[\\/]/).filter(Boolean).pop() ?? "arquivos", tipo_id: null });
   }, [JSON.stringify(r), visao?.nome, visao?.icone, tipoDaLista?.nome, tipoConfig?.nome]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -305,7 +308,7 @@ function Conteudo({ j, ctx, visivel, mudar }: { j: Janela; ctx: Contexto; visive
           esquema={esquema}
           visao={visao}
           salvar={(d) => ctx.salvarVisao(visao.id, d)}
-          aoApagar={async () => { await ctx.apagarVisao(visao.id); ir({ v: "inicio" }); }}
+          aoApagar={visao.fixa ? undefined : async () => { await ctx.apagarVisao(visao.id); ir({ v: "inicio" }); }}
           ir={ir}
           aoMudarEsquema={ctx.aoMudarEsquema}
         />
@@ -338,6 +341,8 @@ function Conteudo({ j, ctx, visivel, mudar }: { j: Janela; ctx: Contexto; visive
       return <ConfigTipo key={r.id} esquema={esquema} id={r.id} ir={ir} aoMudarEsquema={ctx.aoMudarEsquema} />;
     case "terminal":
       return <TerminalJanela sessao={r.sessao} cwd={r.cwd} programa={r.programa} shell={r.shell} visivel={visivel} />;
+    case "pastas":
+      return <ArvoreArquivos key={r.raiz} raiz={r.raiz} titulo={r.titulo} />;
     case "arquivos":
       return <Explorador key={r.raiz + (r.arquivo ?? "")} raiz={r.raiz} arquivo={r.arquivo} titulo={r.titulo} />;
     default:

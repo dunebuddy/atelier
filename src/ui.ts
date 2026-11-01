@@ -10,7 +10,9 @@ export type Rota =
   /** janela de terminal: `sessao` identifica o processo (muda = outro terminal) */
   | { v: "terminal"; sessao: number; cwd?: string; programa?: string; shell?: string; titulo?: string }
   /** janela de arquivos: navega a partir de `raiz` */
-  | { v: "arquivos"; raiz: string; arquivo?: string; titulo?: string };
+  | { v: "arquivos"; raiz: string; arquivo?: string; titulo?: string }
+  /** árvore de pastas: clicar num arquivo abre ele numa janela ao lado */
+  | { v: "pastas"; raiz: string; titulo?: string };
 
 /** Abre uma rota de qualquer lugar (um chip de relação, a barra lateral, o MCP). `nova`: ao lado, sem trocar a atual. */
 export function abrir(rota: Rota, nova = false) {

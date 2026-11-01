@@ -37,7 +37,7 @@ pub struct Captura {
     /// atalho do sistema, no formato do Tauri ("CommandOrControl+Alt+Space")
     #[serde(default = "atalho_padrao")]
     pub atalho: String,
-    /// fechar a janela esconde na bandeja (o atalho continua valendo)
+    /// fechar a janela esconde na bandeja (vale com ou sem a captura; pedido do Paulo, ligado de início)
     #[serde(default = "verdadeiro")]
     pub bandeja: bool,
 }
@@ -86,6 +86,9 @@ pub struct UsoAgente {
     /// aparece no `/prompt` do editor
     #[serde(default)]
     pub prompt: bool,
+    /// recebe os comandos do app (botão e atalho na barra de título): mexe em tudo pelo MCP
+    #[serde(default)]
+    pub comando: bool,
     /// argumentos do modo não interativo, se mudados (`{prompt}` vira o pedido)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub exec: Option<String>,
@@ -220,6 +223,26 @@ pub fn pasta_atelier() -> PathBuf {
 
 fn arquivo_config() -> PathBuf {
     pasta_atelier().join("config.toml")
+}
+
+/// Algo que o agente não soube fazer pelo atelier (para virar recurso): acrescenta em
+/// `~/atelier/pedidos-ao-atelier.md`, com data e quem pediu. Devolve o caminho do arquivo.
+pub fn anotar_pedido(pedido: &str, motivo: &str, agente: &str) -> Res<String> {
+    use std::io::Write;
+    if pedido.trim().is_empty() {
+        return Err(Erro::Invalido("pedido vazio".into()));
+    }
+    let arq = pasta_atelier().join("pedidos-ao-atelier.md");
+    let novo = !arq.exists();
+    let mut f = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&arq)
+        .map_err(|e| Erro::Invalido(format!("não abri {arq:?}: {e}")))?;
+    let cab = if novo { "# Pedidos ao atelier\n\nO que os agentes não conseguiram fazer pelo app (vira lista de recursos a implementar).\n\n" } else { "" };
+    let linha = format!("{cab}- [ ] {} · {agente}: {}{}\n", &crate::db::agora()[..16], pedido.trim(), if motivo.trim().is_empty() { String::new() } else { format!(" — {}", motivo.trim()) });
+    f.write_all(linha.as_bytes()).map_err(|e| Erro::Invalido(e.to_string()))?;
+    Ok(arq.to_string_lossy().to_string())
 }
 
 /// Onde nascem as bancadas novas por padrão.

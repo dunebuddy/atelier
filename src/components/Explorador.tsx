@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ArrowLeft, ArrowUp, Code2, Eye, File, FileText, Film, Folder, FolderOpen, Image, Music, Pencil, RefreshCw, Save,
+  ArrowLeft, ArrowUp, ChevronDown, ChevronRight, Code2, Eye, File, FileText, Film, Folder, FolderOpen, Image, Music, Pencil, RefreshCw, Save,
 } from "lucide-react";
 import { marked } from "marked";
 import { api, BASE, Entrada } from "../api";
@@ -29,6 +29,62 @@ function Icone({ especie }: { especie: string }) {
     case "audio": return <Music {...P} />;
     default: return <File {...P} />;
   }
+}
+
+/**
+ * Árvore de pastas (como a do VS Code): abre e fecha pastas no lugar; clicar num arquivo abre ele numa janela ao lado
+ * (o Markdown aparece formatado, o texto dá para editar).
+ */
+export function ArvoreArquivos({ raiz, titulo }: { raiz: string; titulo?: string }) {
+  const [recarga, setRecarga] = useState(0);
+  // o agente pode criar arquivos enquanto você olha: relê de tempos em tempos
+  useEffect(() => {
+    const t = window.setInterval(() => setRecarga((n) => n + 1), 5000);
+    return () => window.clearInterval(t);
+  }, []);
+  return (
+    <div className="explorador">
+      <div className="ex-cabeca">
+        <FolderOpen size={15} />
+        <div className="ex-trilha"><strong title={raiz}>{titulo ?? nomeDe(raiz)}</strong></div>
+        <button className="btn-icone" title="Reler" onClick={() => setRecarga((n) => n + 1)}><RefreshCw size={14} /></button>
+        <MenuPasta pasta={raiz} classe="btn-icone"><FolderOpen size={14} /></MenuPasta>
+      </div>
+      <div className="ex-lista ex-arvore">
+        <RamoPasta raiz={raiz} dir={raiz} nivel={0} recarga={recarga} />
+      </div>
+    </div>
+  );
+}
+
+function RamoPasta({ raiz, dir, nivel, recarga }: { raiz: string; dir: string; nivel: number; recarga: number }) {
+  const [entradas, setEntradas] = useState<Entrada[] | null>(null);
+  const [abertas, setAbertas] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    api.explorar(dir).then((r) => setEntradas(r.entradas)).catch(() => setEntradas([]));
+  }, [dir, recarga]);
+  if (!entradas) return null;
+  if (!entradas.length && nivel === 0) return <div className="vazio-grande">Pasta vazia.</div>;
+  const alternar = (c: string) => setAbertas((s) => { const n = new Set(s); if (n.has(c)) n.delete(c); else n.add(c); return n; });
+  return (
+    <>
+      {entradas.map((e) => (
+        <div key={e.caminho}>
+          <button
+            className="ex-entrada"
+            style={{ paddingLeft: 8 + nivel * 16 }}
+            onClick={() => (e.pasta ? alternar(e.caminho) : abrirExplorador(raiz, e.caminho, nomeDe(e.caminho)))}
+            title={e.caminho}
+          >
+            {e.pasta ? (abertas.has(e.caminho) ? <ChevronDown size={13} /> : <ChevronRight size={13} />) : <span style={{ width: 13 }} />}
+            <Icone especie={e.especie} />
+            <span className="ex-nome">{e.nome}</span>
+          </button>
+          {e.pasta && abertas.has(e.caminho) && <RamoPasta raiz={raiz} dir={e.caminho} nivel={nivel + 1} recarga={recarga} />}
+        </div>
+      ))}
+    </>
+  );
 }
 
 function tamanho(b: number) {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { DatabaseBackup, FolderOpen, Keyboard, Trash2 } from "lucide-react";
+import { DatabaseBackup, FolderOpen, Keyboard, PanelBottomClose, Trash2 } from "lucide-react";
 import { api, Preferencias } from "../api";
 import { avisar, falhou } from "../ui";
 import { dataHora } from "../visao";
@@ -49,20 +49,28 @@ export function SecaoAutomacao({ prefs, mudar }: { prefs: Preferencias; mudar: (
           <Interruptor ligado={c.ativo} aoMudar={(v) => mudar({ captura: { ...c, ativo: v } })} />
         </div>
         <p className="dica">
-          Um atalho do sistema traz o atelier com a caixinha “o que chegou?”, de qualquer programa. Aparece também um
-          ícone na bandeja (Capturar · Abrir · Sair).
+          Um atalho do sistema traz o atelier com a caixinha “o que chegou?”, de qualquer programa (ou o “Capturar…” do
+          ícone na bandeja).
         </p>
         <div className={`auto-campos${c.ativo ? "" : " desligado"}`}>
           <label>
             Atalho
             <input className="campo mono" style={{ width: 240 }} value={c.atalho} onChange={(e) => mudar({ captura: { ...c, atalho: e.target.value } })} />
           </label>
-          <label className="auto-check">
-            <input type="checkbox" checked={c.bandeja} onChange={(e) => mudar({ captura: { ...c, bandeja: e.target.checked } })} />
-            Fechar a janela esconde na bandeja (o atalho continua valendo)
-          </label>
         </div>
         <p className="dica" style={{ marginTop: 6 }}>Formato do atalho: <code>CommandOrControl+Alt+Space</code>, <code>Ctrl+Shift+K</code>…</p>
+      </div>
+
+      <div className="auto-bloco">
+        <div className="auto-cabeca">
+          <PanelBottomClose size={16} />
+          <strong>Fechar vai para a bandeja</strong>
+          <Interruptor ligado={c.bandeja} aoMudar={(v) => mudar({ captura: { ...c, bandeja: v } })} />
+        </div>
+        <p className="dica">
+          O × da janela esconde o atelier no ícone da bandeja (perto do relógio), com os terminais rodando. Para sair de
+          verdade: botão direito no ícone → Sair. Clique no ícone traz a janela de volta.
+        </p>
       </div>
 
       <div className="auto-bloco">

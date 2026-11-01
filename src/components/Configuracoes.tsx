@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, FileCode, FolderOpen, FolderPlus, Keyboard, Languages, Package, Palette, Pencil, Plug, Plus, RefreshCw, Shapes, Timer, X } from "lucide-react";
+import { Check, Copy, FileCode, FolderOpen, FolderPlus, Keyboard, Languages, LayoutPanelLeft, Package, Palette, Pencil, Plug, Plus, RefreshCw, Shapes, Timer, X } from "lucide-react";
 import { Agente, api, Bancada, Bancadas, Esquema, Integracoes, Preferencias, TemaArquivo, AgenteCli, UsoAgente } from "../api";
 import { SecaoAutomacao } from "./Automacao";
 import { SecaoAtalhos } from "./ConfigAtalhos";
 import { procurarAtualizacao } from "./Atualizacao";
 import { avisar, falhou, Tema } from "../ui";
+import { abrirWorkspace } from "./Workspaces";
 
-export type SecaoConfig = "aparencia" | "geral" | "bancadas" | "tipos" | "integracoes" | "automacao" | "editor" | "atalhos";
+// as do app (engrenagem da barra de título) e as da bancada aberta (botão no rodapé da barra lateral)
+export type SecaoConfig = "aparencia" | "geral" | "bancadas" | "integracoes" | "automacao" | "editor" | "atalhos" | "bancada" | "tipos";
 type Secao = SecaoConfig;
 
 const TEMAS: { id: Tema; nome: string; cores: string[] }[] = [
@@ -30,9 +32,11 @@ function slug(s: string) {
 }
 
 export function Configuracoes({
-  inicial = "aparencia", tema, temas, recarregarTemas, setTema, esquema, irTipo, aoMudarEsquema, aoFechar, aoTrocarBancada, prefs, mudarPrefs,
+  inicial = "aparencia", tema, temas, recarregarTemas, setTema, esquema, irTipo, aoMudarEsquema, aoFechar, aoTrocarBancada, prefs, mudarPrefs, bancada,
 }: {
   inicial?: Secao;
+  /** a bancada aberta (para as configurações dela) */
+  bancada: Bancada | null;
   prefs: Preferencias | null;
   mudarPrefs: (d: Partial<Preferencias>) => void;
   esquema: Esquema;
@@ -46,6 +50,10 @@ export function Configuracoes({
   aoTrocarBancada: () => void;
 }) {
   const [secao, setSecao] = useState<Secao>(inicial);
+  const daBancada = inicial === "bancada" || inicial === "tipos";
+  const item = (id: Secao, icone: React.ReactNode, nome: string) => (
+    <button className={secao === id ? "ativo" : ""} onClick={() => setSecao(id)}>{icone} {nome}</button>
+  );
 
   useEffect(() => {
     const f = (e: KeyboardEvent) => e.key === "Escape" && aoFechar();
@@ -57,15 +65,24 @@ export function Configuracoes({
     <div className="modal-fundo" onMouseDown={(e) => e.target === e.currentTarget && aoFechar()}>
       <div className="modal config-modal">
         <nav className="config-nav">
-          <div className="config-nav-titulo">Configurações</div>
-          <button className={secao === "aparencia" ? "ativo" : ""} onClick={() => setSecao("aparencia")}><Palette size={15} /> Aparência</button>
-          <button className={secao === "geral" ? "ativo" : ""} onClick={() => setSecao("geral")}><Languages size={15} /> Idioma</button>
-          <button className={secao === "bancadas" ? "ativo" : ""} onClick={() => setSecao("bancadas")}><Package size={15} /> Bancadas</button>
-          <button className={secao === "tipos" ? "ativo" : ""} onClick={() => setSecao("tipos")}><Shapes size={15} /> Tipos e modelos</button>
-          <button className={secao === "integracoes" ? "ativo" : ""} onClick={() => setSecao("integracoes")}><Plug size={15} /> Integrações</button>
-          <button className={secao === "editor" ? "ativo" : ""} onClick={() => setSecao("editor")}><FileCode size={15} /> Editor de arquivos</button>
-          <button className={secao === "atalhos" ? "ativo" : ""} onClick={() => setSecao("atalhos")}><Keyboard size={15} /> Atalhos</button>
-          <button className={secao === "automacao" ? "ativo" : ""} onClick={() => setSecao("automacao")}><Timer size={15} /> Automação</button>
+          {daBancada ? (
+            <>
+              <div className="config-nav-titulo">Bancada {bancada?.nome ?? ""}</div>
+              {item("bancada", <Package size={15} />, "Bancada")}
+              {item("tipos", <Shapes size={15} />, "Tipos e modelos")}
+            </>
+          ) : (
+            <>
+              <div className="config-nav-titulo">Configurações</div>
+              {item("aparencia", <Palette size={15} />, "Aparência")}
+              {item("geral", <Languages size={15} />, "Idioma")}
+              {item("bancadas", <Package size={15} />, "Bancadas")}
+              {item("integracoes", <Plug size={15} />, "Integrações")}
+              {item("editor", <FileCode size={15} />, "Editor de arquivos")}
+              {item("atalhos", <Keyboard size={15} />, "Atalhos")}
+              {item("automacao", <Timer size={15} />, "Automação")}
+            </>
+          )}
         </nav>
         <section className="config-corpo">
           <button className="btn-icone fechar" onClick={aoFechar} title="Fechar (Esc)"><X size={17} /></button>
@@ -82,6 +99,7 @@ export function Configuracoes({
             </>
           )}
           {secao === "bancadas" && <SecaoBancadas aoTrocar={aoTrocarBancada} />}
+          {secao === "bancada" && bancada && <SecaoEstaBancada bancada={bancada} aoFechar={aoFechar} />}
           {secao === "integracoes" && <SecaoIntegracoes />}
           {secao === "atalhos" && prefs && <SecaoAtalhos prefs={prefs} mudar={mudarPrefs} />}
           {secao === "automacao" && prefs && <SecaoAutomacao prefs={prefs} mudar={mudarPrefs} />}
@@ -130,13 +148,41 @@ export function Configuracoes({
   );
 }
 
+/** Configurações da bancada aberta: nome, pasta e o workspace dela. */
+function SecaoEstaBancada({ bancada, aoFechar }: { bancada: Bancada; aoFechar: () => void }) {
+  const [nome, setNome] = useState(bancada.nome);
+  const gravarNome = async () => {
+    if (nome.trim() && nome.trim() !== bancada.nome) await api.renomearBancada(bancada.caminho, nome.trim()).catch(falhou);
+  };
+  return (
+    <>
+      <h3>Bancada</h3>
+      <p className="dica">Os tipos, propriedades, visões e itens desta bancada ficam no banco dela, na pasta abaixo.</p>
+      <h4>Nome</h4>
+      <input className="campo" style={{ maxWidth: 320 }} value={nome} onChange={(e) => setNome(e.target.value)} onBlur={gravarNome}
+        onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />
+      <h4>Pasta</h4>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <code style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}>{bancada.caminho}</code>
+        <button className="btn" onClick={() => api.abrirPasta(bancada.caminho).catch(falhou)}><FolderOpen size={14} /> Abrir a pasta</button>
+      </div>
+      <h4>Workspace da bancada</h4>
+      <p className="dica">
+        O painel de trabalho da bancada inteira, fora de qualquer item. Terminal e agente abertos nele nascem na pasta da
+        bancada: é o lugar do agente que coordena tudo (o do bom dia, do ponto, das regras do dia).
+      </p>
+      <button className="btn primario" onClick={() => { abrirWorkspace(); aoFechar(); }}><LayoutPanelLeft size={14} /> Abrir o workspace da bancada</button>
+      <p className="dica" style={{ marginTop: 18 }}>Para criar, trocar ou tirar bancadas: Configurações do app → Bancadas.</p>
+    </>
+  );
+}
+
 function SecaoBancadas({ aoTrocar }: { aoTrocar: () => void }) {
   const [dados, setDados] = useState<Bancadas | null>(null);
   const [renomeando, setRenomeando] = useState<string | null>(null);
   const [nome, setNome] = useState("");
   const [local, setLocal] = useState("");
   const [localMexido, setLocalMexido] = useState(false);
-  const [inicio, setInicio] = useState<"vazia" | "trabalho">("vazia");
 
   const carregar = () => api.bancadas().then(setDados).catch(falhou);
   useEffect(() => { carregar(); }, []);
@@ -158,7 +204,7 @@ function SecaoBancadas({ aoTrocar }: { aoTrocar: () => void }) {
   const criar = async () => {
     if (!nome.trim() || !localFinal.trim()) return;
     try {
-      await api.criarBancada({ nome: nome.trim(), caminho: localFinal.trim(), ativar: true, inicio });
+      await api.criarBancada({ nome: nome.trim(), caminho: localFinal.trim(), ativar: true });
       aoTrocar();
     } catch (e) {
       falhou(e);
@@ -255,19 +301,7 @@ function SecaoBancadas({ aoTrocar }: { aoTrocar: () => void }) {
             </button>
           </div>
         </label>
-        <div className="inicio-bancada">
-          <span>Começar com</span>
-          <label className={inicio === "vazia" ? "ligado" : ""}>
-            <input type="radio" checked={inicio === "vazia"} onChange={() => setInicio("vazia")} />
-            <strong>Em branco</strong>
-            <small>Só as visões Hoje, Caixa de entrada e Todos os itens. Você cria os tipos (ex.: Personagem, Cena, Local).</small>
-          </label>
-          <label className={inicio === "trabalho" ? "ligado" : ""}>
-            <input type="radio" checked={inicio === "trabalho"} onChange={() => setInicio("trabalho")} />
-            <strong>Trabalho</strong>
-            <small>Já vem com Task, Dívida, Pendência, Desejo e Nota, com status e modelos.</small>
-          </label>
-        </div>
+        <p className="dica">A bancada nasce limpa: só a visão Todos os itens. Os tipos, propriedades e visões você cria.</p>
         <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
           <button className="btn primario" onClick={criar} disabled={!nome.trim()}>
             <FolderPlus size={14} /> Criar e abrir
@@ -412,7 +446,7 @@ function SecaoIntegracoes() {
         <code>.bak-atelier</code> ao lado.
       </p>
       <p className="dica">
-        Os agentes de linha de comando só entram em uso (terminal, executor e <code>/prompt</code> no editor) depois de
+        Os agentes de linha de comando só entram em uso (terminal, executor, <code>/prompt</code> no editor e o Comando do app) depois de
         terem o MCP do atelier instalado: sem ele, o agente não enxerga a bancada. Cada uso é ligado aqui e vem desligado.
       </p>
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
@@ -472,6 +506,7 @@ function SecaoIntegracoes() {
                           ["terminal", "Terminal", "Aparece no botão de terminal"],
                           ["executor", "Executor", "O atelier pode chamá-lo sem terminal"],
                           ["prompt", "Prompt", "Aparece no /prompt do editor"],
+                          ["comando", "Comando", "Recebe os comandos do app (botão do agente na barra de título): mexe em tudo pelo MCP"],
                         ] as const).map(([k, nome, dica]) => (
                           <label key={k} title={dica} className={c[k] ? "ligado" : ""}>
                             <input type="checkbox" checked={c[k]} disabled={k !== "terminal" && !c.exec.trim()} onChange={(e) => usar(a.id, { [k]: e.target.checked })} />

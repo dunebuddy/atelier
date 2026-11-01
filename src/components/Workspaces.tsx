@@ -233,7 +233,7 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs }: {
                       const s = r.v === "terminal" ? m?.sessoes[String(r.sessao)] : undefined;
                       return (
                         <div key={j.id} className={`ws-janela${j.id === mt.ativa ? " ativa" : ""}`}>
-                          <span className="ws-janela-icone">{r.v === "terminal" ? (r.programa ? "🤖" : "›_") : r.v === "arquivos" ? "📁" : j.icone ?? "·"}</span>
+                          <span className="ws-janela-icone">{r.v === "terminal" ? (r.programa ? "🤖" : "›_") : r.v === "arquivos" ? "📁" : r.v === "pastas" ? "🗂️" : j.icone ?? "·"}</span>
                           <span className="ws-janela-titulo">{j.titulo ?? "…"}</span>
                           {s && <span className="ws-janela-ram">{mb(s.ram)}</span>}
                         </div>

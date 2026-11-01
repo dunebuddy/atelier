@@ -260,3 +260,41 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
    necessidade aparecer); migração do posto `daily-work` (planejar com o Paulo; conteúdo da empresa fica em
    `privado/`).
 5. Publicar versão: `node scripts/versao.mjs X.Y.Z`, commit, `git tag vX.Y.Z`, push da tag.
+
+## 2026-11-01 — startup lento, bancada limpa, workspace da bancada
+
+- **Startup de 12–15 s não é o atelier: é o Avast.** O Defender está desligado; o Avast segura executável sem
+  assinatura fora das pastas que ele confia (a build em `C:\projetos\...\target` abre em 0,4 s; o mesmo exe em
+  `%LOCALAPPDATA%\atelier` não chega nem ao `main` em 40 s). Medido com marcações de tempo no `run()` (já tiradas).
+  Saída: exceção no Avast para `%LOCALAPPDATA%\atelier\*` (o Paulo faz); definitiva: assinar o executável.
+- **Bancada nasce limpa** (migration 12 + `db::abrir`): só a visão fixa "Todos os itens" (`visoes.fixa`: não se
+  apaga, ignora filtro, mostra até o histórico; muda só o layout) e a propriedade Status. Bancada antiga sem itens
+  perde as sementes de trabalho ao abrir. Sumiu a opção "Trabalho" da bancada nova.
+- Um só "Novo" (o da barra de cima; ficou o "+ Novo" no fim da tabela e nas colunas do kanban). Configurações só no
+  rodapé da barra lateral.
+- Workspace "Geral" virou **"Bancada"**: terminal e agente abertos nele nascem na raiz da bancada; no workspace de um
+  item, na pasta do item (criada na hora, se ainda não tem).
+- Configurações separadas: as do **app** na engrenagem da barra de título; as da **bancada** (nome, pasta, tipos e
+  modelos, botão do workspace da bancada) no botão do rodapé da barra lateral. Um só "Novo" (o de cima).
+- Painel: dividir cria a metade vazia; juntar não repete janela; fechar a última aba não fecha a metade; a alça entre
+  as metades voltou a funcionar (um `.divisor` de outra tela a deixava com 1 px); terminal em cada metade, com
+  "Explorador em árvore" (janela `pastas`) e "No explorador do sistema".
+- **Ícone:** carimbo hanko em A (moldura gelo, A branco, fundo grafite), fonte em `src-tauri/icons/icone.svg`; a marca
+  do app (`Marca.tsx`) segue o tema pelas variáveis `--marca-*`. Galerias das rodadas em `docs/icones-*.html`.
+- Botão Novo piscava ao abrir: usava a classe `destaque` (a do item destacado pelo agente). Virou `bt-novo`.
+- **Comando para o agente** (botão ✨ na barra de título, Ctrl+J): caixa flutuante editável, ↑ volta o último pedido,
+  Win+H para ditar. Cada pedido chama o agente ligado como "Comando" (novo uso em Integrações; Claude com
+  `--allowedTools mcp__atelier`), na pasta do atelier, com as instruções (`COMANDO_INSTRUCOES`), o estado da tela e as
+  últimas 6 trocas da conversa (guardada no app; "Nova conversa" zera). Testado com o Claude real (MCP de teste via
+  `--mcp-config`): trocou de bancada, criou item com pasta, abriu à esquerda e a pasta à direita em 18 s.
+- MCP/tela ampliados: `bancadas`, `trocar_bancada`, `visoes`, `criar_visao`, `atualizar_visao`, `apagar_visao`,
+  `apagar_item`, `restaurar_item`, `nao_consigo`; `tela` com `ACOES_TELA` (abrir item/visão/tipo/pasta/arquivo/lixeira,
+  lado esquerda|direita, workspace, fechar_workspace, visao_geral, dividir, juntar, modo, fechar, focar, terminal,
+  explorador_sistema, barra_lateral, tema, zoom, configuracoes, busca, estado...). A tela manda o que está mostrando
+  para `/api/tela/estado`. O que o agente não sabe fazer vai para `~/atelier/pedidos-ao-atelier.md` e aparece um aviso.
+
+### Na fila
+- **Instalar o MCP no Claude Code real** (Integrações → Claude Code → Instalar) e marcar "Comando"; testar o botão ✨.
+- **Ver documentos dentro do app** sem abrir fora: PDF, HTML, Markdown, texto, imagem; Excel e Word se possível (só
+  visualizar). Conferir o que a prévia do explorador já faz antes.
+- Ler `~/atelier/pedidos-ao-atelier.md` de tempos em tempos e virar recurso.

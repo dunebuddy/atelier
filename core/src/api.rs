@@ -20,8 +20,10 @@ pub const PORTA: u16 = 7477;
 pub struct Estado {
     conn: Mutex<Connection>,
     cfg: Mutex<Config>,
-    /// pedidos para a tela (vindos do MCP): abrir, recarregar, filtrar, destacar
+    /// pedidos para a tela (vindos do MCP e do Comando): veja ACOES_TELA
     tela: tokio::sync::broadcast::Sender<String>,
+    /// o que a tela está mostrando, em texto (ela manda a cada mudança)
+    tela_estado: Mutex<String>,
 }
 
 pub type Banco = Arc<Estado>;
@@ -36,7 +38,7 @@ impl Estado {
         if let Err(e) = crate::temas::semear() {
             eprintln!("atelier: temas: {e}");
         }
-        Ok(Arc::new(Estado { conn: Mutex::new(conn), cfg: Mutex::new(cfg), tela: tokio::sync::broadcast::channel(64).0 }))
+        Ok(Arc::new(Estado { conn: Mutex::new(conn), cfg: Mutex::new(cfg), tela: tokio::sync::broadcast::channel(64).0, tela_estado: Mutex::new(String::new()) }))
     }
 
     pub fn bancada_ativa(&self) -> Option<Bancada> {
@@ -120,8 +122,11 @@ pub fn rotas(banco: Banco) -> Router {
         .route("/api/sistema", get(|| async { Json(tokio::task::spawn_blocking(crate::sistema::medir).await.unwrap_or_default()) }))
         .route("/api/exportar", post(exportar))
         .route("/api/tela/eventos", get(tela_eventos))
+        .route("/api/tela/estado", post(tela_estado))
+        .route("/api/falta", post(falta))
         .route("/api/agentes/{id}/testar", post(testar_agente))
         .route("/api/executar", post(executar))
+        .route("/api/comando", post(comando))
         .route("/api/integracoes/{id}", post(instalar_integracao).delete(remover_integracao))
         .route("/api/temas", get(|| async { Json(json!({ "pasta": crate::temas::pasta(), "temas": crate::temas::listar() })) }))
         .layer(cors)
@@ -628,16 +633,49 @@ async fn exportar(State(b): State<Banco>, Json(d): Json<Value>) -> R {
     Ok(Json(json!({ "caminho": alvo })))
 }
 
-/// Pedido para a tela do app (o "vai na página disso aqui"): `{ "acao": "abrir", "codigo": "a3f9c21" }`,
-/// `{ "acao": "abrir", "visao": "Hoje" }`, `{ "acao": "recarregar" }`, `{ "acao": "filtrar", "texto": "..." }`,
-/// `{ "acao": "destacar", "codigo": "a3f9c21" }`. `"ao_lado": true` abre numa janela nova do painel.
+/// Ações que a tela entende (o MCP `tela` e o Comando do app usam esta lista).
+pub const ACOES_TELA: &str = "abrir (codigo | visao | pasta | arquivo | lixeira | tipo), workspace, fechar_workspace, \
+visao_geral, dividir, juntar, modo, fechar, focar, terminal, explorador_sistema, barra_lateral, tema, zoom, configuracoes, \
+busca, recarregar, filtrar, destacar, estado";
+
+/// Pedido para a tela do app. `lado: "esquerda" | "direita"` escolhe a metade do painel (a direita nasce se o painel
+/// não está dividido); `ao_lado: true` abre numa janela nova em vez de trocar a atual. A tela faz; aqui só se confere
+/// e se traduz (código → id, nome → id, item → pasta).
 async fn tela(State(b): State<Banco>, Json(d): Json<Value>) -> R {
     let acao = d.get("acao").and_then(|v| v.as_str()).unwrap_or("");
     let txt = |k: &str| d.get(k).and_then(|v| v.as_str()).map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
-    let mut ev = json!({ "acao": acao, "ao_lado": d.get("ao_lado").and_then(|v| v.as_bool()).unwrap_or(false) });
+    let sim = |k: &str| d.get(k).and_then(|v| v.as_bool());
+    let mut ev = json!({ "acao": acao, "ao_lado": sim("ao_lado").unwrap_or(false) });
+    match txt("lado").as_deref() {
+        Some("esquerda") => ev["metade"] = json!(0),
+        Some("direita") => ev["metade"] = json!(1),
+        Some(outro) => return Err(Erro::Invalido(format!("lado: esquerda ou direita (veio {outro})"))),
+        None => {}
+    }
+    let banc = || b.bancada_ativa().ok_or(Erro::Invalido("nenhuma bancada aberta".into()));
+    // pasta do item (criada no padrão, se ainda não tem), com o título dele
+    let pasta_do = |codigo: &str| -> Result<(String, String), Erro> {
+        let bc = banc()?;
+        Ok(com(&b, |c2| {
+            let id = db::id_por_codigo(c2, codigo)?;
+            let raiz = crate::pastas::criar(c2, std::path::Path::new(&bc.caminho), &bc.nome, id, "Agente")?;
+            Ok((raiz, db::ler_item(c2, id)?.titulo))
+        })?)
+    };
     match acao {
         "abrir" => {
-            if let Some(c) = txt("codigo") {
+            if let Some(c) = txt("pasta") {
+                let (raiz, titulo) = pasta_do(&c)?;
+                ev["rota"] = json!({ "v": "pastas", "raiz": raiz, "titulo": titulo });
+            } else if let Some(arq) = txt("arquivo") {
+                let p = std::path::Path::new(&arq);
+                if !p.is_absolute() || !p.is_file() {
+                    return Err(Erro::Invalido(format!("arquivo não encontrado: {arq}")));
+                }
+                let raiz = p.parent().map(|x| x.to_string_lossy().to_string()).unwrap_or_default();
+                let nome = p.file_name().map(|x| x.to_string_lossy().to_string()).unwrap_or_default();
+                ev["rota"] = json!({ "v": "arquivos", "raiz": raiz, "arquivo": arq, "titulo": nome });
+            } else if let Some(c) = txt("codigo") {
                 let id = com(&b, |c2| db::id_por_codigo(c2, &c))?;
                 ev["rota"] = json!({ "v": "item", "id": id });
             } else if let Some(nome) = txt("visao") {
@@ -647,17 +685,104 @@ async fn tela(State(b): State<Banco>, Json(d): Json<Value>) -> R {
                     .find(|v| v.nome.to_lowercase() == nome.to_lowercase())
                     .ok_or_else(|| Erro::NaoEncontrado(format!("visão \"{nome}\" (visões: {})", vs.iter().map(|v| v.nome.as_str()).collect::<Vec<_>>().join(", "))))?;
                 ev["rota"] = json!({ "v": "visao", "id": v.id });
+            } else if let Some(nome) = txt("tipo") {
+                let esq = com(&b, db::esquema)?;
+                let t = esq["tipos"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .find(|t| t["nome"].as_str().is_some_and(|n| n.to_lowercase() == nome.to_lowercase()))
+                    .ok_or_else(|| Erro::NaoEncontrado(format!("tipo \"{nome}\"")))?;
+                ev["rota"] = json!({ "v": "tipo", "id": t["id"] });
+            } else if sim("lixeira") == Some(true) {
+                ev["rota"] = json!({ "v": "lixeira" });
             } else {
-                return Err(Erro::Invalido("abrir: informe codigo (do item) ou visao (nome)".into()));
+                return Err(Erro::Invalido("abrir: informe codigo (item), visao, tipo (a configuração dele), pasta (código do item), arquivo (caminho) ou lixeira: true".into()));
             }
         }
+        // workspace do item (codigo) ou o da bancada (sem codigo); fechar_workspace suspende (os terminais param)
+        "workspace" | "fechar_workspace" => {
+            if let Some(c) = txt("codigo") {
+                let it = com(&b, |c2| db::id_por_codigo(c2, &c).and_then(|id| db::ler_item(c2, id)))?;
+                ev["item"] = json!({ "id": it.id, "titulo": it.titulo });
+            }
+        }
+        "modo" => {
+            let m = txt("modo").unwrap_or_default();
+            if !["abas", "tile", "fita"].contains(&m.as_str()) {
+                return Err(Erro::Invalido("modo: abas, tile ou fita".into()));
+            }
+            ev["modo"] = json!(m);
+        }
+        // fechar: "atual" (padrão), "todas" ou parte do título da janela
+        "fechar" => ev["janela"] = json!(txt("janela").unwrap_or("atual".into())),
+        "focar" => {
+            if ev.get("metade").is_none() {
+                return Err(Erro::Invalido("focar: informe lado (esquerda ou direita)".into()));
+            }
+        }
+        // terminal ou agente: na pasta do item (codigo), na raiz da bancada (bancada: true) ou na pasta do workspace aberto
+        "terminal" => {
+            if let Some(c) = txt("codigo") {
+                let (raiz, titulo) = pasta_do(&c)?;
+                ev["cwd"] = json!(raiz);
+                ev["titulo"] = json!(titulo);
+            } else if sim("bancada") == Some(true) {
+                ev["cwd"] = json!(banc()?.caminho);
+            }
+            ev["programa"] = json!(txt("programa"));
+            ev["shell"] = json!(txt("shell"));
+        }
+        // o Explorer do Windows (ou o gerenciador do Linux) na pasta do item ou da bancada: feito aqui mesmo
+        "explorador_sistema" => {
+            let pasta = match txt("codigo") {
+                Some(c) => pasta_do(&c)?.0,
+                None => banc()?.caminho,
+            };
+            abrir_com("arquivos", std::path::Path::new(&pasta)).map_err(|e| Erro::Invalido(e.to_string()))?;
+            return Ok(Json(json!({ "ok": true, "pasta": pasta })));
+        }
+        "barra_lateral" => ev["mostrar"] = json!(sim("mostrar").unwrap_or(true)),
+        "tema" => {
+            let t = txt("tema").unwrap_or_default();
+            if !crate::temas::existe(&t) {
+                let nomes: Vec<String> = crate::temas::listar().iter().filter_map(|x| x["id"].as_str().map(String::from)).collect();
+                return Err(Erro::Invalido(format!("tema \"{t}\" não existe (claro, escuro, nord, {})", nomes.join(", "))));
+            }
+            ev["tema"] = json!(t);
+        }
+        "zoom" => ev["zoom"] = json!(d.get("zoom").and_then(|v| v.as_u64()).unwrap_or(100).clamp(80, 160)),
+        // aparencia, geral, bancadas, integracoes, editor, atalhos, automacao (do app) · bancada, tipos (da bancada)
+        "configuracoes" => ev["secao"] = json!(txt("secao").unwrap_or("aparencia".into())),
+        "busca" => ev["texto"] = json!(txt("texto").unwrap_or_default()),
         "destacar" => ev["codigo"] = json!(txt("codigo").ok_or(Erro::Invalido("destacar: informe codigo".into()))?.trim_start_matches('#').to_lowercase()),
         "filtrar" => ev["texto"] = json!(txt("texto").unwrap_or_default()),
-        "recarregar" => {}
-        outro => return Err(Erro::Invalido(format!("ação desconhecida: {outro} (abrir, recarregar, filtrar, destacar)"))),
+        // o que está na tela agora (a tela manda a cada mudança)
+        "estado" => {
+            let e = b.tela_estado.lock().unwrap_or_else(|e| e.into_inner()).clone();
+            return Ok(Json(json!({ "ok": !e.is_empty(), "estado": if e.is_empty() { "o app não informou a tela (está aberto?)".to_string() } else { e } })));
+        }
+        "recarregar" | "dividir" | "juntar" | "visao_geral" => {}
+        outro => return Err(Erro::Invalido(format!("ação desconhecida: {outro} (ações: {ACOES_TELA}). Se for algo que a tela devia saber fazer, registre com nao_consigo."))),
     }
     let telas = b.tela.send(ev.to_string()).unwrap_or(0);
     Ok(Json(json!({ "ok": telas > 0, "telas": telas })))
+}
+
+/// A tela conta o que está mostrando (bancada, workspace, janelas de cada metade), para o agente saber onde está.
+async fn tela_estado(State(b): State<Banco>, Json(d): Json<Value>) -> R {
+    *b.tela_estado.lock().unwrap_or_else(|e| e.into_inner()) = d.get("texto").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    Ok(Json(json!({ "ok": true })))
+}
+
+/// O agente não soube fazer algo pelo atelier: anota em `~/atelier/pedidos-ao-atelier.md` e avisa na tela.
+async fn falta(State(b): State<Banco>, Json(d): Json<Value>) -> R {
+    let pedido = d.get("pedido").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+    let motivo = d.get("motivo").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+    let agente = d.get("agente").and_then(|v| v.as_str()).unwrap_or("Agente").to_string();
+    let arquivo = bancada::anotar_pedido(&pedido, &motivo, &agente)?;
+    let _ = b.tela.send(json!({ "acao": "falta", "texto": pedido, "motivo": motivo, "arquivo": arquivo }).to_string());
+    Ok(Json(json!({ "ok": true, "arquivo": arquivo })))
 }
 
 /// Websocket por onde a tela recebe os pedidos acima (só da janela do atelier).
@@ -719,6 +844,49 @@ async fn executar(State(b): State<Banco>, Json(d): Json<Value>) -> R {
     Ok(Json(r))
 }
 
+/// O que o agente do Comando sabe de saída (o pedido e o estado da tela vêm junto, da tela).
+const COMANDO_INSTRUCOES: &str = "Você é o agente do app atelier (gestão pessoal do usuário: itens com propriedades, visões, \
+bancadas). O usuário fala com você por uma caixa de comando do app, muitas vezes ditando por voz (pode vir com erros de \
+transcrição). Faça o que ele pede usando SÓ as ferramentas do MCP `atelier`: `bancadas`/`trocar_bancada` para mudar de \
+bancada; `buscar`/`ler_item`/`esquema` para achar as coisas; `criar_item`/`atualizar_item`/`anotar` para mudar; `tela` para \
+mostrar (abrir item, visão, a pasta do item em árvore, um arquivo; `lado: direita|esquerda` escolhe a metade do painel; \
+`workspace` abre o workspace de um item ou o da bancada). Quando ele disser \"abre\", \"mostra\", \"me dá uma olhada\", \
+abra na tela. Não mexa em arquivos fora das pastas dos itens e não rode comandos no computador. Não peça confirmação para \
+coisas simples e reversíveis; para apagar, pergunte. Responda em português, curto (uma ou duas frases dizendo o que fez \
+ou o que não achou).";
+
+/// Comando do app: `{ "agente": "claude-code", "pedido": "...", "contexto": "estado da tela", "conversa":
+/// [{"pedido", "resposta"}...] }`. Chama o agente (uso "comando") com tudo junto e responde quando ele termina.
+async fn comando(State(b): State<Banco>, Json(d): Json<Value>) -> R {
+    let id = d.get("agente").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let pedido = d.get("pedido").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+    if pedido.is_empty() {
+        return Err(Erro::Invalido("pedido vazio".into()));
+    }
+    let prefs = cfg_de(&b).preferencias.clone();
+    let (_, exe, modelo) = tokio::task::spawn_blocking(move || {
+        crate::agentes::habilitado(&prefs, &id, "comando").map(|(c, e, m)| (c.id, e, m))
+    })
+    .await
+    .map_err(|e| Erro::Invalido(e.to_string()))??;
+    let mut prompt = format!("{COMANDO_INSTRUCOES}\n\n## Agora na tela\n{}\n", d.get("contexto").and_then(|v| v.as_str()).unwrap_or("(sem informação)"));
+    if let Some(l) = d.get("conversa").and_then(|v| v.as_array()).filter(|l| !l.is_empty()) {
+        prompt.push_str("\n## Conversa até aqui\n");
+        for t in l {
+            prompt.push_str(&format!(
+                "- Usuário: {}\n  Você: {}\n",
+                t.get("pedido").and_then(|v| v.as_str()).unwrap_or(""),
+                t.get("resposta").and_then(|v| v.as_str()).unwrap_or("")
+            ));
+        }
+    }
+    prompt.push_str(&format!("\n## Pedido\n{pedido}\n"));
+    // roda na pasta do atelier (fora de qualquer projeto): o agente só tem o MCP para trabalhar
+    let cwd = Some(bancada::pasta_atelier());
+    let r = crate::agentes::executar(exe, &modelo, &prompt, cwd, std::time::Duration::from_secs(600)).await?;
+    Ok(Json(r))
+}
+
 async fn backups(State(b): State<Banco>) -> R {
     let banc = b.bancada_ativa().ok_or(Erro::Invalido("nenhuma bancada aberta".into()))?;
     let p = std::path::Path::new(&banc.caminho);
@@ -767,14 +935,9 @@ async fn criar_bancada(State(b): State<Banco>, Json(d): Json<Value>) -> R {
     let nome = d.get("nome").and_then(|v| v.as_str()).unwrap_or("");
     let nova = {
         let mut cfg = cfg_de(&b);
-        let ja_existia = bancada::banco_da(&caminho).exists();
         let nova = cfg.acrescentar(nome, &caminho)?;
-        // garante o banco criado e migrado já agora
-        let conn = db::abrir(&bancada::banco_da(&nova.caminho))?;
-        // "inicio": "vazia" (padrão) = sem os tipos de trabalho; "trabalho" = com Task, Dívida, Pendência...
-        if !ja_existia && d.get("inicio").and_then(|v| v.as_str()).unwrap_or("vazia") == "vazia" {
-            db::limpar_sementes(&conn)?;
-        }
+        // garante o banco criado e migrado já agora (nasce limpo: só a visão Todos os itens)
+        db::abrir(&bancada::banco_da(&nova.caminho))?;
         bancada::salvar(&cfg)?;
         nova
     };
@@ -800,7 +963,10 @@ fn ativar(b: &Banco, caminho: &str) -> db::Res<Bancada> {
 }
 
 async fn ativar_bancada(State(b): State<Banco>, Json(d): Json<Value>) -> R {
-    Ok(Json(json!(ativar(&b, &caminho_de(&d)?)?)))
+    let nova = ativar(&b, &caminho_de(&d)?)?;
+    // a tela troca junto (quem pediu pode ter sido o agente, pelo MCP)
+    let _ = b.tela.send(json!({ "acao": "bancada" }).to_string());
+    Ok(Json(json!(nova)))
 }
 
 async fn renomear_bancada(State(b): State<Banco>, Json(d): Json<Value>) -> R {

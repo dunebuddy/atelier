@@ -46,7 +46,7 @@ const novoId = () => `j${Date.now().toString(36)}${(seq++).toString(36)}`;
 export const rotaDe = (j: Janela): Rota => j.hist[j.pos];
 
 /** Terminal e arquivos não navegam para outra coisa: o que se abre "nele" vai para uma janela nova. */
-export const fixa = (r: Rota) => r.v === "terminal" || r.v === "arquivos";
+export const fixa = (r: Rota) => r.v === "terminal" || r.v === "arquivos" || r.v === "pastas";
 
 export function novaJanela(r: Rota, largura = 2): Janela {
   return { id: novoId(), hist: [r], pos: 0, largura };
@@ -65,7 +65,7 @@ export function restaurar(e: EstadoPainel | null, padrao: Rota): EstadoPainel {
       const janelas = m.janelas.filter((j) => j.hist?.length && rotaDe(j));
       return { ...m, janelas, ativa: janelas.some((j) => j.id === m.ativa) ? m.ativa : janelas[0]?.id ?? null };
     })
-    .filter((m, i) => m.janelas.length || i === 0);
+    .slice(0, 2);
   return { ...e, metades, foco: Math.min(e.foco, metades.length - 1) };
 }
 
@@ -104,6 +104,26 @@ export function abrirNova(e: EstadoPainel, r: Rota, mi = e.foco): EstadoPainel {
   };
 }
 
+/** Abre na metade `mi` (0 = esquerda, 1 = direita; a direita nasce se o painel não está dividido). `nova`: janela
+ * nova; senão navega a janela ativa daquela metade (ou abre uma, se ela está vazia). */
+export function abrirNaMetade(e: EstadoPainel, r: Rota, mi: number, nova = false): EstadoPainel {
+  let n = e;
+  if (mi > 0 && n.metades.length < 2) n = dividir(n);
+  const alvo = Math.min(mi, n.metades.length - 1);
+  n = { ...n, foco: alvo };
+  return nova ? abrirNova(n, r, alvo) : navegar(n, r);
+}
+
+/** Fecha janelas da metade com o foco (ou `mi`): "atual", "todas" ou as que têm `texto` no título. */
+export function fecharJanelas(e: EstadoPainel, qual: string, mi = e.foco): EstadoPainel {
+  const m = e.metades[mi];
+  if (!m) return e;
+  const q = qual.toLowerCase();
+  const ids = q === "atual" ? (m.ativa ? [m.ativa] : []) : q === "todas" ? m.janelas.map((j) => j.id)
+    : e.metades.flatMap((x) => x.janelas).filter((j) => (j.titulo ?? "").toLowerCase().includes(q)).map((j) => j.id);
+  return ids.reduce((s, id) => fechar(s, id), e);
+}
+
 /** Vai para `r` na janela ativa (ou abre uma, se não há, ou se a ativa é terminal/arquivos). */
 export function navegar(e: EstadoPainel, r: Rota): EstadoPainel {
   const a = janelaAtiva(e);
@@ -132,12 +152,12 @@ export function ativar(e: EstadoPainel, mi: number, id: string): EstadoPainel {
   return { ...trocarMetade(e, mi, (m) => ({ ...m, ativa: id })), foco: mi };
 }
 
-/** Fecha a janela; a metade da direita some quando fica vazia. */
+/** Fecha a janela. A metade fica aberta mesmo vazia (só o "juntar" tira uma metade). */
 export function fechar(e: EstadoPainel, id: string): EstadoPainel {
   const achada = acharJanela(e, id);
   if (!achada) return e;
   const { mi } = achada;
-  let n = trocarMetade(e, mi, (m) => {
+  return trocarMetade(e, mi, (m) => {
     const i = m.janelas.findIndex((j) => j.id === id);
     const janelas = m.janelas.filter((j) => j.id !== id);
     // a que vinha empilhada embaixo da fechada não sobe para a coluna de outra
@@ -145,25 +165,22 @@ export function fechar(e: EstadoPainel, id: string): EstadoPainel {
     const ativa = m.ativa === id ? janelas[Math.min(i, janelas.length - 1)]?.id ?? null : m.ativa;
     return { ...m, janelas, ativa };
   });
-  if (n.metades.length > 1 && !n.metades[mi].janelas.length) {
-    n = { ...n, metades: n.metades.filter((_, i) => i !== mi), foco: 0 };
-  }
-  return n;
 }
 
-/** Divide o painel em dois (a janela ativa ganha uma cópia do outro lado); com duas, junta tudo na primeira. */
+/** Divide o painel em dois: a metade nova nasce vazia (nada é copiado). Com duas, junta. */
 export function dividir(e: EstadoPainel): EstadoPainel {
   if (e.metades.length > 1) return juntar(e);
-  const a = janelaAtiva(e);
-  const r = a && !fixa(rotaDe(a)) ? rotaDe(a) : ({ v: "inicio" } as Rota);
-  const j = novaJanela(r);
-  return { ...e, metades: [...e.metades, { janelas: [j], ativa: j.id, modo: e.metades[0].modo, proporcao: 0.6 }], foco: 1 };
+  return { ...e, metades: [...e.metades, { janelas: [], ativa: null, modo: e.metades[0].modo, proporcao: 0.6 }], foco: 1 };
 }
 
+/** Junta as metades: as janelas da segunda vão para a primeira, menos as que mostram o mesmo que uma de lá. */
 export function juntar(e: EstadoPainel): EstadoPainel {
   if (e.metades.length < 2) return e;
   const [a, b] = e.metades;
-  return { ...e, metades: [{ ...a, janelas: [...a.janelas, ...b.janelas], ativa: b.ativa ?? a.ativa }], foco: 0 };
+  const ja = new Set(a.janelas.map((j) => chaveRota(rotaDe(j))));
+  const vem = b.janelas.filter((j) => !ja.has(chaveRota(rotaDe(j))));
+  const ativa = vem.some((j) => j.id === b.ativa) ? b.ativa : a.ativa ?? vem[0]?.id ?? null;
+  return { ...e, metades: [{ ...a, janelas: [...a.janelas, ...vem.map((j) => ({ ...j, empilhada: false }))], ativa }], foco: 0 };
 }
 
 /** Muda a janela de lugar: para outra metade (no fim, ou antes de `antesDe`) ou dentro da mesma. */
@@ -179,14 +196,7 @@ export function mover(e: EstadoPainel, id: string, paraMi: number, antesDe?: str
     const janelas = pos < 0 ? [...m.janelas, j] : [...m.janelas.slice(0, pos), j, ...m.janelas.slice(pos)];
     return { ...m, janelas, ativa: id };
   });
-  // a metade que ficou vazia some (sempre sobra uma)
-  const vazias = metades.map((m, i) => (!m.janelas.length && metades.length > 1 ? i : -1)).filter((i) => i >= 0);
-  let foco = paraMi;
-  if (vazias.length) {
-    metades = metades.filter((_, i) => !vazias.includes(i));
-    foco = metades.findIndex((m) => m.janelas.some((x) => x.id === id));
-  }
-  return { ...e, metades, foco: Math.max(0, foco) };
+  return { ...e, metades, foco: paraMi };
 }
 
 /** Anda a janela uma posição para o lado dentro da metade. */

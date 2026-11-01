@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
-import { Bot, ChevronDown, SquareTerminal } from "lucide-react";
+import { Bot, ChevronDown, FolderOpen, FolderTree, SquareTerminal } from "lucide-react";
 import { Popover, usePopover } from "./Popover";
-import { BASE } from "../api";
-import { abrir } from "../ui";
+import { api, BASE } from "../api";
+import { abrir, avisar, falhou } from "../ui";
 import { bate } from "../atalhos";
 
 interface Aba {
@@ -33,8 +33,22 @@ let proximaSessao = Date.now() % 1_000_000;
 /** sessões abertas nesta execução do app; as outras voltaram do workspace guardado e estão paradas */
 const vivas = new Set<number>();
 
+/** Pasta do workspace ativo (a do item, ou a raiz da bancada): onde nasce o terminal que não disse onde. */
+let pastaDoWorkspace: () => Promise<string | undefined> = async () => undefined;
+export function definirPastaDoWorkspace(f: () => Promise<string | undefined>) {
+  pastaDoWorkspace = f;
+}
+
+/** Pasta do workspace ativo nas mãos de `f` (avisa se não tem). */
+async function naPasta(f: (pasta: string) => void) {
+  const p = await pastaDoWorkspace().catch(() => undefined);
+  if (p) f(p);
+  else avisar("Este workspace não tem pasta.");
+}
+
 /** Abre um terminal (o shell, ou um agente) numa janela ao lado. */
-export function abrirTerminal(cwd?: string, programa?: string, titulo?: string, shell?: string) {
+export async function abrirTerminal(cwd?: string, programa?: string, titulo?: string, shell?: string) {
+  cwd ??= await pastaDoWorkspace().catch(() => undefined);
   const sessao = proximaSessao++;
   vivas.add(sessao);
   abrir({ v: "terminal", sessao, cwd, programa, shell, titulo: titulo ?? nomePasta(cwd) ?? "terminal" }, true);
@@ -50,7 +64,7 @@ export function BotaoTerminal() {
   return (
     <span className="botao-terminal">
       <button className="btn-icone" title="Novo terminal (Ctrl+`)" onClick={() => abrirTerminal()}><SquareTerminal size={15} /></button>
-      <button className="btn-icone seta" title="Escolher o tipo de terminal" onClick={pop.abrir}><ChevronDown size={12} /></button>
+      <button className="btn-icone seta" title="Outro terminal, um agente ou a pasta do workspace" onClick={pop.abrir}><ChevronDown size={12} /></button>
       {pop.ancora && (
         <Popover ancora={pop.ancora} aoFechar={pop.fechar} largura={250}>
           <div className="menu-rotulo">Terminal</div>
@@ -59,6 +73,13 @@ export function BotaoTerminal() {
               <SquareTerminal size={14} /> {s.nome}
             </button>
           ))}
+          <div className="menu-rotulo">Pasta do workspace</div>
+          <button className="menu-item" onClick={() => { pop.fechar(); naPasta((p) => abrir({ v: "pastas", raiz: p }, true)); }}>
+            <FolderTree size={14} /> Explorador em árvore
+          </button>
+          <button className="menu-item" onClick={() => { pop.fechar(); naPasta((p) => api.abrirPasta(p).catch(falhou)); }}>
+            <FolderOpen size={14} /> No explorador do sistema
+          </button>
           <div className="menu-rotulo">Agentes</div>
           {(d?.agentes ?? []).map((a) => (
             <button key={a.id} className="menu-item" onClick={() => { abrirTerminal(undefined, a.id, a.nome); pop.fechar(); }}>

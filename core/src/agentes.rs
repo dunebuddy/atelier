@@ -19,21 +19,24 @@ pub struct Cli {
     /// argumentos do modo não interativo. `{prompt}` vira o pedido; sem `{prompt}`, o pedido vai pela entrada padrão.
     /// Vazio = o agente não tem modo não interativo conhecido (só terminal).
     pub exec: &'static str,
+    /// argumentos para o Comando do app (o agente pode usar todo o MCP do atelier). Vazio = os mesmos do `exec`.
+    pub comando: &'static str,
 }
 
 pub const CLIS: &[Cli] = &[
     Cli {
         id: "claude-code", nome: "Claude Code", bins: &["claude"],
         exec: "-p --allowedTools mcp__atelier__esquema,mcp__atelier__buscar,mcp__atelier__ler_item,mcp__atelier__linha_do_tempo",
+        comando: "-p --allowedTools mcp__atelier",
     },
-    Cli { id: "codex", nome: "Codex", bins: &["codex"], exec: "exec --skip-git-repo-check -" },
-    Cli { id: "gemini-cli", nome: "Gemini CLI", bins: &["gemini"], exec: "-p {prompt}" },
-    Cli { id: "antigravity", nome: "Antigravity CLI", bins: &["agy"], exec: "" },
-    Cli { id: "opencode", nome: "OpenCode", bins: &["opencode"], exec: "run {prompt}" },
-    Cli { id: "kiro", nome: "Kiro CLI", bins: &["kiro-cli"], exec: "chat --no-interactive {prompt}" },
-    Cli { id: "copilot-cli", nome: "Copilot CLI", bins: &["copilot"], exec: "-p {prompt}" },
-    Cli { id: "cursor", nome: "Cursor Agent", bins: &["cursor-agent"], exec: "-p {prompt}" },
-    Cli { id: "pi", nome: "Pi", bins: &["pi"], exec: "-p {prompt}" },
+    Cli { id: "codex", nome: "Codex", bins: &["codex"], exec: "exec --skip-git-repo-check -", comando: "" },
+    Cli { id: "gemini-cli", nome: "Gemini CLI", bins: &["gemini"], exec: "-p {prompt}", comando: "--yolo -p {prompt}" },
+    Cli { id: "antigravity", nome: "Antigravity CLI", bins: &["agy"], exec: "", comando: "" },
+    Cli { id: "opencode", nome: "OpenCode", bins: &["opencode"], exec: "run {prompt}", comando: "" },
+    Cli { id: "kiro", nome: "Kiro CLI", bins: &["kiro-cli"], exec: "chat --no-interactive {prompt}", comando: "chat --no-interactive --trust-all-tools {prompt}" },
+    Cli { id: "copilot-cli", nome: "Copilot CLI", bins: &["copilot"], exec: "-p {prompt}", comando: "--allow-all-tools -p {prompt}" },
+    Cli { id: "cursor", nome: "Cursor Agent", bins: &["cursor-agent"], exec: "-p {prompt}", comando: "" },
+    Cli { id: "pi", nome: "Pi", bins: &["pi"], exec: "-p {prompt}", comando: "" },
 ];
 
 pub fn cli(id: &str) -> Option<&'static Cli> {
@@ -86,6 +89,7 @@ pub fn listar(prefs: &Preferencias) -> Vec<Value> {
                 "terminal": uso.terminal && com_mcp && exe.is_some(),
                 "executor": uso.executor && com_mcp && exe.is_some(),
                 "prompt": uso.prompt && com_mcp && exe.is_some(),
+                "comando": uso.comando && com_mcp && exe.is_some(),
             })
         })
         .collect()
@@ -99,7 +103,8 @@ pub fn habilitado(prefs: &Preferencias, id: &str, uso: &str) -> Res<(&'static Cl
         return Err(Erro::Invalido(format!("{} não está ligado para {uso} (Configurações → Integrações)", c.nome)));
     }
     let exe = executavel(c).ok_or(Erro::Invalido(format!("{} não foi encontrado nesta máquina", c.nome)))?;
-    Ok((c, exe, a["exec"].as_str().unwrap_or("").to_string()))
+    let modelo = if uso == "comando" && !c.comando.is_empty() { c.comando } else { a["exec"].as_str().unwrap_or("") };
+    Ok((c, exe, modelo.to_string()))
 }
 
 /// `<agente> --version`, com prazo: confirma que o executável responde.
@@ -249,7 +254,7 @@ mod testes {
     #[test]
     fn uso_desligado_por_padrao() {
         let p = Preferencias::default();
-        assert!(listar(&p).iter().all(|a| a["terminal"] == false && a["executor"] == false && a["prompt"] == false));
+        assert!(listar(&p).iter().all(|a| a["terminal"] == false && a["executor"] == false && a["prompt"] == false && a["comando"] == false));
         assert!(habilitado(&p, "claude-code", "prompt").is_err());
     }
 }

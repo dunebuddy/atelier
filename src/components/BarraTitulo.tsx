@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Copy, Minus, PanelLeft, Plus, Search, Settings, Square, Trash2, X,
+  Copy, Minus, PanelLeft, Plus, Search, Settings, Sparkles, Square, Trash2, X,
 } from "lucide-react";
 import { api, Esquema, Item } from "../api";
 import { falhou, ler, Rota } from "../ui";
 import { Popover, usePopover } from "./Popover";
 import { bate, combinacao } from "../atalhos";
+import { Marca } from "./Marca";
 
 /** Janela do Tauri, se estivermos no app (no navegador de teste não há). */
 async function janela() {
@@ -17,16 +18,7 @@ async function janela() {
   }
 }
 
-export function Marca() {
-  // bancada de trabalho: um tampo com dois pés, em cima a letra
-  return (
-    <svg className="marca" viewBox="0 0 24 24" width="22" height="22" aria-label="atelier">
-      <rect x="2" y="2" width="20" height="20" rx="6" fill="var(--acento)" />
-      <path d="M7 16.5V9.2c0-1.2 1-2.2 2.2-2.2h5.6c1.2 0 2.2 1 2.2 2.2v7.3" stroke="var(--bg)" strokeWidth="2" fill="none" strokeLinecap="round" />
-      <path d="M7 12.2h10" stroke="var(--bg)" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
+export { Marca };
 
 export function BarraTitulo({
   esquema, rota, ir, trilha, alternarMenu, abrirConfig, aoApagarItem, workspace,
@@ -42,7 +34,12 @@ export function BarraTitulo({
   aoApagarItem: (() => void) | null;
 }) {
   const [maximizada, setMaximizada] = useState(false);
-  const [buscando, setBuscando] = useState(false);
+  const [buscando, setBuscando] = useState<boolean | string>(false);
+  useEffect(() => {
+    const f = (e: Event) => setBuscando((e as CustomEvent<string>).detail || true);
+    window.addEventListener("atelier:busca", f);
+    return () => window.removeEventListener("atelier:busca", f);
+  }, []);
   const [apagando, setApagando] = useState(false);
   const novo = usePopover();
   const botaoNovo = useRef<HTMLButtonElement>(null);
@@ -108,10 +105,11 @@ export function BarraTitulo({
             <Trash2 size={15} /> {apagando && <span style={{ fontSize: 12.5 }}>Confirmar</span>}
           </button>
         )}
-        <button ref={botaoNovo} className="bt-btn destaque" title="Novo item (Ctrl+N)" onClick={novo.abrir} disabled={!esquema}>
+        <button ref={botaoNovo} className="bt-btn bt-novo" title="Novo item (Ctrl+N)" onClick={novo.abrir} disabled={!esquema}>
           <Plus size={15} /> <span>Novo</span>
         </button>
-        <button className="bt-btn" title="Configurações (Ctrl+,)" onClick={abrirConfig}><Settings size={16} /></button>
+        <button className="bt-btn" title={`Comando para o agente (${combinacao("comando")})`} onClick={() => window.dispatchEvent(new Event("atelier:comando"))}><Sparkles size={16} /></button>
+        <button className="bt-btn" title="Configurações do app (Ctrl+,)" onClick={abrirConfig}><Settings size={16} /></button>
         <div className="bt-janela">
           <button title="Minimizar" onClick={() => janela().then((w) => w?.minimize())}><Minus size={15} /></button>
           <button title={maximizada ? "Restaurar" : "Maximizar"} onClick={() => janela().then((w) => w?.toggleMaximize())}>
@@ -135,14 +133,14 @@ export function BarraTitulo({
         </Popover>
       )}
 
-      {buscando && esquema && <BuscaRapida esquema={esquema} ir={ir} aoFechar={() => setBuscando(false)} />}
+      {buscando !== false && esquema && <BuscaRapida esquema={esquema} ir={ir} inicial={typeof buscando === "string" ? buscando : ""} aoFechar={() => setBuscando(false)} />}
     </header>
   );
 }
 
 /** Ctrl+K: acha item por título ou texto e vai direto; também pula para um tipo. */
-function BuscaRapida({ esquema, ir, aoFechar }: { esquema: Esquema; ir: (r: Rota) => void; aoFechar: () => void }) {
-  const [q, setQ] = useState("");
+function BuscaRapida({ esquema, ir, aoFechar, inicial = "" }: { esquema: Esquema; ir: (r: Rota) => void; aoFechar: () => void; inicial?: string }) {
+  const [q, setQ] = useState(inicial);
   const [itens, setItens] = useState<Item[]>([]);
   const [foco, setFoco] = useState(0);
   const lista = useRef<HTMLDivElement>(null);

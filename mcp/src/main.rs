@@ -100,7 +100,11 @@ Cada item tem um código de 7 hexadecimais (ex.: #a3f9c21); use esse código par
 PADRÃO DE PASTAS: nunca crie pasta de trabalho por conta própria. Quando o trabalho precisar de arquivos, peça ao \
 atelier: `criar_pasta` (ou `criar_item` com `criar_pasta: true`). Ele cria `itens/<código>-<título>/` dentro da \
 bancada, com `insumos/` (o que entra), `artefatos/` (o que sai), `rascunho/` e um CLAUDE.md, e liga a pasta ao item. \
-Guarde os arquivos nessas subpastas e registre o andamento no item com `anotar`, não em arquivos soltos.";
+Guarde os arquivos nessas subpastas e registre o andamento no item com `anotar`, não em arquivos soltos. \
+TELA: com o app aberto, `tela` mostra as coisas para o usuário (abrir item, visão, pasta, arquivo; metade esquerda ou \
+direita; workspaces; terminal; tema...); `tela` com acao \"estado\" diz o que está aberto agora. \
+QUANDO NÃO DER: se o usuário pedir algo que estas ferramentas não fazem, NÃO improvise por fora (arquivos, comandos, \
+banco): chame `nao_consigo` com o pedido e o que faltou, e diga a ele que ficou anotado.";
 
 fn ferramentas() -> Value {
     #[allow(non_snake_case)]
@@ -175,14 +179,92 @@ fn ferramentas() -> Value {
         },
         {
             "name": "tela",
-            "description": "Mexe na tela do app atelier (precisa estar aberto): abrir um item (codigo) ou uma visão (visao, pelo nome) — com ao_lado: true abre numa janela nova ao lado; recarregar (depois de mudar coisas, para o usuário ver na hora); filtrar a visão aberta por um texto; destacar um item (pisca na lista). Use quando o usuário pedir \"abre/mostra isso aí\".",
+            "description": "Mexe na tela do app atelier (precisa estar aberto). O painel de trabalho tem uma ou duas metades (esquerda/direita), cada uma com janelas em abas, tile ou fita; cada item tem um workspace (um painel só dele) e a bancada tem o seu. Ações: abrir (codigo = item; visao = nome; tipo = configuração do tipo; pasta = código do item, abre a árvore da pasta dele; arquivo = caminho absoluto; lixeira: true) · workspace (codigo = do item; sem codigo = o da bancada) · fechar_workspace · visao_geral (mostra todos os workspaces) · dividir · juntar · modo (modo: abas|tile|fita) · fechar (janela: atual|todas|parte do título) · focar (lado) · terminal (codigo = na pasta do item; bancada: true = na raiz; programa = id do agente, ex.: claude-code; shell = pwsh|cmd|wsl...) · explorador_sistema (abre a pasta no Explorer: codigo ou a bancada) · barra_lateral (mostrar) · tema (tema) · zoom (80-160) · configuracoes (secao: aparencia, bancadas, integracoes, editor, atalhos, automacao, bancada, tipos) · busca (texto: abre a busca rápida) · recarregar (depois de mudar coisas) · filtrar (texto, na visão aberta) · destacar (codigo) · estado (o que está aberto agora). Em abrir e terminal, lado: esquerda|direita escolhe a metade (a direita nasce se preciso) e ao_lado: true abre numa janela nova.",
             "inputSchema": { "type": "object", "properties": {
-                "acao": { "type": "string", "enum": ["abrir", "recarregar", "filtrar", "destacar"] },
-                "codigo": { "type": "string", "description": "código do item (abrir, destacar)" },
-                "visao": { "type": "string", "description": "nome da visão (abrir)" },
-                "texto": { "type": "string", "description": "filtrar: texto da busca (vazio limpa)" },
-                "ao_lado": { "type": "boolean" }
+                "acao": { "type": "string", "enum": ["abrir", "workspace", "fechar_workspace", "visao_geral", "dividir", "juntar", "modo", "fechar", "focar", "terminal", "explorador_sistema", "barra_lateral", "tema", "zoom", "configuracoes", "busca", "recarregar", "filtrar", "destacar", "estado"] },
+                "codigo": { "type": "string", "description": "código do item" },
+                "visao": { "type": "string" },
+                "tipo": { "type": "string" },
+                "pasta": { "type": "string", "description": "abrir: código do item cuja pasta abre em árvore" },
+                "arquivo": { "type": "string", "description": "abrir: caminho absoluto de um arquivo" },
+                "lixeira": { "type": "boolean" },
+                "lado": { "type": "string", "enum": ["esquerda", "direita"] },
+                "ao_lado": { "type": "boolean" },
+                "modo": { "type": "string", "enum": ["abas", "tile", "fita"] },
+                "janela": { "type": "string", "description": "fechar: atual, todas ou parte do título" },
+                "bancada": { "type": "boolean", "description": "terminal: na raiz da bancada" },
+                "programa": { "type": "string", "description": "terminal: id do agente (claude-code, codex...)" },
+                "shell": { "type": "string" },
+                "mostrar": { "type": "boolean" },
+                "tema": { "type": "string" },
+                "zoom": { "type": "integer" },
+                "secao": { "type": "string" },
+                "texto": { "type": "string" }
             }, "required": ["acao"] }
+        },
+        {
+            "name": "bancadas",
+            "description": "Lista as bancadas (cada uma é uma base separada: trabalho, um projeto, uma campanha de RPG...) e diz qual está aberta.",
+            "inputSchema": { "type": "object", "properties": {} }
+        },
+        {
+            "name": "trocar_bancada",
+            "description": "Abre outra bancada (pelo nome, sem diferenciar maiúsculas; serve parte do nome). Com o app aberto, a tela troca junto. Tudo o que vier depois (buscar, criar...) vale na bancada nova.",
+            "inputSchema": { "type": "object", "properties": { "nome": { "type": "string" } }, "required": ["nome"] }
+        },
+        {
+            "name": "visoes",
+            "description": "Lista as visões da bancada aberta (o menu da esquerda): nome, layout, filtro (com nomes de tipos e propriedades).",
+            "inputSchema": { "type": "object", "properties": {} }
+        },
+        {
+            "name": "criar_visao",
+            "description": "Cria uma visão (uma lista salva no menu): nome, layout (tabela, lista, kanban, linha), tipos (nomes), filtros (propriedade → valores aceitos), sem_tipo (só itens sem tipo), texto, agrupar_por (kanban: nome da propriedade), grupo (pasta no menu), icone (emoji).",
+            "inputSchema": { "type": "object", "properties": {
+                "nome": { "type": "string" },
+                "layout": { "type": "string", "enum": ["tabela", "lista", "kanban", "linha"] },
+                "tipos": { "type": "array", "items": { "type": "string" } },
+                "filtros": { "type": "object", "additionalProperties": true },
+                "sem_tipo": { "type": "boolean" },
+                "texto": { "type": "string" },
+                "agrupar_por": { "type": "string" },
+                "grupo": { "type": "string" },
+                "icone": { "type": "string" }
+            }, "required": ["nome"] }
+        },
+        {
+            "name": "atualizar_visao",
+            "description": "Muda uma visão (pelo nome): os mesmos campos de criar_visao, mais novo_nome. O filtro vindo substitui o antigo. A visão Todos os itens não aceita filtro.",
+            "inputSchema": { "type": "object", "properties": {
+                "nome": { "type": "string" }, "novo_nome": { "type": "string" },
+                "layout": { "type": "string", "enum": ["tabela", "lista", "kanban", "linha"] },
+                "tipos": { "type": "array", "items": { "type": "string" } },
+                "filtros": { "type": "object", "additionalProperties": true },
+                "sem_tipo": { "type": "boolean" }, "texto": { "type": "string" },
+                "agrupar_por": { "type": "string" }, "grupo": { "type": "string" }, "icone": { "type": "string" }
+            }, "required": ["nome"] }
+        },
+        {
+            "name": "apagar_visao",
+            "description": "Tira uma visão do menu (os itens não são tocados). Confirme com o usuário antes.",
+            "inputSchema": { "type": "object", "properties": { "nome": { "type": "string" } }, "required": ["nome"] }
+        },
+        {
+            "name": "apagar_item",
+            "description": "Move o item para a lixeira (dá para restaurar). Confirme com o usuário antes.",
+            "inputSchema": { "type": "object", "properties": { "id": ID }, "required": ["id"] }
+        },
+        {
+            "name": "restaurar_item",
+            "description": "Tira o item da lixeira.",
+            "inputSchema": { "type": "object", "properties": { "id": ID }, "required": ["id"] }
+        },
+        {
+            "name": "nao_consigo",
+            "description": "Use quando o usuário pedir algo que as ferramentas do atelier não fazem: fica anotado num arquivo de pedidos (vira recurso novo) e a tela avisa. Diga o pedido como o usuário falou e o que faltou.",
+            "inputSchema": { "type": "object", "properties": {
+                "pedido": { "type": "string" }, "motivo": { "type": "string", "description": "o que faltou nas ferramentas" }
+            }, "required": ["pedido"] }
         },
         {
             "name": "linha_do_tempo",
@@ -293,6 +375,56 @@ impl Mapa {
             .and_then(|p| p["nome"].as_str())
             .unwrap_or(id)
             .to_string()
+    }
+    /// `{ tipos: [nomes], filtros: {prop: [valores]}, ... }` → o que `db::criar_visao`/`atualizar_visao` entendem.
+    fn dados_visao(&self, a: &Value) -> Result<Value, String> {
+        let mut d = json!({});
+        for k in ["layout", "grupo", "icone"] {
+            if let Some(v) = s(a, k) {
+                d[k] = json!(v);
+            }
+        }
+        let quer_filtro = ["tipos", "filtros", "sem_tipo", "texto"].iter().any(|k| a.get(*k).is_some());
+        if quer_filtro {
+            let mut f = json!({});
+            if let Some(l) = a.get("tipos").and_then(|v| v.as_array()) {
+                f["tipos"] = json!(l.iter().filter_map(|t| t.as_str()).map(|t| self.tipo_id(t)).collect::<Result<Vec<_>, _>>()?);
+            }
+            if let Some(o) = a.get("filtros").and_then(|v| v.as_object()) {
+                let mut props = Map::new();
+                for (k, v) in o {
+                    let pid = self.prop(k)?["id"].as_i64().unwrap_or(0);
+                    let vals: Vec<Value> = match v {
+                        Value::Array(l) => l.clone(),
+                        outro => vec![outro.clone()],
+                    };
+                    props.insert(pid.to_string(), json!(vals));
+                }
+                f["props"] = Value::Object(props);
+            }
+            if a.get("sem_tipo").and_then(|v| v.as_bool()) == Some(true) {
+                f["sem_tipo"] = json!(true);
+            }
+            if let Some(t) = s(a, "texto") {
+                f["texto"] = json!(t);
+            }
+            d["filtro"] = f;
+        }
+        if let Some(p) = s(a, "agrupar_por") {
+            d["config"] = json!({ "agrupar_por": self.prop(p)?["id"] });
+        }
+        Ok(d)
+    }
+    /// O filtro guardado (ids) lido com nomes.
+    fn filtro_humano(&self, f: &Value) -> Value {
+        let mut h = f.clone();
+        if let Some(l) = f["tipos"].as_array() {
+            h["tipos"] = json!(l.iter().map(|t| self.tipo_nome(t.as_i64())).collect::<Vec<_>>());
+        }
+        if let Some(o) = f["props"].as_object() {
+            h["props"] = Value::Object(o.iter().map(|(k, v)| (self.prop_nome(k), v.clone())).collect());
+        }
+        h
     }
     /// Opções efetivas de uma propriedade num tipo.
     fn opcoes(&self, tipo_id: Option<i64>, prop_id: i64) -> Vec<Value> {
@@ -407,6 +539,45 @@ fn s<'a>(a: &'a Value, campo: &str) -> Option<&'a str> {
 }
 
 fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
+    match nome {
+        "bancadas" => {
+            let cfg = bancada::carregar();
+            let ativa = cfg.ativa().map(|b| b.caminho.clone());
+            let l: Vec<Value> = cfg.bancadas.iter().map(|b| json!({ "nome": b.nome, "pasta": b.caminho, "aberta": Some(&b.caminho) == ativa.as_ref() })).collect();
+            return Ok(json!({ "bancadas": l }));
+        }
+        "trocar_bancada" => {
+            let nome = s(a, "nome").unwrap_or("").trim().to_lowercase();
+            let mut cfg = bancada::carregar();
+            let achadas: Vec<bancada::Bancada> = cfg.bancadas.iter().filter(|b| b.nome.to_lowercase() == nome).cloned().collect();
+            let achadas = if achadas.is_empty() { cfg.bancadas.iter().filter(|b| b.nome.to_lowercase().contains(&nome)).cloned().collect() } else { achadas };
+            let b = match achadas.as_slice() {
+                [b] => b.clone(),
+                [] => return Err(format!("bancada \"{nome}\" não existe (bancadas: {})", cfg.bancadas.iter().map(|b| b.nome.as_str()).collect::<Vec<_>>().join(", "))),
+                v => return Err(format!("mais de uma bancada com \"{nome}\": {}", v.iter().map(|b| b.nome.as_str()).collect::<Vec<_>>().join(", "))),
+            };
+            // com o app aberto, ele troca (e a tela junto); fechado, muda direto o config.toml
+            match post_api("/api/bancadas/ativar", &json!({ "caminho": b.caminho })) {
+                Ok(r) if r.get("erro").is_none() => {}
+                Ok(r) => return Err(r["erro"].as_str().unwrap_or("o app recusou").to_string()),
+                Err(_) => {
+                    cfg.ativa = Some(b.caminho.clone());
+                    bancada::salvar(&cfg).map_err(|e| e.to_string())?;
+                }
+            }
+            return Ok(json!({ "ok": true, "aberta": b.nome }));
+        }
+        "nao_consigo" => {
+            let pedido = s(a, "pedido").unwrap_or("");
+            let motivo = s(a, "motivo").unwrap_or("");
+            let arq = match post_api("/api/falta", &json!({ "pedido": pedido, "motivo": motivo, "agente": autor })) {
+                Ok(r) if r["ok"] == true => r["arquivo"].as_str().unwrap_or("").to_string(),
+                _ => bancada::anotar_pedido(pedido, motivo, autor).map_err(|e| e.to_string())?,
+            };
+            return Ok(json!({ "ok": true, "anotado_em": arq, "diga_ao_usuario": "isso ainda não dá para fazer pelo atelier; ficou anotado como pedido de recurso" }));
+        }
+        _ => {}
+    }
     let (conn, banc) = abrir()?;
     let e = |x: db::Erro| x.to_string();
     let mapa = Mapa::carregar(&conn)?;
@@ -632,6 +803,55 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
             }
             Ok(json!({ "ok": true }))
         }
-        outro => Err(format!("ferramenta desconhecida: {outro}")),
+        "visoes" => {
+            let vs = db::listar_visoes(&conn).map_err(e)?;
+            Ok(json!({ "visoes": vs.iter().map(|v| json!({
+                "nome": v.nome, "layout": v.layout, "grupo": v.grupo, "fixa": v.fixa, "filtro": mapa.filtro_humano(&v.filtro),
+            })).collect::<Vec<_>>() }))
+        }
+        "criar_visao" => {
+            let mut d = mapa.dados_visao(a)?;
+            d["nome"] = json!(s(a, "nome").unwrap_or("Nova visão"));
+            let id = db::criar_visao(&conn, &d).map_err(e)?;
+            let _ = post_api("/api/tela", &json!({ "acao": "recarregar" }));
+            Ok(json!({ "ok": true, "id": id }))
+        }
+        "atualizar_visao" => {
+            let id = visao_por_nome(&conn, s(a, "nome").unwrap_or(""))?;
+            let mut d = mapa.dados_visao(a)?;
+            if let Some(n) = s(a, "novo_nome") {
+                d["nome"] = json!(n);
+            }
+            db::atualizar_visao(&conn, id, &d).map_err(e)?;
+            let _ = post_api("/api/tela", &json!({ "acao": "recarregar" }));
+            Ok(json!({ "ok": true }))
+        }
+        "apagar_visao" => {
+            let id = visao_por_nome(&conn, s(a, "nome").unwrap_or(""))?;
+            db::apagar_visao(&conn, id).map_err(e)?;
+            let _ = post_api("/api/tela", &json!({ "acao": "recarregar" }));
+            Ok(json!({ "ok": true }))
+        }
+        "apagar_item" => {
+            let id = id_de(&conn, a)?;
+            db::apagar_item(&conn, id, autor).map_err(e)?;
+            let _ = post_api("/api/tela", &json!({ "acao": "recarregar" }));
+            Ok(json!({ "ok": true, "na_lixeira": true }))
+        }
+        "restaurar_item" => {
+            let id = id_de(&conn, a)?;
+            db::restaurar_item(&conn, id, autor).map_err(e)?;
+            let _ = post_api("/api/tela", &json!({ "acao": "recarregar" }));
+            Ok(mapa.humano(&db::ler_item(&conn, id).map_err(e)?))
+        }
+        outro => Err(format!("ferramenta desconhecida: {outro}. Se o usuário precisa disso, registre com nao_consigo.")),
     }
+}
+
+fn visao_por_nome(conn: &Connection, nome: &str) -> Result<i64, String> {
+    let vs = db::listar_visoes(conn).map_err(|e| e.to_string())?;
+    vs.iter()
+        .find(|v| v.nome.to_lowercase() == nome.trim().to_lowercase())
+        .map(|v| v.id)
+        .ok_or_else(|| format!("visão \"{nome}\" não existe (visões: {})", vs.iter().map(|v| v.nome.as_str()).collect::<Vec<_>>().join(", ")))
 }

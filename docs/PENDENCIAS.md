@@ -196,6 +196,16 @@ Como usar:
     vê na hora o que a outra mudou, e as duas mexem nas mesmas pastas, no backup e na migração. Por isso a regra "uma
     janela por bancada" basta, sem trava complicada.
   - Depende de: terminais e workspaces vivos por bancada (ver o bug de trocar de bancada).
+  - **Aprovado pelo Paulo (2026-11-02), com a mecânica:**
+    - no seletor de bancadas, clicar no nome troca a bancada **desta** janela, e **toda troca pede confirmação**,
+      inclusive quando é ele que clica (e quando é o agente, pelo MCP);
+    - ao lado de cada nome, um botãozinho **"abrir em nova janela"**: abre aquela bancada numa janela nova e não
+      mexe na atual (se ela já está aberta em outra janela, só traz essa para a frente).
+  - Ideia, só se fizer falta (ele mesmo achou que talvez não precise, porque o nome da bancada já aparece lá em
+    cima): um **indicador visual por bancada**, uma cor própria em algum elemento (barra de título, borda), para
+    reconhecer a janela de longe e pela miniatura da barra de tarefas, como ele faz no VS Code com um add-on que muda
+    a cor por projeto. Mudar a cor da moldura do Windows não serve (não vale no Linux); a cor teria de ser dentro do
+    app.
 
 - **Notificações: sininho com histórico e configuração** (2026-11-02, Paulo). O aviso (toast) do `nao_consigo`
   apareceu e sumiu rápido demais (aviso comum fica 4 s; erro e "desfazer", 8 s) e não há onde rever. Pedido:

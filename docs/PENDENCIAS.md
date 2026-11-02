@@ -267,6 +267,9 @@ Como usar:
     **nível** (só erros / erros e avisos / tudo) e por **assunto** (ex.: não avisar de atualização; avisos de
     agentes; salvamentos...);
   - os avisos dos agentes (`falta`, e o que vier pelo MCP) entram no histórico com quem mandou.
+  - O `nao_consigo` era uma "funcionalidade fantasma" para o Paulo (2026-11-02): o agente registra e só aparece um
+    toast. Dar um lugar visível aos **pedidos dos agentes** (`~/atelier/pedidos-ao-atelier.md`): no histórico do
+    sininho e numa lista própria (em Configurações ou na ajuda), com marcar como visto/triado.
   - A decidir: guardar no banco da bancada ou só enquanto o app está aberto (sugestão: no app, os últimos ~200).
   - Tempo e fechar (Paulo, 2026-11-02). Hoje: aviso comum some em 4 s; erro e "desfazer", em 8 s; o de versão
     nova fica até fechar; o de "atualizado" some em 12 s; todos já têm o X. Proposta: **toast com ação** (instalar,

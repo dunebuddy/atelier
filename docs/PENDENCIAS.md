@@ -62,6 +62,15 @@ Como usar:
 
 ### Melhorias pedidas
 
+- **Barra lateral com Ctrl+B** (2026-11-02, Paulo: "em todos os outros softwares é Ctrl+B"). Hoje é `Ctrl+\`
+  (`atalhos.ts`, id `menu`). Cuidado: no editor de texto Ctrl+B é **negrito** (Tiptap). Proposta: Ctrl+B esconde a
+  barra em qualquer lugar menos digitando no editor, onde continua negrito (como o VS Code faz fora do texto); o
+  `Ctrl+\` segue valendo também. Quem já mudou o atalho nas configurações fica com o dele.
+- **Voltar/avançar na barra de título** (2026-11-02, Paulo). Os botões ← → (histórico da janela) estão no topo da
+  barra lateral (`Sidebar.tsx`): escondendo a barra, eles somem e não há como voltar com o mouse. Subir para a barra
+  de título, perto do seletor de bancada, como no app do Claude (que tem ← → lá em cima, junto da barra lateral).
+  Levar o botão direito (lista do histórico) junto.
+
 - **Pílula do disco para a direita, junto da de recursos** (2026-11-02, Paulo; ele gostou do indicador). Na barra
   de baixo, o espaço em disco está à esquerda, logo depois do "Workspace:"; levar para a direita, ao lado do ditado e
   da memória/CPU (`Workspaces.tsx`: `<IndicadorDisco>` vai para depois do `<span style={{ flex: 1 }} />`). Só

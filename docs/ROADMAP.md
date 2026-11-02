@@ -128,10 +128,100 @@ ainda aceitos para não quebrar agentes) e documentação.
 - Abrir Claude (app), ChatGPT/Codex e DeepSeek Harness na pasta do workspace, como o Explorer (pedido de 2026-11-02).
 - Depois, se fizer falta: Cursor, Goose, OpenCode desktop.
 
+## Segunda rodada (proposta de 2026-11-02, a aprovar)
+
+Fase de polimento: o Paulo usa o app no dia a dia e nada grave está quebrado. A régua é a mesma de cima, com um
+ajuste dele: **a prioridade é mais de UX do que de funcionalidade**, a não ser o que mexe com dado (risco de perder
+texto) ou com o trabalho dos agentes. Tudo vem de [`PENDENCIAS.md`](PENDENCIAS.md) (o detalhe está lá) e dos
+pedidos dos agentes de 01 e 02/11, revisados criticamente (ver "Pedidos do agente" em PENDENCIAS).
+
+## 0.2.3 · Editor sem perda e MCP que enxerga a tela
+
+O que pode perder dado ou faz o agente errar. Curto.
+
+- **Editor:** tabela e imagem do markdown aparecem e sobrevivem a uma edição (hoje somem ao gravar); bloco de código
+  com cores. Teste de ida e volta (abrir, editar outra linha, conferir o banco igual); conferir a lista de tarefas
+  `- [x]`.
+- **MCP `editar_trecho`** (pedido do agente, aprovado): troca um pedaço do corpo (`de` → `para`, falha se não achar
+  ou se achar mais de um), várias trocas numa chamada, e a linha do tempo registra o que mudou em vez de "Texto
+  editado". Não atropela a edição que o Paulo fez na tela.
+- **MCP `tela`:** devolver a resposta (hoje o `estado` volta vazio); o estado lista as janelas com id, o que
+  mostram, **painel numerado** (0, 1) e posição; `fechar`/`focar` pelo id; `abrir` com `painel`.
+- Menus suspensos fecham no segundo clique (o mesmo `usePopover` para todos).
+- Já no master: Ctrl+Alt+setas da fita funcionando com o cursor num terminal.
+
+## 0.2.4 · Atalhos e barra de título
+
+O pacote de conforto que ele mais sente no dia a dia: igual ao VS Code dele.
+
+- **Atalhos do VS Code** (proposta aprovada): o motor aceita mais de uma combinação por ação; Ctrl+P, Ctrl+B,
+  Ctrl+\ dividir, Ctrl+1/2, Ctrl+Shift+`, Ctrl+`, Ctrl+PgUp/PgDn, Ctrl+Shift+PgUp/PgDn, Ctrl+R, Ctrl+Shift+E,
+  Ctrl+Shift+F; **Ctrl+Shift+P** abre a lista de todas as ações com busca; Shift+Enter no terminal manda a quebra
+  de linha do Claude Code.
+- **Barra de título:** voltar/avançar sobem para lá (com o histórico no botão direito); botão de teclado que abre
+  Configurações → Atalhos, agora com **busca e palavras escondidas** em cada atalho.
+- **Maximizar a janela** (duplo clique na aba, Ctrl+Shift+Alt+J) e **modo Zen** (tela toda, Esc sai). Resolve o
+  "esconder a metade esquerda".
+- Miúdos: pílula do disco à direita, junto da de recursos; ícone do atelier no workspace da bancada (e na visão
+  geral).
+
+## 0.2.5 · Página do documento e listas dinâmicas
+
+Tudo mexe na ficha e nas propriedades de relação; vai junto para abrir esse código uma vez.
+
+- **Ficha em cima do texto e recolhível** (fica só "Ficha ▸"); listas da ficha mostram os primeiros e um "ver
+  mais".
+- **Relação com "mostrar do outro lado" opcional** (caixinha, desmarcada por padrão, com o nome daquele lado; achar
+  nome melhor que "inverso"). Decidir na migração quais das atuais continuam aparecendo.
+- **Listas dinâmicas:** propriedade do tipo, "documentos dos tipos X cuja relação P aponta para este", **ordenada
+  por uma propriedade** (ex.: Ordem). Aparecem na ficha e na tabela. É o que o agente pediu como "lista de filhos
+  ordenada", sem fixar "filhos".
+- **MCP:** `ler_documento` devolve as listas dinâmicas e o "apontado por" resumidos (código, tipo, status, ordem),
+  sem a linha do tempo de cada um; criar e mudar essas propriedades pelo MCP.
+
+## 0.2.6 · Notificações e status dos agentes
+
+Para trabalhar com vários agentes ao mesmo tempo sem ficar procurando quem parou.
+
+- **Um sistema só de avisos:** todos (rápidos, erros, desfazer, `nao_consigo`, versão nova, atualizado, ditado) na
+  mesma pilha, no canto configurado (padrão embaixo à direita). Toast com ação fica até interagir; X e clique
+  fecham; mouse em cima segura.
+- **Sininho** na barra de título com histórico: apagar, agir, limpar tudo; os pedidos dos agentes (`nao_consigo`)
+  aparecem lá. **Configurações → Notificações:** posição, tempo, só guardar, nível, assunto.
+- **Status dos agentes por hooks:** "instalar hooks" em Integrações (Claude Code: começou, esperando, terminou;
+  Codex: fim de turno; os outros, se tiverem), o terminal marca o agente com a sessão dele. Carinha em cada
+  workspace e no botão dos workspaces: vermelho esperando > trabalhando (animação) > verde terminou > claro parado >
+  cinza sem agente; bolinha no sininho; toast configurável.
+
+## 0.2.7 · Bancadas lado a lado
+
+Grande, e o bug que ele evita é raro (trocar de bancada com agente rodando).
+
+- Toda troca de bancada pede confirmação (dele ou do agente pelo MCP).
+- Cada agente preso à bancada em que nasceu (o terminal passa a bancada; o de fora usa a da pasta de onde abriu);
+  toda resposta do MCP diz em que bancada gravou.
+- **Várias janelas, uma por bancada**, no mesmo app; botão "abrir em nova janela" no seletor; abrir a que já está
+  aberta só traz a janela para a frente.
+- Terminais e workspaces de cada bancada continuam vivos.
+
+## 0.2.8 · Consultas e fórmulas
+
+Recursos novos e maiores; precisam de conversa antes (a linguagem da consulta, a sintaxe da fórmula).
+
+- **Consultas** acima de Visões: perguntar ao banco, salvar a consulta à parte, virar visão a partir dela; o MCP
+  também roda e salva.
+- **Fórmulas:** propriedade calculada de outras (soma, texto junto...), e contagem/soma sobre uma lista dinâmica.
+
 ## Ideias, sem data (fora do roadmap)
 
+- Abrir com: Cursor, Goose, OpenCode desktop (só se fizer falta).
+- Cor própria por bancada, para reconhecer a janela pela miniatura (ele achou que talvez não precise).
+- Diagrama Mermaid desenhado no editor.
+- MCP: criar e atualizar documentos em lote numa chamada só (pedido do agente; o `editar_trecho` resolve o caso
+  principal).
+- Desempenho com muito documento: as relações ficam em JSON dentro das propriedades, sem índice. Hoje não pesa;
+  olhar se ficar lento.
 - Abrir o atelier por link (`atelier://`).
-- Propriedades calculadas (fórmula; soma a partir de itens ligados).
 - Migrar o posto `daily-work` para dentro do atelier (é trabalho no outro repositório, não aqui).
 
 ## Para conferir no uso

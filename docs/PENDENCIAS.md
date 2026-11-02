@@ -20,8 +20,8 @@ Como usar:
 
 ## Caixa de entrada
 
-> **Triagem de 2026-11-01:** tudo o que está abaixo já tem lugar no [`ROADMAP.md`](ROADMAP.md) (0.1.8 a 0.2.1; as
-> ideias antigas ficaram em "Ideias, sem data"). Pedido novo entra aqui e ganha lugar lá.
+> **Triagem de 2026-11-02:** tudo o que está abaixo já tem lugar na segunda rodada do [`ROADMAP.md`](ROADMAP.md)
+> (0.2.3 a 0.2.8) ou em "Ideias, sem data". Pedido novo entra aqui e ganha lugar lá.
 
 ### Bugs
 
@@ -186,7 +186,36 @@ Como usar:
   direita, ele quer mais espaço sem ter de arrastar a divisória: uma opção para recolher a esquerda (e trazer de
   volta). Não é a barra lateral, que já esconde; é a metade do painel de trabalho.
 
-### Pedidos do agente (de `pedidos-ao-atelier.md`, triados com o Paulo em 2026-11-01)
+### Pedidos do agente (de `pedidos-ao-atelier.md`)
+
+Revisão crítica de 2026-11-02 (o Paulo pediu: dizer o que não faz sentido, o que já existe e o que engessa o app).
+O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, para não repassar os mesmos.
+
+- **Linha do tempo com menos ruído, ADO com molde de link, visão "pode andar agora", ordenar visões** (01/11): já
+  feitos na 0.1.8 a 0.2.0. Saem.
+- **Tabela markdown embaralhada** (02/11): procede, e é pior que ele viu (editar na tela apaga a tabela). 0.2.3.
+- **Abrir o próximo documento no mesmo lugar** (02/11): o diagnóstico procede (é bug nosso: o MCP joga fora o
+  `estado`). A ação "substituir" que ele pediu **não**: é específica demais. No lugar, peças genéricas (id da
+  janela, painel numerado, fechar/abrir por elas). 0.2.3.
+- **`editar_trecho`** (02/11): **bom pedido**, genérico (o mesmo jeito do Edit de arquivo) e ainda protege a edição
+  do Paulo na tela. Aprovado como ele desenhou. 0.2.3.
+- **Tipo "Passo" + lista de filhos ordenada** (02/11), item por item:
+  - criar o tipo Passo e tirar o `inteiro` da Ordem: **não é trabalho de dev**, o agente faz pelo MCP. É decisão de
+    modelagem do Paulo: cada passo vira um documento (com status, responsável e bloqueio próprios) ou fica como
+    checklist no texto. Com o `editar_trecho`, o checklist no texto deixa de ser caro; o Passo só vale se o passo
+    precisar de status ou bloqueio próprios;
+  - "lista de filhos na página do pai, ordenada, filtrando por tipo": procede, mas **não fixo em "filhos"**: é a
+    lista dinâmica que o Paulo já pediu (tipos X + relação P + ordenar por uma propriedade). 0.2.5;
+  - `ler_documento` com "filhos" resumidos: fixo em "filhos" **engessa**. Generalizar: as listas dinâmicas e o
+    "apontado por" vêm resumidos (código, tipo, status, ordem). 0.2.5;
+  - ordenar a Ordem com decimal: **já existe** (a ordenação de número é numérica; 1.5 vem antes de 10). Só falta
+    tirar o `inteiro` da propriedade, pelo MCP;
+  - tirar o tipo Passo da daily e do semanal: **já existe** (filtro por tipo das visões, `atualizar_visao`);
+  - WAL e `busy_timeout` no SQLite: **já existem** (WAL, espera de 5 s). Índice nas relações: elas ficam em JSON nas
+    propriedades, sem índice; hoje não pesa (vai para "Ideias");
+  - criar/atualizar em lote: genérico, ok, mas depois (vai para "Ideias");
+  - "task list `- [x]` no renderizador": não havia pedido anterior; o editor tem lista de tarefas. Conferir no teste
+    do editor da 0.2.3.
 
 ### Recursos (mudam comportamento: precisam do ok do Paulo antes)
 

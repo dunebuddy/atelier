@@ -255,7 +255,7 @@ export const api = {
   esvaziarLixeira: () => req<{ itens: number; notas: number }>("DELETE", "/lixeira"),
   apagarDeVez: (id: number) => req("DELETE", `/lixeira/itens/${id}`),
   /** com: "arquivos" (padrão), "vscode" ou "terminal" */
-  abrirPasta: (caminho: string, com = "arquivos") => req("POST", "/abrir-pasta", { caminho, com }),
+  abrirPasta: (caminho: string, com = "arquivos") => req<{ ok: boolean; pasta?: boolean }>("POST", "/abrir-pasta", { caminho, com }),
   criarPasta: (id: number) => req<{ pasta: string }>("POST", `/itens/${id}/pasta`),
   arquivos: (id: number) => req<Arquivo[]>("GET", `/itens/${id}/arquivos`),
   trazerArquivos: (id: number, caminhos: string[], destino = "insumos") =>

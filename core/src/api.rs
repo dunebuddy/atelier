@@ -122,6 +122,7 @@ pub fn rotas(banco: Banco) -> Router {
         .route("/api/lixeira", get(lixeira).delete(esvaziar_lixeira))
         .route("/api/lixeira/itens/{id}", axum::routing::delete(apagar_de_vez))
         .route("/api/abrir-pasta", post(abrir_pasta))
+        .route("/api/apps", get(|| async { Json(json!(tokio::task::spawn_blocking(crate::apps::listar).await.unwrap_or_default())) }))
         .route("/api/bancadas", get(bancadas).post(criar_bancada).patch(renomear_bancada).delete(remover_bancada))
         .route("/api/bancadas/ativar", post(ativar_bancada))
         .route("/api/preferencias", get(preferencias).patch(mudar_preferencias))
@@ -624,6 +625,11 @@ async fn abrir_pasta(Json(d): Json<Value>) -> R {
     }
     std::fs::create_dir_all(p).map_err(|e| Erro::Invalido(format!("não consegui criar a pasta: {e}")))?;
     let com = d.get("com").and_then(|v| v.as_str()).unwrap_or("arquivos");
+    // "app:claude", "app:codex"...: um agente com janela própria, fora do atelier (ver `apps`)
+    if let Some(app) = com.strip_prefix("app:") {
+        let foi = crate::apps::abrir(app, p).map_err(|e| Erro::Invalido(format!("não consegui abrir ({app}): {e}")))?;
+        return Ok(Json(json!({ "ok": true, "pasta": foi })));
+    }
     abrir_com(com, p).map_err(|e| Erro::Invalido(format!("não consegui abrir ({com}): {e}")))?;
     Ok(Json(json!({ "ok": true })))
 }
@@ -853,7 +859,13 @@ async fn tela(State(b): State<Banco>, Json(d): Json<Value>) -> R {
                 Some(c) => pasta_do(&c)?.0,
                 None => banc()?.caminho,
             };
-            abrir_com("arquivos", std::path::Path::new(&pasta)).map_err(|e| Erro::Invalido(e.to_string()))?;
+            let p = std::path::Path::new(&pasta);
+            // app = claude|codex|deepseek: abre o agente com janela própria na pasta, em vez do Explorer
+            if let Some(app) = txt("app") {
+                let foi = crate::apps::abrir(&app, p).map_err(Erro::Invalido)?;
+                return Ok(Json(json!({ "ok": true, "pasta": pasta, "app": app, "pasta_foi_junto": foi })));
+            }
+            abrir_com("arquivos", p).map_err(|e| Erro::Invalido(e.to_string()))?;
             return Ok(Json(json!({ "ok": true, "pasta": pasta })));
         }
         "barra_lateral" => ev["mostrar"] = json!(sim("mostrar").unwrap_or(true)),

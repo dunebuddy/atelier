@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { Bot, ChevronDown, FolderOpen, FolderTree, SquareTerminal } from "lucide-react";
+import { AppWindow, Bot, ChevronDown, FolderOpen, FolderTree, SquareTerminal } from "lucide-react";
 import { Popover, usePopover } from "./Popover";
 import { api, BASE } from "../api";
 import { abrir, avisar, falhou } from "../ui";
@@ -53,6 +53,26 @@ async function naPastaDoItem(id: number, f: (pasta: string) => void) {
   }
 }
 
+/** Agente com janela própria (Claude, Codex...) aberto fora do atelier, na pasta. Sem `pasta`, o app não aceita
+ *  abrir numa pasta: o caminho vai para a área de transferência. */
+interface AppExterno {
+  id: string;
+  nome: string;
+  pasta: boolean;
+}
+
+async function abrirNoApp(app: AppExterno, pasta: string) {
+  try {
+    const r = await api.abrirPasta(pasta, `app:${app.id}`);
+    if (!r.pasta) {
+      await navigator.clipboard.writeText(pasta).catch(() => {});
+      avisar(`O ${app.nome} não abre direto numa pasta: o caminho foi copiado, é só escolher a pasta lá.`);
+    }
+  } catch (e) {
+    falhou(e);
+  }
+}
+
 /** Abre um terminal (o shell, ou um agente) numa janela ao lado. */
 export async function abrirTerminal(cwd?: string, programa?: string, titulo?: string, shell?: string) {
   cwd ??= await pastaDoWorkspace().catch(() => undefined);
@@ -65,8 +85,11 @@ export async function abrirTerminal(cwd?: string, programa?: string, titulo?: st
 export function BotaoTerminal() {
   const pop = usePopover();
   const [d, setD] = useState<{ shells: { id: string; nome: string }[]; agentes: Programa[] } | null>(null);
+  const [apps, setApps] = useState<AppExterno[]>([]);
   useEffect(() => {
-    if (pop.ancora) fetch(`${BASE}/terminal/programas`).then((r) => r.json()).then(setD).catch(() => {});
+    if (!pop.ancora) return;
+    fetch(`${BASE}/terminal/programas`).then((r) => r.json()).then(setD).catch(() => {});
+    fetch(`${BASE}/apps`).then((r) => r.json()).then(setApps).catch(() => {});
   }, [pop.ancora]);
   const info = pop.ancora ? infoWorkspace() : { nome: "" };
   return (
@@ -90,6 +113,13 @@ export function BotaoTerminal() {
           <button className="menu-item" onClick={() => { pop.fechar(); naPasta((p) => api.abrirPasta(p).catch(falhou)); }}>
             <FolderOpen size={14} /> No explorador do sistema
           </button>
+          {apps.length > 0 && <div className="menu-rotulo" title="Agentes com janela própria: abrem fora do atelier, na pasta do workspace">Abrir com</div>}
+          {apps.map((a) => (
+            <button key={a.id} className="menu-item" title={a.pasta ? undefined : "Este app não abre direto numa pasta: o caminho vai copiado"}
+              onClick={() => { pop.fechar(); naPasta((p) => abrirNoApp(a, p)); }}>
+              <AppWindow size={14} /> {a.nome}
+            </button>
+          ))}
           {info.outroItem && (
             <>
               <div className="menu-rotulo menu-rotulo-nome" title="O documento aberto na janela em foco não é o deste workspace">

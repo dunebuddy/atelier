@@ -123,6 +123,11 @@ Pedido do Paulo em 2026-11-01: a entidade central deixa de se chamar **item** e 
 muda no comportamento, só o nome: tela, mensagens, MCP (descrições e nomes das ferramentas, com os nomes antigos
 ainda aceitos para não quebrar agentes) e documentação.
 
+## 0.2.2 · Abrir com (agentes de interface) · **saiu em 2026-11-02**
+
+- Abrir Claude (app), ChatGPT/Codex e DeepSeek Harness na pasta do workspace, como o Explorer (pedido de 2026-11-02).
+- Depois, se fizer falta: Cursor, Goose, OpenCode desktop.
+
 ## Ideias, sem data (fora do roadmap)
 
 - Abrir o atelier por link (`atelier://`).

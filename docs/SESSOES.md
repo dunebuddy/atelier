@@ -415,3 +415,16 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 - A conferir no uso (não dá no teste sem janela): ícone e permissões na janela de verdade, a economia de memória do
   ditado, a placa de vídeo no ditado (só na máquina com RTX), o PDF desenhando ao rolar e a ficha fixa com a janela
   larga.
+
+## 2026-11-02 — 0.2.2, abrir com
+
+- Pedido do Paulo: abrir os agentes com janela própria na pasta do workspace, do jeito do "No explorador do sistema".
+  Pesquisa: o Claude registra no Explorer `claude.exe --os-entry=folder_verb <pasta>`; o app do ChatGPT (que engoliu
+  o Codex em jul/2026, instalado pela Store) aceita `chatgpt-desktop.exe --open-project <pasta>` (conferido no
+  `app.asar`); o DeepSeek Harness oficial não tem argumento de pasta (só `dsh://open`), então abre e copia o caminho.
+- Novo `core/src/apps.rs`; rota `/api/apps`; `abrir-pasta` com `com: "app:<id>"`; MCP `tela` ganhou `app`.
+- Explicado ao Paulo: o Claude Code do app desktop e o do terminal são o mesmo agente; o desktop dá mais ferramentas
+  (navegador, lista de tarefas, sessões) e mais instruções.
+
+### Ponto de parada
+- A conferir no uso: abrir de verdade cada app (no teste sem janela só se viu o menu e a lista).

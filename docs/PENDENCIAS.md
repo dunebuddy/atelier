@@ -13,16 +13,7 @@ Como usar:
 
 ## Próxima versão
 
-- **Abrir com: agentes de interface na pasta do workspace** (pedido em 2026-11-02; pronto no master, sem tag).
-  No menu do terminal, abaixo de "No explorador do sistema", a seção **Abrir com** lista os apps instalados e abre
-  cada um fora do atelier, na pasta do workspace (como o Explorer):
-  - **Claude (app)**: `claude.exe --os-entry=folder_verb <pasta>`, o mesmo "Open in Claude Code" do menu do Explorer;
-  - **ChatGPT / Codex** (viraram um app só em jul/2026): `chatgpt-desktop.exe --open-project <pasta>`;
-  - **DeepSeek Harness** (o oficial): não aceita pasta por argumento nem por link; abre a janela (`dsh://open`) e o
-    caminho vai para a área de transferência;
-  - MCP: `tela` com `acao: "explorador_sistema"` e `app: claude|codex|deepseek`.
-  - A conferir no uso: abrir de verdade cada app (o teste sem janela só viu o menu e a lista; abrir pela máquina do
-    Paulo atrapalharia o trabalho dele). Possíveis depois: Cursor, Goose, OpenCode desktop.
+(vazio — escolher da caixa de entrada)
 
 ## Caixa de entrada
 
@@ -56,6 +47,11 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.2** (2026-11-02, abrir com):
+  - no menu do terminal, a seção **Abrir com** abre fora do atelier, na pasta do workspace, os agentes com janela
+    própria que estiverem instalados: **Claude (app)** (o mesmo "Open in Claude Code" do Explorer), **ChatGPT /
+    Codex** (`--open-project`) e **DeepSeek Harness** (não aceita pasta: abre a janela e copia o caminho);
+  - MCP: `tela` com `acao: "explorador_sistema"` e `app: claude|codex|deepseek`.
 - **0.2.1** (2026-11-01, item vira documento):
   - em tudo o que o usuário lê, a entidade central se chama **documento**: tela, avisos, mensagens de erro, ajuda,
     exportação, linha do tempo, o CLAUDE.md das pastas novas e as instruções do MCP e do Comando;

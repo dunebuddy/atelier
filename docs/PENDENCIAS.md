@@ -179,6 +179,27 @@ Como usar:
 
 ### Recursos (mudam comportamento: precisam do ok do Paulo antes)
 
+- **Status dos agentes: saber quando terminou ou está esperando** (2026-11-02, Paulo). Com vários agentes rodando em
+  workspaces (e bancadas) diferentes, saber sem procurar quando um parou.
+  - **Estados, do mais importante para o menos** (o indicador de um grupo mostra o mais importante dos agentes dele):
+    1. **esperando ação** (pediu permissão ou fez pergunta): **vermelho**;
+    2. **trabalhando**: uma **animação** (degradê que vai mudando; ele não gosta de amarelo);
+    3. **terminou** (concluiu e não pediu nada): **verde**;
+    4. **parado** (sem nada a fazer, já visto): **branco/claro**;
+    5. **sem agente** no workspace: **cinza**.
+  - **Onde aparece:** um ícone de agente (carinha) em cada workspace da lista lá em cima, à esquerda, ao lado da
+    bolinha verde de "ativo"; o mesmo no botão que abre os workspaces (o resumo de todos); bolinha no **sininho**;
+    e um **toast** configurável ("o agente de #código terminou" / "está esperando você"), que vai para o histórico.
+    Abrir o workspace marca o "terminou" como visto (vira parado).
+  - **Como detectar** (análise): (a) atividade do terminal: saindo texto = trabalhando; quieto por alguns segundos
+    = parou; (b) o **sino** do terminal (BEL) e as notificações por escape (OSC 9/777), que o Claude Code e outros
+    mandam quando precisam de atenção (o Claude Code tem a opção de canal de notificação "terminal_bell"/"iterm2");
+    (c) o **título** que o agente põe no terminal (o Claude Code muda o título enquanto trabalha); (d) para o Claude
+    Code, os **hooks** `Stop` e `Notification` podendo chamar a API do atelier, que dão "terminou" e "esperando"
+    exatos (o atelier pode oferecer instalar esses hooks em Integrações). Codex tem o `notify` da configuração. O
+    genérico (a, b, c) vale para todos; o exato (d) para quem tiver.
+  - Frase cortada no fim do pedido ("a mesma regra, mesma rampa, só que..."): perguntar ao Paulo o resto.
+
 - **Trabalhar em duas bancadas ao mesmo tempo** (2026-11-02, Paulo; análise feita, decidir no roadmap).
   - Hoje: uma instância só (`tauri-plugin-single-instance`: abrir de novo traz a janela para a frente), uma API na
     porta 7487, uma bancada "ativa" na configuração, e o MCP de cada agente abre o banco da ativa a cada chamada.

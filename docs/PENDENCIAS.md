@@ -39,6 +39,10 @@ Como usar:
     ativa; o agente de fora usa a ativa no momento em que o MCP **inicia** (e `bancadas`/`trocar_bancada` mudam
     explicitamente). Toda resposta do MCP poderia dizer em que bancada gravou.
   - Até corrigir: **não trocar de bancada com agente trabalhando**.
+  - O Paulo esclareceu (2026-11-02): trocar de bancada é raro e "tenso", não é para ser comum. O que importa é
+    trocar de **workspace** (esse é seguro: os terminais de todos os workspaces abertos continuam vivos). E o MCP
+    **`trocar_bancada` hoje troca na hora, sem perguntar**: passar a pedir confirmação na tela ("O agente quer mudar
+    para a bancada X. Aceitar?"), e o agente só segue com o sim.
 
 - **MCP `tela` joga fora a resposta: `estado` volta vazio** (2026-11-02, pedido do agente em
   `pedidos-ao-atelier.md`, 11:57). O agente quis fechar o documento que acabou e abrir o próximo **no mesmo lugar**
@@ -174,6 +178,24 @@ Como usar:
 ### Pedidos do agente (de `pedidos-ao-atelier.md`, triados com o Paulo em 2026-11-01)
 
 ### Recursos (mudam comportamento: precisam do ok do Paulo antes)
+
+- **Trabalhar em duas bancadas ao mesmo tempo** (2026-11-02, Paulo; análise feita, decidir no roadmap).
+  - Hoje: uma instância só (`tauri-plugin-single-instance`: abrir de novo traz a janela para a frente), uma API na
+    porta 7487, uma bancada "ativa" na configuração, e o MCP de cada agente abre o banco da ativa a cada chamada.
+  - **Caminho recomendado: um app só, várias janelas, cada janela com a sua bancada** (o Tauri abre várias janelas
+    no mesmo processo). Uma bandeja, uma API, um MCP, e o núcleo sabe quais bancadas estão abertas. Abrir a bancada
+    que já está numa janela só traz essa janela para a frente: é o que evita duas janelas na mesma bancada.
+  - Duas instâncias separadas (processos) seria o caminho pior: precisa de uma porta por instância, o MCP teria de
+    descobrir qual instância chamar, duas bandejas, duas atualizações.
+  - **Agentes:** cada um fica preso à bancada em que nasceu. O terminal do atelier passa a bancada ao processo
+    (`ATELIER_BANCADA`), e o MCP usa essa. Agente de fora (Claude Code, Codex) usa a bancada de onde foi aberto: se a
+    pasta dele estiver dentro de uma bancada, é ela; senão, a da janela em foco quando o MCP iniciou. Toda resposta
+    do MCP diz em que bancada gravou, e a `tela` age na janela da bancada certa.
+  - **Mesma bancada em dois lugares faz diferença?** No banco, pouca: o SQLite já está em WAL com espera de 5 s, e
+    hoje o app e vários MCPs já gravam no mesmo banco ao mesmo tempo sem problema. O risco é de tela: uma janela não
+    vê na hora o que a outra mudou, e as duas mexem nas mesmas pastas, no backup e na migração. Por isso a regra "uma
+    janela por bancada" basta, sem trava complicada.
+  - Depende de: terminais e workspaces vivos por bancada (ver o bug de trocar de bancada).
 
 - **Notificações: sininho com histórico e configuração** (2026-11-02, Paulo). O aviso (toast) do `nao_consigo`
   apareceu e sumiu rápido demais (aviso comum fica 4 s; erro e "desfazer", 8 s) e não há onde rever. Pedido:

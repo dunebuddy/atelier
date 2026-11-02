@@ -167,7 +167,7 @@ O pacote de conforto que ele mais sente no dia a dia: igual ao VS Code dele.
 
 ## 0.2.5 · Página do documento e listas dinâmicas
 
-Tudo mexe na ficha e nas propriedades de relação; vai junto para abrir esse código uma vez.
+Tudo mexe na ficha, nas propriedades de relação e nas listas ao vivo; vai junto para abrir esse código uma vez.
 
 - **Ficha em cima do texto e recolhível** (fica só "Ficha ▸"); listas da ficha mostram os primeiros e um "ver
   mais".
@@ -176,8 +176,12 @@ Tudo mexe na ficha e nas propriedades de relação; vai junto para abrir esse c�
 - **Listas dinâmicas:** propriedade do tipo, "documentos dos tipos X cuja relação P aponta para este", **ordenada
   por uma propriedade** (ex.: Ordem). Aparecem na ficha e na tabela. É o que o agente pediu como "lista de filhos
   ordenada", sem fixar "filhos".
-- **MCP:** `ler_documento` devolve as listas dinâmicas e o "apontado por" resumidos (código, tipo, status, ordem),
-  sem a linha do tempo de cada um; criar e mudar essas propriedades pelo MCP.
+- **Lista ao vivo dentro do texto** (pedido do agente): um bloco ```` ```atelier-lista ```` no markdown vira uma
+  lista/tabela/kanban ao vivo, com o mesmo filtro das visões; clicar abre, dá para mudar o status ali; cabe nos
+  modelos de tipo. **Um motor só** para ela e para as listas dinâmicas: o filtro das visões com o valor especial
+  **"este"** (o documento aberto), em vez de "filhos" fixo.
+- **MCP:** `ler_documento` devolve as listas dinâmicas, as listas do texto e o "apontado por" resumidos (código,
+  tipo, status, ordem), sem a linha do tempo de cada um; criar e mudar essas propriedades pelo MCP.
 
 ## 0.2.6 · Notificações e status dos agentes
 

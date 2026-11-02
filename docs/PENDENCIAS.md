@@ -216,6 +216,19 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
   - criar/atualizar em lote: genérico, ok, mas depois (vai para "Ideias");
   - "task list `- [x]` no renderizador": não havia pedido anterior; o editor tem lista de tarefas. Conferir no teste
     do editor da 0.2.3.
+- **Lista ao vivo dentro do corpo do documento** (02/11, 14:51): um bloco no markdown (cerca ```` ```atelier-lista ````
+  com tipos, filtro, ordem, colunas e layout) que a tela troca por uma lista ao vivo, com a mesma consulta das
+  visões; clicar abre o documento; mudar status ali; o `ler_documento` devolve o resultado junto. **Viável e bom**:
+  - o markdown continua portátil: fora do atelier é só um bloco de código; e o editor grava o bloco como está, sem
+    risco de perda (é um bloco de código para o markdown);
+  - já existem as peças: o filtro das visões (`Filtro` em `db.rs`: tipos, propriedades, datas, "livres"), a
+    janela de consulta (`{ v: "consulta", filtro }`, que a seção de relações usa) e os layouts lista/tabela/kanban;
+  - funciona em **modelo** de tipo (os modelos já existem): cada task nova nasce com a lista dos seus passos;
+  - **ressalva:** `filhos: true` fixa a relação "Pai" e **engessa**. No lugar, o mesmo filtro das visões com um
+    valor especial **"este"** (o documento onde o bloco está): `Pai: este`, `Bloqueado por: este`... Assim serve
+    para qualquer relação;
+  - é o primo da lista dinâmica (a propriedade do tipo): **o mesmo motor** (filtro + "este" + ordenar) serve aos
+    dois; a propriedade aparece na ficha, o bloco aparece onde for escrito no texto. Vai junto na 0.2.5.
 
 ### Recursos (mudam comportamento: precisam do ok do Paulo antes)
 

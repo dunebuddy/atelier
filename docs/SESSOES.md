@@ -428,3 +428,17 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 
 ### Ponto de parada
 - A conferir no uso: abrir de verdade cada app (no teste sem janela só se viu o menu e a lista).
+
+## 2026-11-02 (tarde) — pendências, segunda rodada do roadmap e 0.2.3
+
+- Fase de polimento: o Paulo foi usando e pedindo; quase tudo só anotado em PENDENCIAS (ele pediu "vai juntando").
+  Feito no master: Ctrl+Alt+setas da fita dentro do terminal.
+- Revisão crítica dos pedidos dos agentes (`~/atelier/pedidos-ao-atelier.md`, esvaziado depois) e segunda rodada
+  do ROADMAP (0.2.4 a 0.2.9), **ainda a aprovar**: ele vai rever a ordem.
+- 0.2.3 sozinha com o crítico: a lista avulsa desfazia filtro e ordem a cada clique fora (`Visao.tsx`, efeito que
+  comparava a visão pelo objeto). Reproduzido sem a correção e conferido com ela no teste sem janela.
+- Combinado: quando o Paulo diz "isso tem que ir na primeira atualização", é para **planejar como prioridade**, não
+  corrigir na hora (desta vez já estava feito e ele mandou fechar a versão só com isso).
+
+### Ponto de parada
+- Fechar com o Paulo a ordem da segunda rodada (ROADMAP.md) e começar pela 0.2.4.

@@ -80,7 +80,9 @@ export function VisaoTela({
   aoSalvarComo?: (v: Visao) => void;
 }) {
   const [v, setV] = useState(visao);
-  useEffect(() => setV(visao), [visao]);
+  // só volta ao que veio de fora quando o conteúdo muda de verdade: a lista avulsa (consulta, lista do tipo) recebe um
+  // objeto novo a cada redesenho do painel, e comparar pelo objeto desfazia o filtro e a ordem a cada clique fora
+  useEffect(() => setV(visao), [JSON.stringify(visao)]); // eslint-disable-line react-hooks/exhaustive-deps
   const mudar = (d: Partial<Visao>) => {
     setV((x) => ({ ...x, ...d }));
     salvar?.(d);

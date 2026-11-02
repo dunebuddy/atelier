@@ -13,30 +13,14 @@ Como usar:
 
 ## Próxima versão
 
-- **Bug: andar na fita com o cursor num terminal** (2026-11-02, Paulo; corrigido no master, sem tag). Ctrl+Alt+←/→
-  dentro de um terminal digitava "D"/"C" (o xterm engolia a tecla e mandava a seta ao shell). Agora os atalhos do
-  painel e dos workspaces sobem do terminal para o app (menos Ctrl+W, que é do shell, e Ctrl+Alt+letra/número, que
-  é o AltGr), e o teclado vai junto com o foco: indo para um terminal, é nele que se digita.
+(vazio — escolher da caixa de entrada)
 
 ## Caixa de entrada
 
 > **Triagem de 2026-11-02:** tudo o que está abaixo já tem lugar na segunda rodada do [`ROADMAP.md`](ROADMAP.md)
-> (0.2.3 a 0.2.8) ou em "Ideias, sem data". Pedido novo entra aqui e ganha lugar lá.
+> (0.2.4 a 0.2.9) ou em "Ideias, sem data". Pedido novo entra aqui e ganha lugar lá.
 
 ### Bugs
-
-- **CRÍTICO: lista avulsa desfaz o filtro e a ordem a cada clique fora** (2026-11-02, Paulo: "criticíssimo, tem que
-  ir na primeira atualização"). Ao abrir "Filhos" (ou outra relação) como lista ao lado, clicar em "Mostrar
-  concluídos" ou mudar a ordem funciona; ao clicar em outra janela, tudo volta ao que era. Diagnóstico **confirmado
-  no teste sem janela** (reproduzido sem a correção e resolvido com ela):
-  - `VisaoTela` (`Visao.tsx`) copia a visão para o estado e volta a ela com `useEffect(() => setV(visao), [visao])`;
-  - na lista avulsa (`{ v: "consulta" }`) e na lista do tipo, o `Painel.tsx` monta a visão como objeto novo a cada
-    redesenho; clicar em outra janela redesenha o painel, o efeito roda e desfaz o filtro e a ordem (que moram no
-    mesmo `v`: `filtro.esconder_historico`, `config.ordenar`);
-  - correção (uma linha, testada): comparar pelo conteúdo, `[JSON.stringify(visao)]`, em vez do objeto.
-  - Não é bug: o "3 mas mostra 2". A lista abre com os concluídos escondidos, e "Não se aplica" conta como
-    concluído porque está marcado como opção de histórico do Status; o botão diz "Mostrar concluídos (1)". Com o
-    bug corrigido, mostrar fica valendo. Talvez lembrar a última escolha para as próximas listas avulsas.
 
 - **Trocar de bancada derruba os agentes e desvia o MCP** (2026-11-02, pergunta do Paulo: "posso deixar o agente
   trabalhando numa bancada e ir para outra?"). Hoje **não**, por dois motivos (lidos no código, não testados):
@@ -206,21 +190,21 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 
 - **Linha do tempo com menos ruído, ADO com molde de link, visão "pode andar agora", ordenar visões** (01/11): já
   feitos na 0.1.8 a 0.2.0. Saem.
-- **Tabela markdown embaralhada** (02/11): procede, e é pior que ele viu (editar na tela apaga a tabela). 0.2.3.
+- **Tabela markdown embaralhada** (02/11): procede, e é pior que ele viu (editar na tela apaga a tabela). 0.2.4.
 - **Abrir o próximo documento no mesmo lugar** (02/11): o diagnóstico procede (é bug nosso: o MCP joga fora o
   `estado`). A ação "substituir" que ele pediu **não**: é específica demais. No lugar, peças genéricas (id da
-  janela, painel numerado, fechar/abrir por elas). 0.2.3.
+  janela, painel numerado, fechar/abrir por elas). 0.2.4.
 - **`editar_trecho`** (02/11): **bom pedido**, genérico (o mesmo jeito do Edit de arquivo) e ainda protege a edição
-  do Paulo na tela. Aprovado como ele desenhou. 0.2.3.
+  do Paulo na tela. Aprovado como ele desenhou. 0.2.4.
 - **Tipo "Passo" + lista de filhos ordenada** (02/11), item por item:
   - criar o tipo Passo e tirar o `inteiro` da Ordem: **não é trabalho de dev**, o agente faz pelo MCP. É decisão de
     modelagem do Paulo: cada passo vira um documento (com status, responsável e bloqueio próprios) ou fica como
     checklist no texto. Com o `editar_trecho`, o checklist no texto deixa de ser caro; o Passo só vale se o passo
     precisar de status ou bloqueio próprios;
   - "lista de filhos na página do pai, ordenada, filtrando por tipo": procede, mas **não fixo em "filhos"**: é a
-    lista dinâmica que o Paulo já pediu (tipos X + relação P + ordenar por uma propriedade). 0.2.5;
+    lista dinâmica que o Paulo já pediu (tipos X + relação P + ordenar por uma propriedade). 0.2.6;
   - `ler_documento` com "filhos" resumidos: fixo em "filhos" **engessa**. Generalizar: as listas dinâmicas e o
-    "apontado por" vêm resumidos (código, tipo, status, ordem). 0.2.5;
+    "apontado por" vêm resumidos (código, tipo, status, ordem). 0.2.6;
   - ordenar a Ordem com decimal: **já existe** (a ordenação de número é numérica; 1.5 vem antes de 10). Só falta
     tirar o `inteiro` da propriedade, pelo MCP;
   - tirar o tipo Passo da daily e do semanal: **já existe** (filtro por tipo das visões, `atualizar_visao`);
@@ -228,7 +212,7 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
     propriedades, sem índice; hoje não pesa (vai para "Ideias");
   - criar/atualizar em lote: genérico, ok, mas depois (vai para "Ideias");
   - "task list `- [x]` no renderizador": não havia pedido anterior; o editor tem lista de tarefas. Conferir no teste
-    do editor da 0.2.3.
+    do editor da 0.2.4.
 - **Lista ao vivo dentro do corpo do documento** (02/11, 14:51): um bloco no markdown (cerca ```` ```atelier-lista ````
   com tipos, filtro, ordem, colunas e layout) que a tela troca por uma lista ao vivo, com a mesma consulta das
   visões; clicar abre o documento; mudar status ali; o `ler_documento` devolve o resultado junto. **Viável e bom**:
@@ -241,7 +225,7 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
     valor especial **"este"** (o documento onde o bloco está): `Pai: este`, `Bloqueado por: este`... Assim serve
     para qualquer relação;
   - é o primo da lista dinâmica (a propriedade do tipo): **o mesmo motor** (filtro + "este" + ordenar) serve aos
-    dois; a propriedade aparece na ficha, o bloco aparece onde for escrito no texto. Vai junto na 0.2.5.
+    dois; a propriedade aparece na ficha, o bloco aparece onde for escrito no texto. Vai junto na 0.2.6.
 
 ### Recursos (mudam comportamento: precisam do ok do Paulo antes)
 
@@ -387,6 +371,12 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.3** (2026-11-02, correção crítica, versão sozinha a pedido do Paulo):
+  - a lista aberta ao lado (Filhos e outras relações, lista do tipo) não desfaz mais o filtro e a ordem ao clicar
+    em outra janela: "Mostrar concluídos" e a ordem ficam valendo (`Visao.tsx` comparava a visão pelo objeto, que o
+    painel recria a cada redesenho; agora compara pelo conteúdo). Reproduzido e conferido no teste sem janela;
+  - Ctrl+Alt+←/→ (andar na fita) funciona com o cursor num terminal (antes digitava "D"/"C"), e o teclado vai
+    junto com o foco.
 - **0.2.2** (2026-11-02, abrir com):
   - no menu do terminal, a seção **Abrir com** abre fora do atelier, na pasta do workspace, os agentes com janela
     própria que estiverem instalados: **Claude (app)** (o mesmo "Open in Claude Code" do Explorer), **ChatGPT /

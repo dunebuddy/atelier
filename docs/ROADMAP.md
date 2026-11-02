@@ -128,6 +128,14 @@ ainda aceitos para não quebrar agentes) e documentação.
 - Abrir Claude (app), ChatGPT/Codex e DeepSeek Harness na pasta do workspace, como o Explorer (pedido de 2026-11-02).
 - Depois, se fizer falta: Cursor, Goose, OpenCode desktop.
 
+## 0.2.3 · Correção crítica da lista avulsa · **saiu em 2026-11-02**
+
+Versão sozinha, a pedido do Paulo, antes de fechar a segunda rodada.
+
+- A lista aberta ao lado (Filhos, outras relações, lista do tipo) parou de desfazer o filtro e a ordem a cada
+  clique em outra janela.
+- Ctrl+Alt+setas da fita com o cursor num terminal (já estava no master).
+
 ## Segunda rodada (proposta de 2026-11-02, a aprovar)
 
 Fase de polimento: o Paulo usa o app no dia a dia e nada grave está quebrado. A régua é a mesma de cima, com um
@@ -135,12 +143,10 @@ ajuste dele: **a prioridade é mais de UX do que de funcionalidade**, a não ser
 texto) ou com o trabalho dos agentes. Tudo vem de [`PENDENCIAS.md`](PENDENCIAS.md) (o detalhe está lá) e dos
 pedidos dos agentes de 01 e 02/11, revisados criticamente (ver "Pedidos do agente" em PENDENCIAS).
 
-## 0.2.3 · Editor sem perda e MCP que enxerga a tela
+## 0.2.4 · Editor sem perda e MCP que enxerga a tela
 
 O que pode perder dado ou faz o agente errar. Curto.
 
-- **Primeiro, o crítico:** a lista avulsa (Filhos e outras relações abertas ao lado) desfaz o filtro e a ordem a
-  cada clique em outra janela. Causa achada e correção testada (uma linha em `Visao.tsx`).
 - **Editor:** tabela e imagem do markdown aparecem e sobrevivem a uma edição (hoje somem ao gravar); bloco de código
   com cores. Teste de ida e volta (abrir, editar outra linha, conferir o banco igual); conferir a lista de tarefas
   `- [x]`.
@@ -150,9 +156,8 @@ O que pode perder dado ou faz o agente errar. Curto.
 - **MCP `tela`:** devolver a resposta (hoje o `estado` volta vazio); o estado lista as janelas com id, o que
   mostram, **painel numerado** (0, 1) e posição; `fechar`/`focar` pelo id; `abrir` com `painel`.
 - Menus suspensos fecham no segundo clique (o mesmo `usePopover` para todos).
-- Já no master: Ctrl+Alt+setas da fita funcionando com o cursor num terminal.
 
-## 0.2.4 · Atalhos e barra de título
+## 0.2.5 · Atalhos e barra de título
 
 O pacote de conforto que ele mais sente no dia a dia: igual ao VS Code dele.
 
@@ -167,7 +172,7 @@ O pacote de conforto que ele mais sente no dia a dia: igual ao VS Code dele.
 - Miúdos: pílula do disco à direita, junto da de recursos; ícone do atelier no workspace da bancada (e na visão
   geral).
 
-## 0.2.5 · Página do documento e listas dinâmicas
+## 0.2.6 · Página do documento e listas dinâmicas
 
 Tudo mexe na ficha, nas propriedades de relação e nas listas ao vivo; vai junto para abrir esse código uma vez.
 
@@ -185,7 +190,7 @@ Tudo mexe na ficha, nas propriedades de relação e nas listas ao vivo; vai junt
 - **MCP:** `ler_documento` devolve as listas dinâmicas, as listas do texto e o "apontado por" resumidos (código,
   tipo, status, ordem), sem a linha do tempo de cada um; criar e mudar essas propriedades pelo MCP.
 
-## 0.2.6 · Notificações e status dos agentes
+## 0.2.7 · Notificações e status dos agentes
 
 Para trabalhar com vários agentes ao mesmo tempo sem ficar procurando quem parou.
 
@@ -199,7 +204,7 @@ Para trabalhar com vários agentes ao mesmo tempo sem ficar procurando quem paro
   workspace e no botão dos workspaces: vermelho esperando > trabalhando (animação) > verde terminou > claro parado >
   cinza sem agente; bolinha no sininho; toast configurável.
 
-## 0.2.7 · Bancadas lado a lado
+## 0.2.8 · Bancadas lado a lado
 
 Grande, e o bug que ele evita é raro (trocar de bancada com agente rodando).
 
@@ -210,7 +215,7 @@ Grande, e o bug que ele evita é raro (trocar de bancada com agente rodando).
   aberta só traz a janela para a frente.
 - Terminais e workspaces de cada bancada continuam vivos.
 
-## 0.2.8 · Consultas e fórmulas
+## 0.2.9 · Consultas e fórmulas
 
 Recursos novos e maiores; precisam de conversa antes (a linguagem da consulta, a sintaxe da fórmula).
 

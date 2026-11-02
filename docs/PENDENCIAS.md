@@ -62,6 +62,12 @@ Como usar:
 
 ### Melhorias pedidas
 
+- **Pílula do disco para a direita, junto da de recursos** (2026-11-02, Paulo; ele gostou do indicador). Na barra
+  de baixo, o espaço em disco está à esquerda, logo depois do "Workspace:"; levar para a direita, ao lado do ditado e
+  da memória/CPU (`Workspaces.tsx`: `<IndicadorDisco>` vai para depois do `<span style={{ flex: 1 }} />`). Só
+  reorganizar; mais detalhe no disco fica para depois. O popover dela tem o mesmo defeito do segundo clique (ver
+  em Bugs).
+
 - **Ícone no workspace da bancada** (2026-11-02, Paulo). É o único sem ícone na barra de workspaces e na lista (só a
   visão geral usa 🏠). Ele é fixo: sempre existe, pode ser fechado mas não apagado. **Decidido: o ícone do
   atelier** (o mesmo do app, pequeno; trocar também o 🏠 da visão geral, para ficar igual em todo lugar). (`Workspaces.tsx`: `info.icone` vem do documento; o da

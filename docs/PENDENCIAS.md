@@ -270,6 +270,13 @@ Como usar:
   - O `nao_consigo` era uma "funcionalidade fantasma" para o Paulo (2026-11-02): o agente registra e só aparece um
     toast. Dar um lugar visível aos **pedidos dos agentes** (`~/atelier/pedidos-ao-atelier.md`): no histórico do
     sininho e numa lista própria (em Configurações ou na ajuda), com marcar como visto/triado.
+  - **Um sistema só para todo aviso** (Paulo, 2026-11-02: "tudo que é toast, tudo que é notificação tem que estar
+    integrado"). Hoje são dois lugares: os avisos rápidos (`avisar`/`falhou`, inclusive o do `nao_consigo`) saem
+    **no meio, embaixo** (`.cartao-aviso.toast`), e os cartões de versão nova/atualizado saem **embaixo à
+    direita** (`.cartao-aviso`). Passar todos (avisos, erros, desfazer, `nao_consigo`, versão, atualizado, ditado,
+    status dos agentes) por um serviço único de notificações: mesma pilha, no canto configurado (padrão: embaixo à
+    direita), um embaixo do outro quando vierem vários, todos no histórico e sujeitos às mesmas regras de nível,
+    assunto e tempo.
   - A decidir: guardar no banco da bancada ou só enquanto o app está aberto (sugestão: no app, os últimos ~200).
   - Tempo e fechar (Paulo, 2026-11-02). Hoje: aviso comum some em 4 s; erro e "desfazer", em 8 s; o de versão
     nova fica até fechar; o de "atualizado" some em 12 s; todos já têm o X. Proposta: **toast com ação** (instalar,

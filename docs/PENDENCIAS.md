@@ -46,6 +46,9 @@ Como usar:
   - E **fórmula**: valor calculado de outras propriedades (soma, texto concatenado...), como no Notion.
   - Pensar junto: o que fazer com as seções de inverso que já aparecem (esconder quando uma lista dinâmica cobre a
     mesma relação?), contagem/soma sobre a lista (rollup), e o MCP criar e ler essas propriedades.
+  - Esclarecido com o Paulo: o nome inverso só dá nome à seção; ela aparece sempre que alguém aponta (sem nome vira
+    "Pai (de)"), não dá para desligar e não filtra por tipo. Ele achou a ideia boa mas genérica demais: considerar
+    uma opção "mostrar do outro lado: sim/não" na relação, ou trocar a seção crua pelas listas dinâmicas.
 
 ### Ideias antigas (ninguém pediu agora)
 - Abrir o atelier por link (`atelier://`).

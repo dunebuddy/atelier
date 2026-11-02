@@ -23,6 +23,13 @@ Como usar:
 ### Bugs
 
 ### Melhorias pedidas
+- **Ditado: Nemotron 3.5 ASR Streaming (NVIDIA)** no catálogo (pedido de 2026-11-02). `nvidia/nemotron-3.5-asr-streaming-0.6b`,
+  de jun/2026, sucessor do Parakeet: 40 idiomas com pt-BR, pontuação e maiúsculas, feito para tempo real. Não é só uma
+  linha em `modelos-ditado.json`: é RNNT com cache (o parakeet.js só roda TDT, e o transformers.js não o conhece).
+  Precisa de um motor novo no `ditado.worker.ts`: onnxruntime-web direto com o ONNX de
+  `onnx-community/nemotron-3.5-asr-streaming-0.6b-onnx-int4` (encoder/decoder/joint, ~790 MB, licença MIT no ONNX,
+  OpenMDW no original), o mel calculado em JS (`audio_processor_config.json`), o laço guloso do RNNT e o idioma
+  passado como prompt. De bônus dá para transcrever enquanto fala (streaming).
 
 ### Pedidos do agente (de `pedidos-ao-atelier.md`)
 

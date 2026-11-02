@@ -1,14 +1,14 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { Bot, Check, Copy, FileDown, LayoutDashboard, PanelRight, FolderOpen, FolderPlus, History, Layers, Pencil, RotateCcw, Send, Trash2, X } from "lucide-react";
+import { Bot, Check, ChevronDown, ChevronRight, Copy, FileDown, LayoutDashboard, PanelRight, FolderOpen, FolderPlus, History, Layers, Pencil, RotateCcw, Send, Trash2, X } from "lucide-react";
 import { abrirWorkspace } from "./Workspaces";
 import { api, Esquema, Item, Nota, Propriedade, propsDoTipo, Valor } from "../api";
-import { avisar, falhou, lerBase64, Rota } from "../ui";
+import { avisar, falhou, guardar, ler, lerBase64, Rota } from "../ui";
 import { useAoReaparecer, useVisivel } from "../visivel";
 import { dataHora } from "../visao";
 import { Historico } from "./Historico";
 import { abrirCodigo, ComMencoes } from "./Mencoes";
 import { abrirTerminalEmbutido, MenuPasta } from "./MenuPasta";
-import { Relacoes } from "./Relacoes";
+import { ListaCurta, Relacoes } from "./Relacoes";
 import { Arquivos, trazerArquivos } from "./Arquivos";
 import { abrirExplorador } from "./Explorador";
 import { Popover, usePopover } from "./Popover";
@@ -116,6 +116,9 @@ export function PaginaItem({
 
   // arrastar o nome de uma propriedade na ficha (ganchos antes do retorno antecipado: o React exige a mesma ordem)
   const [arrastandoProp, setArrastandoProp] = useState<number | null>(null);
+  // a ficha recolhida vale para todos os documentos (fica só a linha "Ficha")
+  const [fichaRecolhida, setFichaRecolhida] = useState<boolean>(() => ler("fichaRecolhida", false));
+  useEffect(() => guardar("fichaRecolhida", fichaRecolhida), [fichaRecolhida]);
   const [sobreProp, setSobreProp] = useState<number | null>(null);
   const acabouDeArrastar = useRef(false);
   if (!item) return null;
@@ -214,15 +217,19 @@ export function PaginaItem({
       >
         <IconeEspecie especie={p.especie} /> {p.nome}
       </div>
-      <ValorProp
-        esquema={esquema}
-        prop={p}
-        tipoId={item.tipo_id}
-        valor={valorDe(item, p)}
-        proprio={item.codigo}
-        aoMudar={(v) => mudarProp(p.id, v)}
-        aoMudarEsquema={aoMudarEsquema}
-      />
+      {p.especie === "lista" ? (
+        <ListaDaFicha esquema={esquema} itens={item.listas?.[String(p.id)] ?? []} />
+      ) : (
+        <ValorProp
+          esquema={esquema}
+          prop={p}
+          tipoId={item.tipo_id}
+          valor={valorDe(item, p)}
+          proprio={item.codigo}
+          aoMudar={(v) => mudarProp(p.id, v)}
+          aoMudarEsquema={aoMudarEsquema}
+        />
+      )}
     </div>
   );
 
@@ -351,6 +358,7 @@ export function PaginaItem({
               valor={item.corpo ?? ""}
               aoMudar={(corpo) => salvar({ corpo })}
               pasta={item.pasta ?? undefined}
+              codigo={item.codigo}
               aoMencao={(c) => abrirCodigo(c, ir)}
               prompt={{ itemId: item.id, codigo: item.codigo, titulo: item.titulo }}
               aoColarArquivo={async (f) => {
@@ -393,8 +401,11 @@ export function PaginaItem({
           </div>
         </div>
 
-        <aside className="ficha">
-          <div className="ficha-titulo">Ficha</div>
+        <aside className={`ficha${fichaRecolhida ? " recolhida" : ""}`}>
+          <button className="ficha-titulo ficha-alternar" title={fichaRecolhida ? "Mostrar a ficha" : "Recolher a ficha (vale para todos os documentos)"} onClick={() => setFichaRecolhida((r) => !r)}>
+            {fichaRecolhida ? <ChevronRight size={13} /> : <ChevronDown size={13} />} Ficha
+          </button>
+          {!fichaRecolhida && (<>
           <div className="props">
             <div className="prop-nome"><Layers size={14} strokeWidth={1.8} /> Tipo</div>
             <div className={`prop-valor${escolherTipo.ancora ? " editando" : ""}`} onClick={escolherTipo.abrir}>
@@ -427,6 +438,7 @@ export function PaginaItem({
               <div className="props">{guardadas.map((p) => linhaProp(p, true))}</div>
             </div>
           )}
+          </>)}
         </aside>
       </div>
 
@@ -457,6 +469,7 @@ export function PaginaItem({
           ancora={menuProp.ancora}
           aoFechar={() => setMenuProp(null)}
           prop={menuProp.prop}
+          esquema={esquema}
           tipo={tipo && noTipo.has(menuProp.prop.id) ? tipo : undefined}
           aoMudarEsquema={aoMudarEsquema}
         />
@@ -590,4 +603,10 @@ function NotaLinha({ nota, ir, aoMudar, aoHistorico }: { nota: Nota; ir: (r: Rot
       </div>
     </div>
   );
+}
+
+/** Lista dinâmica na ficha: os documentos ligados, com o status de cada um, e um "ver mais" depois dos primeiros. */
+function ListaDaFicha({ esquema, itens }: { esquema: Esquema; itens: Item[] }) {
+  if (!itens.length) return <div className="prop-valor"><span className="vazio">nenhum</span></div>;
+  return <div className="prop-valor lista-dinamica"><ListaCurta itens={itens} esquema={esquema} /></div>;
 }

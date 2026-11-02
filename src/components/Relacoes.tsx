@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { Esquema, FiltroVisao, Item } from "../api";
 import { abrir } from "../ui";
@@ -8,7 +9,8 @@ import { ChipItem } from "./Valor";
  * pelo nome inverso de cada propriedade ("Filhos", "Bloqueia"...), e quem cita o #código no texto.
  */
 export function Relacoes({ esquema, item }: { esquema: Esquema; item: Item }) {
-  const refs = item.referencias ?? [];
+  // a relação diz se aparece deste lado ("Mostrar do outro lado")
+  const refs = (item.referencias ?? []).filter((r) => r.outro_lado !== false);
   const men = item.mencionado_em ?? [];
   if (refs.length === 0 && men.length === 0) return null;
 
@@ -35,7 +37,7 @@ export function Relacoes({ esquema, item }: { esquema: Esquema; item: Item }) {
             }}>
             {rotulo} <span className="rel-conta">{lista.length}</span> <ChevronRight size={12} />
           </button>
-          <div className="rel-lista">{lista.map((r) => <ChipItem key={r.item.id} esquema={esquema} r={r.item} />)}</div>
+          <ListaCurta itens={lista.map((r) => r.item)} esquema={esquema} />
         </div>
       ))}
       {men.length > 0 && (
@@ -44,8 +46,22 @@ export function Relacoes({ esquema, item }: { esquema: Esquema; item: Item }) {
             onClick={() => abrirLista("Mencionado em", { texto: `#${item.codigo}` })}>
             Mencionado em <span className="rel-conta">{men.length}</span> <ChevronRight size={12} />
           </button>
-          <div className="rel-lista">{men.map((m) => <ChipItem key={m.id} esquema={esquema} r={m} />)}</div>
+          <ListaCurta itens={men} esquema={esquema} />
         </div>
+      )}
+    </div>
+  );
+}
+
+/** Os primeiros da lista e um "ver mais": com 100, a ficha não vira a página toda. */
+export function ListaCurta({ itens, esquema, limite = 8 }: { itens: { id: number; codigo: string; titulo: string; tipo_id: number | null }[]; esquema: Esquema; limite?: number }) {
+  const [todos, setTodos] = useState(false);
+  const vistos = todos ? itens : itens.slice(0, limite);
+  return (
+    <div className="rel-lista">
+      {vistos.map((r) => <ChipItem key={r.id} esquema={esquema} r={r} />)}
+      {itens.length > limite && (
+        <button className="rel-mais" onClick={() => setTodos((t) => !t)}>{todos ? "ver menos" : `ver mais ${itens.length - limite}`}</button>
       )}
     </div>
   );

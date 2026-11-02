@@ -43,17 +43,6 @@ Como usar:
 
 ### Melhorias pedidas
 
-- **Ficha em cima do conteúdo e recolhível** (2026-11-02, Paulo). Hoje, com a janela larga, a ficha fica numa
-  coluna fixa à direita (`.pagina-grade`, 320px, sticky); com a janela estreita (até 860px) ela já vai para cima do
-  texto. Pedido: a ficha **sempre em cima** do conteúdo, com um botão para **recolher**: recolhida, sobra só uma
-  linha "Ficha" (com a setinha) e o texto sobe; clicando, expande de novo. Não é esconder de vez. A decidir: lembrar
-  recolhida por documento, por tipo ou para todos (sugestão: para todos, como preferência). Junto com o limite nas
-  listas da ficha (já anotado), ela deixa de tomar a página.
-
-- **Listas na ficha do documento com limite** (2026-11-02, Paulo). As propriedades de lista (relações, o lado inverso,
-  e depois as listas dinâmicas) mostram tudo no bloco de informações do documento: com 100, ocupam a página toda.
-  Mostrar os primeiros 5 ou 10 e um "ver mais" (ou uma paginação pequena para passar).
-
 ### Pedidos do agente (de `pedidos-ao-atelier.md`)
 
 Revisão crítica de 2026-11-02 (o Paulo pediu: dizer o que não faz sentido, o que já existe e o que engessa o app).
@@ -202,7 +191,8 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
   expostas como colunas? ou o mesmo filtro das visões, em texto?), como o resultado aparece (tabela, contagem) e o
   MCP poder rodar e salvar consultas também.
 
-- **Propriedades calculadas no tipo: listas dinâmicas e fórmulas** (2026-11-02, Paulo).
+- **Propriedades calculadas no tipo: listas dinâmicas e fórmulas** (2026-11-02, Paulo). **As listas dinâmicas, o
+  "mostrar do outro lado" e a lista no texto saíram na 0.2.6; falta a fórmula (0.2.9).**
   - Hoje o "Filhos" da página não é fixo: é o rótulo inverso da propriedade de relação **Pai** (`inverso: "Filhos"`).
     Todo documento que aponta para este em "Pai" aparece ali, de qualquer tipo, misturado; cada propriedade de relação
     gera uma seção assim pelo nome inverso dela.
@@ -242,6 +232,20 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.6** (2026-11-02, página do documento e listas dinâmicas):
+  - **ficha em cima do texto**, recolhível numa linha ("Ficha ▸", vale para todos os documentos); com a janela larga,
+    as propriedades em duas colunas; listas da ficha com os 8 primeiros e "ver mais";
+  - **relação com "Mostrar do outro lado"** (caixinha, com o nome daquele lado): relação nova nasce sem aparecer do
+    outro lado; as que já existiam continuam aparecendo (é só desmarcar);
+  - **lista dinâmica** (espécie nova "lista"): "os documentos dos tipos X cuja relação P aponta para este",
+    ordenada por uma propriedade (número em ordem numérica: 1.5 antes de 10), na ficha; não se escreve nela;
+  - **lista ao vivo no texto**: bloco ```` ```atelier-lista ```` (tipos, relacao, ordenar com "-" para decrescente,
+    colunas), com "/lista" no editor; mostra a tabela ao vivo, abre o documento e muda status ali; o mesmo motor;
+  - **MCP:** `ler_documento` devolve `listas` (as da ficha) e `listas_no_texto` já calculadas, e o `apontado_por` com
+    tipo e status; `criar_propriedade` cria lista (`lista_tipos`, `lista_relacao`, `lista_ordenar`) e relação com
+    `outro_lado`;
+  - **índices:** tabela `ligacoes` (mantida por gatilhos do banco) e `mencoes` (mantida por quem grava texto/nota);
+    ler um documento com 100 filhos num banco de 20 mil caiu de 52 ms para 2,5 ms (teste `volume_relacoes`).
 - **0.2.5** (2026-11-02, atalhos e barra de título):
   - **atalhos do VS Code** (padrões novos; cada ação aceita extras que valem enquanto não for mudada): Ctrl+P buscar
     (Ctrl+K segue), Ctrl+Shift+P lista de ações, Ctrl+Shift+F buscar no texto, Ctrl+B barra lateral (no editor

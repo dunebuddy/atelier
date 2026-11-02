@@ -74,6 +74,7 @@ const COMANDOS: Cmd[] = [
   { id: "codigo", nome: "Bloco de código", dica: "```", faz: (e) => e.chain().focus().toggleCodeBlock().run() },
   { id: "divisor", nome: "Divisor", dica: "---", faz: (e) => e.chain().focus().setHorizontalRule().run() },
   { id: "tabela", nome: "Tabela", dica: "| |", faz: (e) => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
+  { id: "lista", nome: "Lista ao vivo (documentos ligados a este)", dica: "```atelier-lista", faz: (e) => e.chain().focus().insertContent({ type: "codeBlock", attrs: { language: "atelier-lista" }, content: [{ type: "text", text: "tipos: \nrelacao: Pai\nordenar: Título\ncolunas: Status" }] }).run() },
   { id: "diagrama", nome: "Diagrama (Mermaid)", dica: "```mermaid", faz: (e) => e.chain().focus().insertContent({ type: "codeBlock", attrs: { language: "mermaid" }, content: [{ type: "text", text: "flowchart LR\n  A --> B" }] }).run() },
   {
     id: "agora", nome: "Data e hora de agora", dica: "30/10 18:55",
@@ -91,8 +92,10 @@ function sem_acento(s: string) {
 
 /** Markdown com edição ao vivo: digita `## `, `- [ ] `, `**negrito**` e vira formatação na hora. */
 export function Editor({
-  valor, aoMudar, placeholder, aoMencao, aoColarArquivo, prompt, pasta,
+  valor, aoMudar, placeholder, aoMencao, aoColarArquivo, prompt, pasta, codigo,
 }: {
+  /** código do documento: o "este" das listas ao vivo do texto (```atelier-lista) */
+  codigo?: string;
   /** pasta do documento: imagens com caminho relativo (`![](artefatos/x.png)`) são lidas a partir dela */
   pasta?: string;
   /** liga o /prompt: o item em edição vai como contexto para o agente */
@@ -125,12 +128,14 @@ export function Editor({
   aoMudarRef.current = aoMudar;
   const pastaRef = useRef(pasta);
   pastaRef.current = pasta;
+  const codigoRef = useRef(codigo);
+  codigoRef.current = codigo;
 
   const editor = useEditor({
     extensions: [
       // o bloco de código do StarterKit dá lugar ao com cores (e ao diagrama Mermaid)
       StarterKit.configure({ codeBlock: false }),
-      BlocoCodigo,
+      BlocoCodigo.configure({ codigo: () => codigoRef.current }),
       ...blocosDeTabela,
       Imagem.configure({ pasta: () => pastaRef.current }),
       TaskList,

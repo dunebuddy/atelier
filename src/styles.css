@@ -592,14 +592,23 @@ tr:hover .celula .vazio, .prop-valor .vazio { opacity: 1; }
 }
 .titulo-grande::placeholder { color: var(--texto-3); }
 
-.pagina-grade { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 40px; align-items: start; }
+/* a ficha fica sempre em cima do texto (pedido do Paulo, 0.2.6), e recolhe numa linha só */
+.pagina-grade { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; align-items: start; }
+.pagina-grade > .ficha { order: -1; }
 .pagina-texto { min-width: 0; }
 /* janela larga: a ficha fica à direita, sempre à vista enquanto o texto rola, e rola sozinha quando é mais alta que
    a janela (antes o fim dela só aparecia quando a página chegava ao fim) */
-.ficha {
-  position: sticky; top: 20px; background: var(--bg-fundo); border: 1px solid var(--borda); border-radius: 14px; padding: 14px 12px 10px;
-  max-height: calc(100cqh - 40px); overflow-y: auto; overscroll-behavior: contain;
+.ficha { background: var(--bg-fundo); border: 1px solid var(--borda); border-radius: 14px; padding: 12px 12px 10px; }
+.ficha.recolhida { padding-bottom: 4px; }
+.ficha-alternar { display: flex; align-items: center; gap: 4px; background: none; border: 0; cursor: pointer; width: 100%; text-align: left; }
+.ficha-alternar:hover { color: var(--texto); }
+/* janela larga: as propriedades em duas colunas de pares nome/valor, para a ficha não ficar comprida */
+@container janela (min-width: 900px) {
+  .ficha > .props { grid-template-columns: 112px minmax(0, 1fr) 112px minmax(0, 1fr); column-gap: 18px; }
 }
+.rel-mais { background: none; border: 1px dashed var(--borda); border-radius: 999px; color: var(--texto-3); font-size: 12px; padding: 1px 9px; cursor: pointer; }
+.rel-mais:hover { color: var(--texto); border-color: var(--borda-forte); }
+.prop-valor.lista-dinamica { cursor: default; }
 .ficha-titulo { font-size: 10.5px; font-weight: 650; color: var(--texto-3); text-transform: uppercase; letter-spacing: .08em; padding: 0 6px 8px; }
 .ficha .props { display: grid; grid-template-columns: 112px minmax(0, 1fr); row-gap: 2px; }
 .guardadas { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--borda-forte); }
@@ -1148,3 +1157,11 @@ body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grab
 .atalhos-busca { display: flex; align-items: center; gap: 8px; border: 1px solid var(--borda); border-radius: 8px; padding: 6px 10px; margin-bottom: 12px; color: var(--texto-3); }
 .atalhos-busca input { flex: 1; border: 0; outline: none; background: none; color: var(--texto); font: inherit; }
 .atalho-extra { color: var(--texto-3); font-size: 11.5px; }
+
+/* lista ao vivo dentro do texto (```atelier-lista) */
+.editor .lista-no-texto { border: 1px solid var(--borda); border-radius: 10px; padding: 10px 12px; margin: 0.5em 0; background: var(--bg-fundo); }
+.editor .lista-no-texto table { display: table; margin: 0; width: 100%; }
+.editor .lista-no-texto td.vazio { color: var(--texto-3); }
+.editor .lista-no-texto select { background: none; border: 0; color: inherit; font: inherit; cursor: pointer; }
+.lista-abrir { background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; text-align: left; }
+.lista-abrir:hover { text-decoration: underline; }

@@ -34,7 +34,7 @@ export function AdicionarProp({
 
   const criar = async (esp: Especie, config: ConfigProp = {}) => {
     try {
-      const { id } = await api.criarProp({ nome: busca.trim(), especie: esp, config: esp === "relacao" ? { inverso: `${busca.trim()} (de)`, ...config } : config });
+      const { id } = await api.criarProp({ nome: busca.trim(), especie: esp, config: esp === "relacao" ? { inverso: `${busca.trim()} (de)`, outro_lado: false, ...config } : config });
       await por(id);
     } catch (e) {
       falhou(e);
@@ -74,12 +74,14 @@ export function AdicionarProp({
 
 /** Menu de uma propriedade: renomear, tirar do tipo, apagar de vez. */
 export function MenuProp({
-  ancora, aoFechar, prop, tipo, aoMudarEsquema,
+  ancora, aoFechar, prop, tipo, aoMudarEsquema, esquema,
 }: {
   ancora: HTMLElement;
   aoFechar: () => void;
   prop: Propriedade;
   tipo?: Tipo;
+  /** para a lista dinâmica escolher tipos, relação e ordem */
+  esquema?: Esquema;
   aoMudarEsquema: () => Promise<void>;
 }) {
   const [nome, setNome] = useState(prop.nome);
@@ -109,6 +111,7 @@ export function MenuProp({
         {ESPECIES.find((e) => e.id === prop.especie)?.nome} · vale para todos os tipos que a usam
       </div>
       {prop.especie === "relacao" && <ConfigRelacao prop={prop} aoMudarEsquema={aoMudarEsquema} />}
+      {prop.especie === "lista" && esquema && <ConfigLista esquema={esquema} prop={prop} aoMudarEsquema={aoMudarEsquema} />}
       <ConfigGeral prop={prop} aoMudarEsquema={aoMudarEsquema} />
       <div className="menu-sep" />
       {tipo && (
@@ -152,17 +155,68 @@ function ConfigRelacao({ prop, aoMudarEsquema }: { prop: Propriedade; aoMudarEsq
   };
   return (
     <>
-      <div className="menu-rotulo">Do lado do documento apontado, lê-se</div>
-      <input
-        className="campo"
-        placeholder={`${prop.nome} (de)`}
-        defaultValue={prop.config?.inverso ?? ""}
-        onBlur={(e) => e.target.value.trim() !== (prop.config?.inverso ?? "") && gravar({ inverso: e.target.value.trim() })}
-        onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-      />
+      <label className="menu-item" style={{ cursor: "pointer" }} title="Na página do documento apontado, uma lista com quem aponta para ele">
+        <input type="checkbox" checked={prop.config?.outro_lado !== false} onChange={(e) => gravar({ outro_lado: e.target.checked })} style={{ accentColor: "var(--acento)" }} />
+        Mostrar do outro lado
+      </label>
+      {prop.config?.outro_lado !== false && (
+        <>
+          <div className="menu-rotulo">Nome do outro lado</div>
+          <input
+            className="campo"
+            placeholder={`${prop.nome} (de)`}
+            defaultValue={prop.config?.inverso ?? ""}
+            onBlur={(e) => e.target.value.trim() !== (prop.config?.inverso ?? "") && gravar({ inverso: e.target.value.trim() })}
+            onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+          />
+        </>
+      )}
       <label className="menu-item" style={{ cursor: "pointer" }}>
         <input type="checkbox" checked={!!prop.config?.um_so} onChange={(e) => gravar({ um_so: e.target.checked })} style={{ accentColor: "var(--acento)" }} />
         Aponta para um documento só
+      </label>
+    </>
+  );
+}
+
+/** Lista dinâmica: quais tipos, por qual relação (a este) e em que ordem. */
+function ConfigLista({ esquema, prop, aoMudarEsquema }: { esquema: Esquema; prop: Propriedade; aoMudarEsquema: () => Promise<void> }) {
+  const c = prop.config ?? {};
+  const gravar = async (d: ConfigProp) => {
+    try {
+      await api.atualizarProp(prop.id, { config: { ...c, ...d } });
+      await aoMudarEsquema();
+    } catch (e) {
+      falhou(e);
+    }
+  };
+  const relacoes = esquema.propriedades.filter((p) => p.especie === "relacao");
+  const ordenaveis = esquema.propriedades.filter((p) => !["relacao", "links", "lista"].includes(p.especie));
+  const tipos = c.tipos ?? [];
+  return (
+    <>
+      <div className="menu-rotulo">Documentos que apontam para este por</div>
+      <select className="campo" value={c.relacao ?? ""} onChange={(e) => gravar({ relacao: Number(e.target.value) })}>
+        <option value="" disabled>escolha a relação…</option>
+        {relacoes.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
+      </select>
+      <div className="menu-rotulo">Dos tipos (nenhum marcado: todos)</div>
+      {esquema.tipos.map((t) => (
+        <label key={t.id} className="menu-item" style={{ cursor: "pointer" }}>
+          <input type="checkbox" checked={tipos.includes(t.id)} style={{ accentColor: "var(--acento)" }}
+            onChange={(e) => gravar({ tipos: e.target.checked ? [...tipos, t.id] : tipos.filter((x) => x !== t.id) })} />
+          {t.icone} {t.nome}
+        </label>
+      ))}
+      <div className="menu-rotulo">Em ordem de</div>
+      <select className="campo" value={String(c.ordenar ?? "titulo")} onChange={(e) => gravar({ ordenar: /^\d+$/.test(e.target.value) ? Number(e.target.value) : (e.target.value as "titulo" | "criado_em") })}>
+        <option value="titulo">Título</option>
+        <option value="criado_em">Criação</option>
+        {ordenaveis.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+      </select>
+      <label className="menu-item" style={{ cursor: "pointer" }}>
+        <input type="checkbox" checked={!!c.desc} onChange={(e) => gravar({ desc: e.target.checked })} style={{ accentColor: "var(--acento)" }} />
+        Do maior para o menor
       </label>
     </>
   );

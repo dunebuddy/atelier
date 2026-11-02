@@ -149,7 +149,7 @@ export function ConfigTipo({
         <AdicionarProp ancora={addProp.ancora} aoFechar={addProp.fechar} esquema={esquema} tipo={tipo} aoMudarEsquema={aoMudarEsquema} />
       )}
       {menuProp && (
-        <MenuProp ancora={menuProp.ancora} aoFechar={() => setMenuProp(null)} prop={menuProp.prop} tipo={tipo} aoMudarEsquema={aoMudarEsquema} />
+        <MenuProp ancora={menuProp.ancora} aoFechar={() => setMenuProp(null)} prop={menuProp.prop} tipo={tipo} aoMudarEsquema={aoMudarEsquema} esquema={esquema} />
       )}
     </div>
   );

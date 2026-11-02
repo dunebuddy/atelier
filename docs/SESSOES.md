@@ -457,3 +457,7 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   atalho de mentira, é o que a lista de ações usa), barra de título, maximizar/Zen, terminal com Shift+Enter.
   Testado por script no teste sem janela (lista de ações, maximizar, Ctrl+B fora e dentro do editor, Zen e
   Esc Esc, ir ao terminal, busca nos atalhos). A tela cheia do Zen pede `core:window:allow-set-fullscreen`.
+- 0.2.6: ficha em cima/recolhível, "mostrar do outro lado", lista dinâmica (espécie "lista", `db::lista_dinamica`,
+  `config_de_lista` traduz nomes), bloco `atelier-lista` no texto (`POST /api/lista`), MCP com listas; migrações 14
+  (`ligacoes`, gatilhos) e 15 (`mencoes`, `indexar_mencoes` em todo lugar que grava texto ou nota). Medido com
+  `cargo test --release --lib volume -- --ignored --nocapture` (o rtk engole o println: usar `rtk proxy`).

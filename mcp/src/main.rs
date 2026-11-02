@@ -333,7 +333,7 @@ fn ferramentas() -> Value {
         },
         {
             "name": "criar_propriedade",
-            "description": "Cria uma propriedade (compartilhada entre tipos) e, se quiser, já coloca em tipos. Espécies: texto, numero (inteiro, casas, formato), data (hora), checkbox (sim/não), url, email, telefone, selecao, multisselecao, status, links (vários links com rótulo), criado_em e atualizado_em (automáticas); texto/numero/data/email/telefone/url com lista: true guardam vários valores; relacao (aponta para outros documentos; `inverso` é como se lê do outro lado, ex.: \"Bloqueado por\" ↔ \"Bloqueia\"; `um_so` aceita um documento só, ex.: \"Pai\").",
+            "description": "Cria uma propriedade (compartilhada entre tipos) e, se quiser, já coloca em tipos. Espécies: texto, numero (inteiro, casas, formato), data (hora), checkbox (sim/não), url, email, telefone, selecao, multisselecao, status, links (vários links com rótulo), criado_em e atualizado_em (automáticas); texto/numero/data/email/telefone/url com lista: true guardam vários valores; relacao (aponta para outros documentos; `inverso` é como se lê do outro lado, ex.: \"Bloqueado por\" ↔ \"Bloqueia\"; `outro_lado`: false esconde essa lista do outro lado; `um_so` aceita um documento só, ex.: \"Pai\"); lista (lista dinâmica, calculada: os documentos dos tipos `lista_tipos` cuja relação `lista_relacao` aponta para o documento, na ordem de `lista_ordenar`, ex.: no tipo Task, \"Passos\" = tipo Passo com Pai = este, por Ordem; não se escreve nela). No texto de um documento, um bloco ```atelier-lista com linhas tipos: / relacao: / ordenar: / colunas: mostra a mesma lista ao vivo.",
             "inputSchema": { "type": "object", "properties": {
                 "nome": { "type": "string" },
                 "especie": { "type": "string" },
@@ -345,6 +345,10 @@ fn ferramentas() -> Value {
                 "formato": { "type": "string", "enum": ["numero", "percentual", "moeda"], "description": "numero: como mostrar" },
                 "hora": { "type": "boolean", "description": "data: com hora (AAAA-MM-DDTHH:MM)" },
                 "um_so": { "type": "boolean", "description": "relacao: aceita um documento só" },
+                "outro_lado": { "type": "boolean", "description": "relacao: mostra a lista de quem aponta na página do documento apontado (padrão: não)" },
+                "lista_tipos": { "type": "array", "items": { "type": "string" }, "description": "lista: tipos dos documentos listados (vazio = qualquer)" },
+                "lista_relacao": { "type": "string", "description": "lista: a propriedade de relação que liga os documentos a este (ex.: Pai)" },
+                "lista_ordenar": { "type": "string", "description": "lista: propriedade para ordenar (ou titulo, criado_em); com - na frente, decrescente" },
                 "tipos": { "type": "array", "items": { "type": "string" }, "description": "nomes dos tipos que passam a ter a propriedade" }
             }, "required": ["nome", "especie"] }
         },
@@ -603,6 +607,29 @@ impl Mapa {
         }
         Ok(Value::Object(saida))
     }
+    /// O status de um documento (o valor da propriedade de espécie status que ele tiver).
+    fn status_de(&self, props: &Value) -> Option<Value> {
+        let obj = props.as_object()?;
+        self.props().iter().find(|p| p["especie"] == "status" && obj.contains_key(&p["id"].to_string())).map(|p| obj[&p["id"].to_string()].clone())
+    }
+
+    /// "#código título · tipo · Status · Ordem 2" de um documento de lista.
+    fn resumo_curto(&self, i: &Value) -> String {
+        let mut partes = vec![format!("#{} {}", i["codigo"].as_str().unwrap_or(""), i["titulo"].as_str().unwrap_or(""))];
+        if let Value::String(t) = self.tipo_nome(i["tipo_id"].as_i64()) {
+            partes.push(t);
+        }
+        if let Some(Value::String(st)) = self.status_de(&i["props"]) {
+            partes.push(st);
+        }
+        if let Some(o) = self.props().iter().find(|p| p["nome"].as_str().is_some_and(|n| n.eq_ignore_ascii_case("ordem"))) {
+            if let Some(val) = i["props"].get(o["id"].to_string()).filter(|v| !v.is_null()) {
+                partes.push(format!("Ordem {}", val.as_str().map(String::from).unwrap_or(val.to_string())));
+            }
+        }
+        partes.join(" · ")
+    }
+
     fn humano(&self, it: &db::Item) -> Value {
         let mut props = Map::new();
         if let Some(obj) = it.props.as_object() {
@@ -630,10 +657,27 @@ impl Mapa {
             v["itens_apontados"] = json!(r.as_array().into_iter().flatten().map(|r| format!("#{} {}", r["codigo"].as_str().unwrap_or(""), r["titulo"].as_str().unwrap_or(""))).collect::<Vec<_>>());
         }
         if let Some(r) = &it.referencias {
-            v["apontado_por"] = json!(r.as_array().into_iter().flatten().map(|r| json!({
-                "como": r["rotulo"],
-                "item": format!("#{} {}", r["item"]["codigo"].as_str().unwrap_or(""), r["item"]["titulo"].as_str().unwrap_or("")),
-            })).collect::<Vec<_>>());
+            v["apontado_por"] = json!(r.as_array().into_iter().flatten().map(|r| {
+                let mut x = json!({
+                    "como": r["rotulo"],
+                    "item": format!("#{} {}", r["item"]["codigo"].as_str().unwrap_or(""), r["item"]["titulo"].as_str().unwrap_or("")),
+                    "tipo": self.tipo_nome(r["item"]["tipo_id"].as_i64()),
+                });
+                if let Some(st) = self.status_de(&r["item"]["props"]) {
+                    x["status"] = st;
+                }
+                x
+            }).collect::<Vec<_>>());
+        }
+        // listas dinâmicas do tipo, já calculadas: { "Passos": ["#código título · Status · Ordem 2", ...] }
+        if let Some(Value::Object(ls)) = &it.listas {
+            let mut m = Map::new();
+            for (pid, itens) in ls {
+                m.insert(self.prop_nome(pid), json!(itens.as_array().into_iter().flatten().map(|i| self.resumo_curto(i)).collect::<Vec<_>>()));
+            }
+            if !m.is_empty() {
+                v["listas"] = Value::Object(m);
+            }
         }
         if let Some(m) = &it.mencionado_em {
             v["mencionado_em"] = json!(m.as_array().into_iter().flatten().map(|m| format!("#{} {}", m["codigo"].as_str().unwrap_or(""), m["titulo"].as_str().unwrap_or(""))).collect::<Vec<_>>());
@@ -854,7 +898,19 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
                     n.retain(|x| !db::nota_automatica(&x.texto));
                 }
             }
-            Ok(mapa.humano(&it))
+            let mut v = mapa.humano(&it);
+            // as listas ao vivo do texto (blocos atelier-lista), calculadas: o agente vê o que o Paulo vê
+            let blocos: Vec<Value> = db::blocos_de_lista(it.corpo.as_deref().unwrap_or(""))
+                .iter()
+                .map(|b| match db::config_de_lista(&conn, b).and_then(|cfg| db::lista_dinamica(&conn, &it.codigo, &cfg)) {
+                    Ok(itens) => json!({ "bloco": b, "documentos": itens.iter().map(|i| mapa.resumo_curto(&json!(i))).collect::<Vec<_>>() }),
+                    Err(x) => json!({ "bloco": b, "erro": x.to_string() }),
+                })
+                .collect();
+            if !blocos.is_empty() {
+                v["listas_no_texto"] = json!(blocos);
+            }
+            Ok(v)
         }
         "criar_documento" => {
             let tipo_id = s(a, "tipo").map(|t| mapa.tipo_id(t)).transpose()?;
@@ -1007,12 +1063,20 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
                 .map(|o| json!({ "nome": o, "cor": "gray" }))
                 .collect();
             let mut config = Map::new();
-            for k in ["inverso", "um_so", "lista", "inteiro", "casas", "formato", "hora"] {
+            for k in ["inverso", "um_so", "lista", "inteiro", "casas", "formato", "hora", "outro_lado"] {
                 if let Some(v) = a.get(k).filter(|v| !v.is_null()) {
                     config.insert(k.into(), v.clone());
                 }
             }
-            let config = Value::Object(config);
+            // relação nova não aparece do outro lado, a não ser que peçam
+            if s(a, "especie") == Some("relacao") && !config.contains_key("outro_lado") {
+                config.insert("outro_lado".into(), json!(false));
+            }
+            let config = if s(a, "especie") == Some("lista") {
+                db::config_de_lista(&conn, &json!({ "tipos": a.get("lista_tipos"), "relacao": a.get("lista_relacao"), "ordenar": a.get("lista_ordenar") })).map_err(e)?
+            } else {
+                Value::Object(config)
+            };
             let pid = db::criar_propriedade(&conn, &json!({ "nome": s(a, "nome"), "especie": s(a, "especie"), "opcoes": opcoes, "config": config })).map_err(e)?;
             let mut em = vec![];
             for t in a.get("tipos").and_then(|v| v.as_array()).into_iter().flatten().filter_map(|t| t.as_str()) {

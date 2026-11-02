@@ -175,7 +175,7 @@ O pacote de conforto que ele mais sente no dia a dia: igual ao VS Code dele.
 - Miúdos: pílula do disco à direita, junto da de recursos; ícone do atelier no workspace da bancada (e na visão
   geral).
 
-## 0.2.6 · Página do documento e listas dinâmicas
+## 0.2.6 · Página do documento e listas dinâmicas · **saiu em 2026-11-02**
 
 Tudo mexe na ficha, nas propriedades de relação e nas listas ao vivo; vai junto para abrir esse código uma vez.
 

@@ -14,7 +14,7 @@ export interface Opcao {
 
 export type Especie =
   | "texto" | "numero" | "data" | "checkbox" | "url" | "email" | "telefone" | "selecao" | "multisselecao" | "status"
-  | "relacao" | "links" | "criado_em" | "atualizado_em";
+  | "relacao" | "links" | "criado_em" | "atualizado_em" | "lista";
 
 export const ESPECIES: { id: Especie; nome: string }[] = [
   { id: "texto", nome: "Texto" },
@@ -31,6 +31,7 @@ export const ESPECIES: { id: Especie; nome: string }[] = [
   { id: "links", nome: "Links (vários, por ferramenta)" },
   { id: "criado_em", nome: "Criado em (automática)" },
   { id: "atualizado_em", nome: "Atualizado em (automática)" },
+  { id: "lista", nome: "Lista dinâmica (documentos ligados a este)" },
 ];
 
 export interface Propriedade {
@@ -54,6 +55,13 @@ export interface ConfigProp {
   quebrar?: boolean;
   /** texto ou número que vira link: o valor entra no lugar de {valor} (ex.: https://chamados/{valor}) */
   molde?: string | null;
+  /** relação: a lista de quem aponta aparece na página do apontado (sem a chave: sim, como era) */
+  outro_lado?: boolean;
+  /** lista dinâmica: tipos listados (vazio = qualquer), a relação que liga a este, a ordem */
+  tipos?: number[];
+  relacao?: number;
+  ordenar?: number | "titulo" | "criado_em" | null;
+  desc?: boolean;
 }
 
 /** O link de um valor pelo molde da propriedade, ou null. */
@@ -89,6 +97,7 @@ export const MOLDES: { nome: string; especie: Especie; config?: ConfigProp }[] =
   { nome: "Links por ferramenta", especie: "links" },
   { nome: "E-mail", especie: "email" },
   { nome: "Telefone", especie: "telefone" },
+  { nome: "Lista dinâmica (documentos ligados a este)", especie: "lista" },
   { nome: "Criado em (automática)", especie: "criado_em" },
   { nome: "Atualizado em (automática)", especie: "atualizado_em" },
 ];
@@ -162,7 +171,9 @@ export interface Item {
   /** na lixeira desde quando */
   apagado_em?: string | null;
   /** quem aponta para este item numa propriedade de relação (lido do lado dele) */
-  referencias?: { prop_id: number; rotulo: string; item: Resumo }[];
+  referencias?: { prop_id: number; rotulo: string; outro_lado?: boolean; item: Resumo }[];
+  /** listas dinâmicas do tipo, calculadas: id da propriedade → documentos */
+  listas?: Record<string, Item[]>;
   /** resumo dos itens que este aponta */
   relacionados?: Resumo[];
   /** itens que citam #código deste */
@@ -255,6 +266,8 @@ export const api = {
   esvaziarLixeira: () => req<{ itens: number; notas: number }>("DELETE", "/lixeira"),
   apagarDeVez: (id: number) => req("DELETE", `/lixeira/itens/${id}`),
   /** com: "arquivos" (padrão), "vscode" ou "terminal" */
+  /** a lista ao vivo do texto: `codigo` é "este", `config` com nomes (tipos, relacao, ordenar) */
+  lista: (codigo: string, config: Record<string, unknown>) => req<Item[]>("POST", "/lista", { codigo, config }),
   abrirPasta: (caminho: string, com = "arquivos") => req<{ ok: boolean; pasta?: boolean }>("POST", "/abrir-pasta", { caminho, com }),
   criarPasta: (id: number) => req<{ pasta: string }>("POST", `/itens/${id}/pasta`),
   arquivos: (id: number) => req<Arquivo[]>("GET", `/itens/${id}/arquivos`),

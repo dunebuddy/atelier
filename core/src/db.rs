@@ -323,6 +323,38 @@ const MIGRACOES: &[&str] = &[
     r#"
     UPDATE visoes SET nome = 'Todos os documentos' WHERE fixa = 1 AND nome = 'Todos os itens';
     "#,
+    // 14 — ligações com índice: quem aponta para quem, por propriedade de relação. As relações moram em JSON dentro de
+    //      `itens.props`; achar "quem aponta para este" varria o banco inteiro (50 ms com 20 mil documentos). Esta
+    //      tabela é mantida pelo próprio banco (gatilhos) e só serve de índice: o valor de verdade continua no JSON.
+    r#"
+    CREATE TABLE ligacoes (item_id INTEGER NOT NULL, prop_id INTEGER NOT NULL, alvo TEXT NOT NULL);
+    CREATE INDEX ligacoes_alvo ON ligacoes (alvo, prop_id);
+    CREATE INDEX ligacoes_item ON ligacoes (item_id);
+    CREATE TRIGGER ligacoes_ao_criar AFTER INSERT ON itens BEGIN
+      INSERT INTO ligacoes (item_id, prop_id, alvo)
+      SELECT NEW.id, CAST(j.key AS INTEGER), lower(x.value) FROM json_each(NEW.props) j, json_each(j.value) x
+      WHERE j.type = 'array' AND CAST(j.key AS INTEGER) IN (SELECT id FROM propriedades WHERE especie = 'relacao');
+    END;
+    CREATE TRIGGER ligacoes_ao_mudar AFTER UPDATE OF props ON itens BEGIN
+      DELETE FROM ligacoes WHERE item_id = NEW.id;
+      INSERT INTO ligacoes (item_id, prop_id, alvo)
+      SELECT NEW.id, CAST(j.key AS INTEGER), lower(x.value) FROM json_each(NEW.props) j, json_each(j.value) x
+      WHERE j.type = 'array' AND CAST(j.key AS INTEGER) IN (SELECT id FROM propriedades WHERE especie = 'relacao');
+    END;
+    CREATE TRIGGER ligacoes_ao_apagar AFTER DELETE ON itens BEGIN
+      DELETE FROM ligacoes WHERE item_id = OLD.id;
+    END;
+    INSERT INTO ligacoes (item_id, prop_id, alvo)
+    SELECT i.id, CAST(j.key AS INTEGER), lower(x.value) FROM itens i, json_each(i.props) j, json_each(j.value) x
+    WHERE j.type = 'array' AND CAST(j.key AS INTEGER) IN (SELECT id FROM propriedades WHERE especie = 'relacao');
+    "#,
+    // 15 — menções com índice: quem cita `#código` no texto ou numa nota. Achar isso varria o texto de todos (40 ms
+    //      com 20 mil documentos). Quem grava texto ou nota chama `indexar_mencoes`; a migração preenche em seguida.
+    r#"
+    CREATE TABLE mencoes (item_id INTEGER NOT NULL, codigo TEXT NOT NULL);
+    CREATE INDEX mencoes_codigo ON mencoes (codigo);
+    CREATE INDEX mencoes_item ON mencoes (item_id);
+    "#,
 ];
 
 // ---------- relações ----------
@@ -542,10 +574,9 @@ pub fn ramo(conn: &Connection, id: i64, prop: i64, sentido: &str) -> Res<Vec<Ite
 pub fn referencias_do_item(conn: &Connection, id: i64) -> Res<(Value, Value)> {
     let codigo: String = conn.query_row("SELECT COALESCE(codigo, '') FROM itens WHERE id = ?", [id], |r| r.get(0))?;
     let mut st = conn.prepare(
-        "SELECT o.id, COALESCE(o.codigo, ''), o.titulo, o.tipo_id, p.id, p.nome, p.config \
-         FROM itens o JOIN json_each(o.props) j JOIN propriedades p ON p.id = CAST(j.key AS INTEGER) AND p.especie = 'relacao' \
-         WHERE o.apagado_em IS NULL AND o.id <> ?1 AND j.type = 'array' \
-           AND EXISTS (SELECT 1 FROM json_each(j.value) x WHERE x.value = ?2) \
+        "SELECT DISTINCT o.id, COALESCE(o.codigo, ''), o.titulo, o.tipo_id, p.id, p.nome, p.config, o.props, o.atualizado_em \
+         FROM ligacoes l JOIN itens o ON o.id = l.item_id JOIN propriedades p ON p.id = l.prop_id AND p.especie = 'relacao' \
+         WHERE l.alvo = lower(?2) AND o.apagado_em IS NULL AND o.id <> ?1 \
          ORDER BY p.nome, o.atualizado_em DESC",
     )?;
     let refs: Vec<Value> = st
@@ -554,20 +585,18 @@ pub fn referencias_do_item(conn: &Connection, id: i64) -> Res<(Value, Value)> {
             let config = json_col(r.get(6)?);
             Ok(json!({
                 "prop_id": r.get::<_, i64>(4)?, "rotulo": rotulo_inverso(&nome, &config),
+                "outro_lado": config.get("outro_lado").and_then(|v| v.as_bool()).unwrap_or(true),
                 "item": { "id": r.get::<_, i64>(0)?, "codigo": r.get::<_, String>(1)?, "titulo": r.get::<_, String>(2)?,
-                          "tipo_id": r.get::<_, Option<i64>>(3)? },
+                          "tipo_id": r.get::<_, Option<i64>>(3)?, "props": json_col(r.get(7)?) },
             }))
         })?
         .collect::<Result<_, _>>()?;
     let mut men = vec![];
     if !codigo.is_empty() {
-        let padrao = format!("%#{codigo}%");
+        let padrao = codigo.to_lowercase();
         let mut st = conn.prepare(
-            "SELECT DISTINCT i.id, i.codigo, i.titulo, i.tipo_id FROM itens i \
-             WHERE i.id <> ?1 AND i.apagado_em IS NULL AND (i.corpo LIKE ?2 \
-               OR EXISTS (SELECT 1 FROM notas n WHERE n.item_id = i.id AND n.apagado_em IS NULL AND n.texto LIKE ?2 \
-                          AND n.texto NOT LIKE 'Ligado:%' AND n.texto NOT LIKE 'Desligado:%' AND n.texto NOT LIKE '%: % → %')) \
-             ORDER BY i.atualizado_em DESC LIMIT 50",
+            "SELECT DISTINCT i.id, i.codigo, i.titulo, i.tipo_id, i.atualizado_em FROM mencoes m JOIN itens i ON i.id = m.item_id \
+             WHERE m.codigo = ?2 AND i.id <> ?1 AND i.apagado_em IS NULL ORDER BY i.atualizado_em DESC LIMIT 50",
         )?;
         men = st
             .query_map(params![id, padrao], |r| {
@@ -703,9 +732,56 @@ fn migrar(conn: &Connection) -> Res<()> {
         let tx = conn.unchecked_transaction()?;
         tx.execute_batch(sql)?;
         tx.execute_batch(&format!("PRAGMA user_version = {}", i + 1))?;
+        if i + 1 == 15 {
+            // as menções dos documentos que já existiam
+            let ids: Vec<i64> = tx.prepare("SELECT id FROM itens")?.query_map([], |r| r.get(0))?.collect::<Result<_, _>>()?;
+            for id in ids {
+                indexar_mencoes(&tx, id)?;
+            }
+        }
         tx.commit()?;
     }
     Ok(())
+}
+
+/// Os `#código` citados no texto: '#' e 7 hexadecimais (o código de um documento), sem outra letra ou número colado.
+fn codigos_citados(texto: &str) -> Vec<String> {
+    let b = texto.as_bytes();
+    let mut v = vec![];
+    for (i, _) in texto.match_indices('#') {
+        let cod = &b[i + 1..(i + 8).min(b.len())];
+        let depois = b.get(i + 8);
+        if cod.len() == 7 && cod.iter().all(|c| c.is_ascii_hexdigit()) && !depois.is_some_and(|c| c.is_ascii_alphanumeric()) {
+            v.push(String::from_utf8_lossy(cod).to_lowercase());
+        }
+    }
+    v
+}
+
+/// Refaz o índice de menções de um documento: o que ele cita no texto e nas notas escritas (as automáticas, como
+/// "Ligado: …", não contam). Chamado por quem grava texto ou nota.
+pub fn indexar_mencoes(conn: &Connection, item_id: i64) -> Res<()> {
+    conn.execute("DELETE FROM mencoes WHERE item_id = ?", [item_id])?;
+    let corpo: String = conn.query_row("SELECT COALESCE(corpo, '') FROM itens WHERE id = ?", [item_id], |r| r.get(0)).optional()?.unwrap_or_default();
+    let notas: Vec<String> = conn
+        .prepare("SELECT texto FROM notas WHERE item_id = ? AND apagado_em IS NULL")?
+        .query_map([item_id], |r| r.get(0))?
+        .collect::<Result<_, _>>()?;
+    let automatica = |t: &str| t.starts_with("Ligado:") || t.starts_with("Desligado:") || t.find(": ").is_some_and(|i| t[i..].contains(" → "));
+    let mut cods: Vec<String> = codigos_citados(&corpo);
+    for n in notas.iter().filter(|n| !automatica(n)) {
+        cods.extend(codigos_citados(n));
+    }
+    cods.sort();
+    cods.dedup();
+    for c in cods {
+        conn.execute("INSERT INTO mencoes (item_id, codigo) VALUES (?, ?)", params![item_id, c])?;
+    }
+    Ok(())
+}
+
+fn item_da_nota(conn: &Connection, nota: i64) -> Res<i64> {
+    Ok(conn.query_row("SELECT item_id FROM notas WHERE id = ?", [nota], |r| r.get(0))?)
 }
 
 fn json_col(s: Option<String>) -> Value {
@@ -782,7 +858,7 @@ pub struct Propriedade {
 
 pub const ESPECIES: &[&str] = &[
     "texto", "numero", "data", "checkbox", "url", "email", "telefone", "selecao", "multisselecao", "status", "relacao",
-    "links", "criado_em", "atualizado_em",
+    "links", "criado_em", "atualizado_em", "lista",
 ];
 
 /// Espécies que aceitam `config.lista` (vários valores).
@@ -845,6 +921,9 @@ fn normalizar_simples(nome: &str, especie: &str, config: &Value, v: &Value) -> R
 
 /// Valor conforme a propriedade: lista (se `config.lista`) ou simples.
 fn normalizar_valor(nome: &str, especie: &str, config: &Value, v: &Value) -> Res<Value> {
+    if especie == "lista" {
+        return Err(Erro::Invalido(format!("{nome}: é uma lista dinâmica, calculada pelos documentos ligados (não se escreve nela)")));
+    }
     let lista = config.get("lista").and_then(|x| x.as_bool()).unwrap_or(false) && LISTAVEIS.contains(&especie);
     if !lista {
         return match v {
@@ -1233,6 +1312,9 @@ pub struct Item {
     /// itens que citam `#código` deste no texto ou numa nota
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mencionado_em: Option<Value>,
+    /// listas dinâmicas do tipo (propriedade da espécie "lista" → os documentos dela, já na ordem)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub listas: Option<Value>,
 }
 
 fn item_da_linha(r: &rusqlite::Row) -> rusqlite::Result<Item> {
@@ -1251,6 +1333,7 @@ fn item_da_linha(r: &rusqlite::Row) -> rusqlite::Result<Item> {
         referencias: None,
         relacionados: None,
         mencionado_em: None,
+        listas: None,
     })
 }
 
@@ -1489,7 +1572,152 @@ pub fn ler_item(conn: &Connection, id: i64) -> Res<Item> {
         }
     }
     item.relacionados = Some(json!(resumos(conn, &cods)?));
+    item.listas = Some(listas_do_item(conn, &item)?);
     Ok(item)
+}
+
+/// As listas dinâmicas do tipo do documento, calculadas: `{ "<id da propriedade>": [documentos...] }`.
+pub fn listas_do_item(conn: &Connection, item: &Item) -> Res<Value> {
+    let mut saida = serde_json::Map::new();
+    let Some(tipo) = item.tipo_id else { return Ok(Value::Object(saida)) };
+    let props: Vec<(i64, String)> = conn
+        .prepare("SELECT p.id, p.config FROM propriedades p JOIN tipo_propriedades tp ON tp.propriedade_id = p.id WHERE tp.tipo_id = ? AND p.especie = 'lista' ORDER BY tp.ordem")?
+        .query_map([tipo], |r| Ok((r.get(0)?, r.get(1)?)))?
+        .collect::<Result<_, _>>()?;
+    for (pid, config) in props {
+        let lista = lista_dinamica(conn, &item.codigo, &json_col(Some(config))).unwrap_or_default();
+        saida.insert(pid.to_string(), json!(lista));
+    }
+    Ok(Value::Object(saida))
+}
+
+/// Os blocos ```atelier-lista do texto (a lista ao vivo dentro do documento), cada um como a config por nomes:
+/// linhas `chave: valor` (tipos, relacao, ordenar, colunas). Sem relação, vale "Pai".
+pub fn blocos_de_lista(corpo: &str) -> Vec<Value> {
+    let mut blocos = vec![];
+    let mut atual: Option<serde_json::Map<String, Value>> = None;
+    for linha in corpo.lines() {
+        let t = linha.trim();
+        match &mut atual {
+            None if t.starts_with("```") && t.trim_start_matches('`').trim() == "atelier-lista" => atual = Some(serde_json::Map::new()),
+            Some(m) if t.starts_with("```") => {
+                blocos.push(Value::Object(std::mem::take(m)));
+                atual = None;
+            }
+            Some(m) => {
+                if let Some((k, v)) = t.split_once(':') {
+                    let k = k.trim().to_lowercase().replace("relação", "relacao");
+                    m.insert(k, json!(v.trim()));
+                }
+            }
+            None => {}
+        }
+    }
+    blocos
+}
+
+/// A config de uma lista dinâmica a partir de nomes (o bloco no texto e o agente escrevem assim): `tipos` (nomes ou
+/// ids, lista ou "A, B"), `relacao` (nome ou id de uma propriedade de relação), `ordenar` (nome de propriedade,
+/// "titulo" ou "criado_em"; "-Ordem" = decrescente), `desc`. O que já vier em id passa direto.
+pub fn config_de_lista(conn: &Connection, d: &Value) -> Res<Value> {
+    let sem = |s: &str| s.trim().trim_start_matches('#').to_lowercase();
+    let lista = |v: Option<&Value>| -> Vec<Value> {
+        match v {
+            Some(Value::Array(l)) => l.clone(),
+            Some(Value::String(s)) => s.split(',').map(|x| json!(x.trim())).filter(|x| x != "").collect(),
+            Some(outro) if !outro.is_null() => vec![outro.clone()],
+            _ => vec![],
+        }
+    };
+    let tipo_id = |v: &Value| -> Res<i64> {
+        if let Some(n) = v.as_i64() {
+            return Ok(n);
+        }
+        let nome = sem(v.as_str().unwrap_or(""));
+        conn.query_row("SELECT id FROM tipos WHERE lower(nome) = ?", [&nome], |r| r.get(0))
+            .optional()?
+            .ok_or_else(|| Erro::Invalido(format!("tipo \"{nome}\" não existe")))
+    };
+    let prop_id = |v: &Value, especie: Option<&str>| -> Res<i64> {
+        if let Some(n) = v.as_i64() {
+            return Ok(n);
+        }
+        let nome = sem(v.as_str().unwrap_or(""));
+        let (id, esp): (i64, String) = conn
+            .query_row("SELECT id, especie FROM propriedades WHERE lower(nome) = ?", [&nome], |r| Ok((r.get(0)?, r.get(1)?)))
+            .optional()?
+            .ok_or_else(|| Erro::Invalido(format!("propriedade \"{nome}\" não existe")))?;
+        if let Some(e) = especie.filter(|e| *e != esp) {
+            return Err(Erro::Invalido(format!("\"{nome}\" não é uma propriedade de {e}")));
+        }
+        Ok(id)
+    };
+    let tipos: Vec<i64> = lista(d.get("tipos")).iter().map(tipo_id).collect::<Res<_>>()?;
+    let relacao = prop_id(d.get("relacao").filter(|v| !v.is_null()).unwrap_or(&json!("Pai")), Some("relacao"))?;
+    let mut desc = d.get("desc").and_then(|v| v.as_bool()).unwrap_or(false);
+    let ordenar = match d.get("ordenar") {
+        None | Some(Value::Null) => Value::Null,
+        Some(Value::Number(n)) => Value::Number(n.clone()),
+        Some(v) => {
+            let mut t = v.as_str().unwrap_or("").trim().to_string();
+            if let Some(r) = t.strip_prefix('-') {
+                desc = true;
+                t = r.trim().to_string();
+            }
+            match sem(&t).as_str() {
+                "" => Value::Null,
+                "titulo" | "título" => json!("titulo"),
+                "criado_em" | "criado em" | "criação" => json!("criado_em"),
+                _ => json!(prop_id(&json!(t), None)?),
+            }
+        }
+    };
+    Ok(json!({ "tipos": tipos, "relacao": relacao, "ordenar": ordenar, "desc": desc }))
+}
+
+/// Lista dinâmica: os documentos dos tipos `config.tipos` (vazio = qualquer tipo) cuja relação `config.relacao`
+/// aponta para `codigo` ("este": o documento onde a lista está), na ordem de `config.ordenar` (id de propriedade,
+/// "titulo" ou "criado_em"; `config.desc` inverte). O mesmo motor serve à propriedade da ficha e à lista no texto.
+pub fn lista_dinamica(conn: &Connection, codigo: &str, config: &Value) -> Res<Vec<Item>> {
+    let rel = config.get("relacao").and_then(|v| v.as_i64()).ok_or_else(|| Erro::Invalido("lista dinâmica sem relação: diga qual propriedade de relação liga os documentos".into()))?;
+    let tipos: Vec<i64> = config.get("tipos").and_then(|v| v.as_array()).map(|l| l.iter().filter_map(|x| x.as_i64()).collect()).unwrap_or_default();
+    // pela tabela de ligações (índice por alvo e propriedade), não varrendo o JSON de todos
+    let mut sql = String::from(
+        "SELECT DISTINCT i.* FROM ligacoes l JOIN itens i ON i.id = l.item_id WHERE l.prop_id = ?1 AND l.alvo = ?2 AND i.apagado_em IS NULL",
+    );
+    if !tipos.is_empty() {
+        sql.push_str(&format!(" AND i.tipo_id IN ({})", tipos.iter().map(|t| t.to_string()).collect::<Vec<_>>().join(",")));
+    }
+    let codigo = codigo.trim().trim_start_matches('#').to_lowercase();
+    let mut itens: Vec<Item> = conn.prepare(&sql)?.query_map(params![rel, codigo], item_da_linha)?.collect::<Result<_, _>>()?;
+    let ordenar = config.get("ordenar").cloned().unwrap_or(Value::Null);
+    let chave = |it: &Item| -> (u8, f64, String) {
+        let v = match &ordenar {
+            Value::Number(n) => it.props.get(n.to_string()).cloned().unwrap_or(Value::Null),
+            Value::String(s) if s == "criado_em" => json!(it.criado_em),
+            _ => json!(it.titulo.to_lowercase()),
+        };
+        match v {
+            Value::Number(n) => (0, n.as_f64().unwrap_or(0.0), String::new()),
+            Value::String(s) => match s.trim().replace(',', ".").parse::<f64>() {
+                Ok(n) => (0, n, String::new()),
+                Err(_) => (1, 0.0, s.to_lowercase()),
+            },
+            Value::Null => (2, 0.0, String::new()),
+            outro => (1, 0.0, outro.to_string()),
+        }
+    };
+    itens.sort_by(|a, b| {
+        let (ka, kb) = (chave(a), chave(b));
+        ka.0.cmp(&kb.0).then(ka.1.partial_cmp(&kb.1).unwrap_or(std::cmp::Ordering::Equal)).then(ka.2.cmp(&kb.2)).then(a.id.cmp(&b.id))
+    });
+    if config.get("desc").and_then(|v| v.as_bool()).unwrap_or(false) {
+        // vazios continuam no fim
+        let (mut com, sem): (Vec<Item>, Vec<Item>) = itens.into_iter().partition(|it| chave(it).0 < 2);
+        com.reverse();
+        itens = com.into_iter().chain(sem).collect();
+    }
+    Ok(itens)
 }
 
 fn autor(dados: &Value) -> String {
@@ -1552,6 +1780,7 @@ pub fn criar_item(conn: &Connection, dados: &Value) -> Res<i64> {
         params![novo_codigo(conn)?, titulo, tipo_id, corpo, pasta, Value::Object(props).to_string(), ts, ts],
     )?;
     let id = conn.last_insert_rowid();
+    indexar_mencoes(conn, id)?;
     anotar(conn, id, "Criado.", &autor(dados))?;
     if !relacoes.is_empty() {
         if let Err(e) = atualizar_item(conn, id, &json!({ "props": relacoes, "autor": autor(dados) })) {
@@ -1673,6 +1902,7 @@ pub fn atualizar_item(conn: &Connection, id: i64, dados: &Value) -> Res<()> {
     if let Some(c) = dados.get("corpo").and_then(|v| v.as_str()) {
         if c != corpo_atual {
             tx.execute("UPDATE itens SET corpo = ? WHERE id = ?", params![c, id])?;
+            indexar_mencoes(&tx, id)?;
             editou_texto = true;
         }
     }
@@ -1885,6 +2115,7 @@ pub fn restaurar_versao(conn: &Connection, versao_id: i64, autor: &str) -> Res<(
             let atual: String = conn.query_row("SELECT corpo FROM itens WHERE id = ?", [alvo_id], |r| r.get(0))?;
             guardar_versao(conn, "item", alvo_id, &atual, autor)?;
             conn.execute("UPDATE itens SET corpo = ?, atualizado_em = ? WHERE id = ?", params![conteudo, agora(), alvo_id])?;
+            indexar_mencoes(conn, alvo_id)?;
             anotar(conn, alvo_id, "Texto restaurado de uma versão anterior.", autor)?;
         }
         "nota" => editar_nota(conn, alvo_id, &conteudo, autor)?,
@@ -1907,6 +2138,7 @@ pub fn editar_nota(conn: &Connection, id: i64, texto: &str, autor: &str) -> Res<
     }
     guardar_versao(conn, "nota", id, &antes, autor)?;
     conn.execute("UPDATE notas SET texto = ?, editado_em = ? WHERE id = ?", params![texto.trim(), agora(), id])?;
+    indexar_mencoes(conn, item_da_nota(conn, id)?)?;
     Ok(())
 }
 
@@ -1914,12 +2146,14 @@ pub fn editar_nota(conn: &Connection, id: i64, texto: &str, autor: &str) -> Res<
 pub fn apagar_nota(conn: &Connection, id: i64) -> Res<()> {
     existe(conn, "notas", id)?;
     conn.execute("UPDATE notas SET apagado_em = ? WHERE id = ?", params![agora(), id])?;
+    indexar_mencoes(conn, item_da_nota(conn, id)?)?;
     Ok(())
 }
 
 pub fn restaurar_nota(conn: &Connection, id: i64) -> Res<()> {
     existe(conn, "notas", id)?;
     conn.execute("UPDATE notas SET apagado_em = NULL WHERE id = ?", [id])?;
+    indexar_mencoes(conn, item_da_nota(conn, id)?)?;
     Ok(())
 }
 
@@ -1928,7 +2162,12 @@ pub fn anotar(conn: &Connection, item_id: i64, texto: &str, autor: &str) -> Res<
         "INSERT INTO notas (item_id, texto, autor, criado_em) VALUES (?, ?, ?, ?)",
         params![item_id, texto, autor, agora()],
     )?;
-    Ok(conn.last_insert_rowid())
+    let id = conn.last_insert_rowid();
+    // nota automática ("Ligado: …") não cita ninguém: só a escrita reindexa
+    if texto.contains('#') {
+        indexar_mencoes(conn, item_id)?;
+    }
+    Ok(id)
 }
 
 #[cfg(test)]
@@ -2358,5 +2597,64 @@ mod testes {
         assert!(!notas.iter().any(|n| n == TEXTO_EDITADO));
         // palavra que entra vem com a vizinha, para dar para ler
         assert_eq!(diferenca_curta("Texto antes.", "Texto de antes."), "Texto → Texto de");
+    }
+
+    /// Lista dinâmica: só os tipos pedidos, ligados pela relação a este, na ordem numérica (1.5 antes de 10); não se
+    /// escreve nela; e a relação diz se aparece do outro lado.
+    #[test]
+    fn lista_dinamica_filtra_e_ordena() {
+        let c = banco();
+        let passo = criar_tipo(&c, &json!({"nome": "Passo"})).unwrap();
+        let pai = criar_propriedade(&c, &json!({"nome": "Pai", "especie": "relacao", "config": {"inverso": "Filhos", "um_so": true, "outro_lado": false}})).unwrap();
+        let ordem = criar_propriedade(&c, &json!({"nome": "Ordem", "especie": "numero"})).unwrap();
+        let passos = criar_propriedade(&c, &json!({"nome": "Passos", "especie": "lista", "config": {"tipos": [passo], "relacao": pai, "ordenar": ordem}})).unwrap();
+        tipo_por_propriedade(&c, 1, passos, &json!({})).unwrap();
+        let task = criar_item(&c, &json!({"titulo": "Task", "tipo_id": 1})).unwrap();
+        let cod = ler_item(&c, task).unwrap().codigo;
+        for (t, o) in [("dez", "10"), ("um e meio", "1.5"), ("um", "1")] {
+            criar_item(&c, &json!({"titulo": t, "tipo_id": passo, "props": {pai.to_string(): [cod.clone()], ordem.to_string(): o}})).unwrap();
+        }
+        // de outro tipo, também filho: não entra
+        criar_item(&c, &json!({"titulo": "nota solta", "tipo_id": 1, "props": {pai.to_string(): [cod.clone()]}})).unwrap();
+        let it = ler_item(&c, task).unwrap();
+        let lista = it.listas.unwrap()[passos.to_string()].as_array().unwrap().iter().map(|x| x["titulo"].as_str().unwrap().to_string()).collect::<Vec<_>>();
+        assert_eq!(lista, ["um", "um e meio", "dez"]);
+        // escrever na lista é recusado
+        assert!(atualizar_item(&c, task, &json!({"props": {passos.to_string(): ["x"]}})).is_err());
+        // o lado de lá diz que não aparece
+        assert_eq!(it.referencias.unwrap().as_array().unwrap().iter().filter(|r| r["outro_lado"] == false).count(), 4);
+    }
+
+    /// Mede (não roda no CI): 20 mil documentos, cada um filho de um de 200 pais; quanto custa ler um pai (lado de lá
+    /// da relação + lista dinâmica). `cargo test --lib volume -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn volume_relacoes() {
+        let c = banco();
+        let pai = criar_propriedade(&c, &json!({"nome": "Pai", "especie": "relacao", "config": {"um_so": true}})).unwrap();
+        let filhos = criar_propriedade(&c, &json!({"nome": "Filhos", "especie": "lista", "config": {"relacao": pai}})).unwrap();
+        tipo_por_propriedade(&c, 1, filhos, &json!({})).unwrap();
+        let mut pais = vec![];
+        for i in 0..200 {
+            let id = criar_item(&c, &json!({"titulo": format!("pai {i}"), "tipo_id": 1})).unwrap();
+            pais.push((id, ler_item(&c, id).unwrap().codigo));
+        }
+        for i in 0..20_000 {
+            let cod = &pais[i % 200].1;
+            criar_item(&c, &json!({"titulo": format!("filho {i}"), "tipo_id": 1, "props": {pai.to_string(): [cod]}})).unwrap();
+        }
+        let t = std::time::Instant::now();
+        for (id, _) in pais.iter().take(20) {
+            let it = ler_item(&c, *id).unwrap();
+            assert_eq!(it.listas.unwrap()[filhos.to_string()].as_array().unwrap().len(), 100);
+        }
+        println!("ler um pai com 100 filhos, em 20 200 documentos: {:?} por leitura", t.elapsed() / 20);
+        let (id, cod) = &pais[0];
+        let t = std::time::Instant::now();
+        for _ in 0..20 { referencias_do_item(&c, *id).unwrap(); }
+        println!("  referencias_do_item: {:?}", t.elapsed() / 20);
+        let t = std::time::Instant::now();
+        for _ in 0..20 { lista_dinamica(&c, cod, &json!({"relacao": pai})).unwrap(); }
+        println!("  lista_dinamica: {:?}", t.elapsed() / 20);
     }
 }

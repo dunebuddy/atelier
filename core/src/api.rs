@@ -122,6 +122,7 @@ pub fn rotas(banco: Banco) -> Router {
         .route("/api/lixeira", get(lixeira).delete(esvaziar_lixeira))
         .route("/api/lixeira/itens/{id}", axum::routing::delete(apagar_de_vez))
         .route("/api/abrir-pasta", post(abrir_pasta))
+        .route("/api/lista", post(lista_no_texto))
         .route("/api/apps", get(|| async { Json(json!(tokio::task::spawn_blocking(crate::apps::listar).await.unwrap_or_default())) }))
         .route("/api/bancadas", get(bancadas).post(criar_bancada).patch(renomear_bancada).delete(remover_bancada))
         .route("/api/bancadas/ativar", post(ativar_bancada))
@@ -588,6 +589,18 @@ async fn salvar_relatorio(State(b): State<Banco>, Json(d): Json<Value>) -> R {
     }
     std::fs::write(&alvo, d.get("conteudo").and_then(|v| v.as_str()).unwrap_or("")).map_err(|e| Erro::Invalido(e.to_string()))?;
     Ok(Json(json!({ "caminho": alvo })))
+}
+
+/// A lista ao vivo de dentro do texto (bloco `atelier-lista`): `codigo` é o documento onde ela está ("este") e
+/// `config` vem com nomes (tipos, relacao, ordenar), como o bloco escreve. O mesmo motor da lista dinâmica.
+async fn lista_no_texto(State(b): State<Banco>, Json(d): Json<Value>) -> R {
+    let codigo = d.get("codigo").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let config = d.get("config").cloned().unwrap_or(json!({}));
+    let itens = com(&b, |c| {
+        let cfg = db::config_de_lista(c, &config)?;
+        db::lista_dinamica(c, &codigo, &cfg)
+    })?;
+    Ok(Json(json!(itens)))
 }
 
 /// Abre um arquivo no programa padrão do sistema.

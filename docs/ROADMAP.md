@@ -139,6 +139,8 @@ pedidos dos agentes de 01 e 02/11, revisados criticamente (ver "Pedidos do agent
 
 O que pode perder dado ou faz o agente errar. Curto.
 
+- **Primeiro, o crítico:** a lista avulsa (Filhos e outras relações abertas ao lado) desfaz o filtro e a ordem a
+  cada clique em outra janela. Causa achada e correção testada (uma linha em `Visao.tsx`).
 - **Editor:** tabela e imagem do markdown aparecem e sobrevivem a uma edição (hoje somem ao gravar); bloco de código
   com cores. Teste de ida e volta (abrir, editar outra linha, conferir o banco igual); conferir a lista de tarefas
   `- [x]`.

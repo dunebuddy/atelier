@@ -25,6 +25,19 @@ Como usar:
 
 ### Bugs
 
+- **CRÍTICO: lista avulsa desfaz o filtro e a ordem a cada clique fora** (2026-11-02, Paulo: "criticíssimo, tem que
+  ir na primeira atualização"). Ao abrir "Filhos" (ou outra relação) como lista ao lado, clicar em "Mostrar
+  concluídos" ou mudar a ordem funciona; ao clicar em outra janela, tudo volta ao que era. Diagnóstico **confirmado
+  no teste sem janela** (reproduzido sem a correção e resolvido com ela):
+  - `VisaoTela` (`Visao.tsx`) copia a visão para o estado e volta a ela com `useEffect(() => setV(visao), [visao])`;
+  - na lista avulsa (`{ v: "consulta" }`) e na lista do tipo, o `Painel.tsx` monta a visão como objeto novo a cada
+    redesenho; clicar em outra janela redesenha o painel, o efeito roda e desfaz o filtro e a ordem (que moram no
+    mesmo `v`: `filtro.esconder_historico`, `config.ordenar`);
+  - correção (uma linha, testada): comparar pelo conteúdo, `[JSON.stringify(visao)]`, em vez do objeto.
+  - Não é bug: o "3 mas mostra 2". A lista abre com os concluídos escondidos, e "Não se aplica" conta como
+    concluído porque está marcado como opção de histórico do Status; o botão diz "Mostrar concluídos (1)". Com o
+    bug corrigido, mostrar fica valendo. Talvez lembrar a última escolha para as próximas listas avulsas.
+
 - **Trocar de bancada derruba os agentes e desvia o MCP** (2026-11-02, pergunta do Paulo: "posso deixar o agente
   trabalhando numa bancada e ir para outra?"). Hoje **não**, por dois motivos (lidos no código, não testados):
   1. **Terminais morrem.** `aposTrocarBancada` (`App.tsx`) zera os workspaces (`setWs(null)`); as janelas desmontam,

@@ -55,8 +55,8 @@ Como usar:
 ### Melhorias pedidas
 
 - **Ícone no workspace da bancada** (2026-11-02, Paulo). É o único sem ícone na barra de workspaces e na lista (só a
-  visão geral usa 🏠). Ele é fixo: sempre existe, pode ser fechado mas não apagado. Algo diferente dos outros: uma
-  estrela, um ícone de bancada ou o ícone do atelier. (`Workspaces.tsx`: `info.icone` vem do documento; o da
+  visão geral usa 🏠). Ele é fixo: sempre existe, pode ser fechado mas não apagado. **Decidido: o ícone do
+  atelier** (o mesmo do app, pequeno; trocar também o 🏠 da visão geral, para ficar igual em todo lugar). (`Workspaces.tsx`: `info.icone` vem do documento; o da
   bancada, chave `GERAL`, não tem.)
 
 - **Listas na ficha do documento com limite** (2026-11-02, Paulo). As propriedades de lista (relações, o lado inverso,

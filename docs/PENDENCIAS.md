@@ -62,6 +62,40 @@ Como usar:
 
 ### Melhorias pedidas
 
+- **Revisão dos atalhos: igual ao VS Code** (2026-11-02, Paulo: "o ideal é que para mim fosse igual do code"). Lido
+  nesta máquina: ele usa os atalhos **padrão** do VS Code no Windows, com duas mudanças próprias: Ctrl+Shift+Alt+J
+  maximiza o painel, e Shift+Enter no terminal manda ESC+Enter (a quebra de linha do Claude Code). Proposta (o que
+  o atelier tem de próprio fica onde não briga com o VS Code; quem mudou um atalho nas configurações fica com o seu):
+
+  | Ação no atelier | Hoje | Proposta | No VS Code |
+  |---|---|---|---|
+  | Ir para um documento | Ctrl+K | **Ctrl+P** (Ctrl+K segue valendo) | Ctrl+P abre arquivo |
+  | Lista de ações (nova: todas as ações com busca) | — | **Ctrl+Shift+P** | paleta de comandos |
+  | Barra lateral | Ctrl+\ | **Ctrl+B** (no editor de texto segue negrito) | Ctrl+B |
+  | Dividir o painel | Ctrl+Alt+\ | **Ctrl+\** | Ctrl+\ divide o editor |
+  | Foco na metade 1 / 2 | Ctrl+Alt+O (troca) | **Ctrl+1 / Ctrl+2** (Ctrl+Alt+O segue) | Ctrl+1/2 foca o grupo |
+  | Novo terminal | Ctrl+` | **Ctrl+Shift+`** | Ctrl+Shift+` novo terminal |
+  | Ir ao terminal | — | **Ctrl+`** (vai ao último terminal; sem terminal, abre um) | Ctrl+` mostra o terminal |
+  | Próxima / anterior janela | Ctrl+Tab | igual, e **Ctrl+PgDn / Ctrl+PgUp** também | os dois |
+  | Mover a janela | Ctrl+Alt+Shift+←/→ | **Ctrl+Shift+PgUp/PgDn** | move o editor no grupo |
+  | Maximizar a janela com foco (liga/desliga) | — | **Ctrl+Shift+Alt+J** (o dele; resolve o "esconder a metade esquerda") | o dele |
+  | Workspaces (visão geral) | Ctrl+Shift+O | **Ctrl+R** | Ctrl+R abre recentes |
+  | Explorador em árvore da pasta | — | **Ctrl+Shift+E** | Ctrl+Shift+E explorador |
+  | Buscar no texto de todos | — (na busca rápida) | **Ctrl+Shift+F** | Ctrl+Shift+F |
+  | Buscar na página | — | **Ctrl+F** (o do navegador, se já não funciona) | Ctrl+F |
+  | Lista de atalhos | Ctrl+/ | igual (o do VS Code é Ctrl+K Ctrl+S, combinação em duas etapas, que o atelier não tem) | — |
+
+  - Ficam como estão (iguais ao VS Code): Ctrl+N, Ctrl+W, Ctrl+, Ctrl+=/-/0, Alt+←/→, Ctrl+Tab.
+  - Ficam como estão (só do atelier, sem par no VS Code): andar na fita Ctrl+Alt+←/→ (o VS Code usa para mover o
+    editor de grupo; aqui é o jeito Niri que ele já usa), empilhar Ctrl+Alt+↑/↓, modos Ctrl+Alt+1/2/3, largura
+    Ctrl+Alt+R, principal Ctrl+Alt+Enter, workspaces Ctrl+Alt+PgUp/PgDn, Comando do agente Ctrl+J (no VS Code é o
+    painel de baixo, que o atelier não tem).
+  - **Terminal: Shift+Enter manda ESC+Enter**, como no VS Code dele: quebra de linha no Claude Code rodando no
+    terminal do atelier (hoje manda Enter e envia a mensagem).
+  - Motor: hoje cada ação tem uma combinação só (`atalhos.ts`, `combinacao`); para manter a antiga junto (Ctrl+K,
+    Ctrl+Alt+O...) precisa aceitar mais de uma. Conferir também que Ctrl+R e Ctrl+F não recarregam/abrem coisa do
+    WebView2.
+
 - **Ficha em cima do conteúdo e recolhível** (2026-11-02, Paulo). Hoje, com a janela larga, a ficha fica numa
   coluna fixa à direita (`.pagina-grade`, 320px, sticky); com a janela estreita (até 860px) ela já vai para cima do
   texto. Pedido: a ficha **sempre em cima** do conteúdo, com um botão para **recolher**: recolhida, sobra só uma

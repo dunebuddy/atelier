@@ -39,6 +39,18 @@ Como usar:
     texto simples; célula com lista ou várias linhas ele grava como HTML). Mais o CSS da tabela nos temas e um teste
     de ida e volta (abrir, editar outra linha, conferir que a tabela continua igual no banco).
   - Enquanto não sai: não editar na tela documentos com tabela (o agente pode editar pelo MCP sem problema).
+  - Junto, revisar as extensões do editor (pedido do Paulo). Hoje: StarterKit, lista de tarefas, link, menção e
+    o prompt pendente. Avaliação (só entra o que o markdown sabe guardar, senão some ao gravar):
+    - **Imagem** (`@tiptap/extension-image`): mesmo risco da tabela, e pior: `![](caminho)` some inteiro da tela e
+      de uma regravação. Entra junto com a tabela.
+    - **Bloco de código com cores** (`@tiptap/extension-code-block-lowlight` + `lowlight`): os agentes escrevem
+      muito código; só muda a aparência, o markdown continua igual. Vale.
+    - **Diagrama Mermaid** (bloco ```mermaid desenhado): não é extensão pronta, é um node view nosso com a lib
+      `mermaid` carregada só quando aparecer. Os agentes usam bastante. Talvez depois.
+    - Fora: sublinhado, marca-texto, alinhamento, cor (não têm markdown; viram HTML, e o editor está com
+      `html: false`, então se perderiam ao reabrir) e "tipografia" (troca aspas e traços no texto dos agentes).
+    - Cuidado com `html: false`: o `tiptap-markdown` grava como HTML a célula de tabela que tem lista ou várias
+      linhas; ao reabrir, esse HTML não é lido. Testar e, se preciso, manter a célula simples.
 
 ### Melhorias pedidas
 

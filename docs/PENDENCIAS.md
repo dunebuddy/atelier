@@ -24,6 +24,10 @@ Como usar:
 
 ### Melhorias pedidas
 
+- **Esconder a metade esquerda do painel** (2026-11-02, Paulo). Trabalhando só nos terminais, em fita na metade
+  direita, ele quer mais espaço sem ter de arrastar a divisória: uma opção para recolher a esquerda (e trazer de
+  volta). Não é a barra lateral, que já esconde; é a metade do painel de trabalho.
+
 ### Pedidos do agente (de `pedidos-ao-atelier.md`, triados com o Paulo em 2026-11-01)
 
 ### Recursos (mudam comportamento: precisam do ok do Paulo antes)

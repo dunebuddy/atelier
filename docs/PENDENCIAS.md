@@ -62,7 +62,15 @@ Como usar:
 
 ### Melhorias pedidas
 
-- **Revisão dos atalhos: igual ao VS Code** (2026-11-02, Paulo: "o ideal é que para mim fosse igual do code"). Lido
+- **Botão "?" na barra de título: cola de atalhos com busca** (2026-11-02, Paulo). Ao lado do botão de
+  configurações, uma interrogação que abre a lista de atalhos (a mesma do Ctrl+/, `Atalhos.tsx`) com **busca**.
+  Cada atalho ganha palavras escondidas, tipo hashtags, para achar mesmo sem lembrar o nome: "Maximizar a janela com
+  foco" acha por "aumentar janela", "deixar grande", "tela cheia"; "Barra lateral" por "menu", "esconder lado"...
+  (um campo `tags` em cada atalho de `atalhos.ts`). Vale reaproveitar as tags na lista de ações do Ctrl+Shift+P,
+  que é da mesma revisão.
+
+- **Revisão dos atalhos: igual ao VS Code** (2026-11-02, Paulo: "o ideal é que para mim fosse igual do code"; **proposta
+  abaixo aprovada por ele**). Lido
   nesta máquina: ele usa os atalhos **padrão** do VS Code no Windows, com duas mudanças próprias: Ctrl+Shift+Alt+J
   maximiza o painel, e Shift+Enter no terminal manda ESC+Enter (a quebra de linha do Claude Code). Proposta (o que
   o atelier tem de próprio fica onde não briga com o VS Code; quem mudou um atalho nas configurações fica com o seu):

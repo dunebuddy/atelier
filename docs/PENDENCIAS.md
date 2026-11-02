@@ -198,7 +198,8 @@ Como usar:
     Code, os **hooks** `Stop` e `Notification` podendo chamar a API do atelier, que dão "terminou" e "esperando"
     exatos (o atelier pode oferecer instalar esses hooks em Integrações). Codex tem o `notify` da configuração. O
     genérico (a, b, c) vale para todos; o exato (d) para quem tiver.
-  - Frase cortada no fim do pedido ("a mesma regra, mesma rampa, só que..."): perguntar ao Paulo o resto.
+  - A frase cortada no fim do pedido era só "a mesma regra em outro lugar" (o Paulo não lembrou qual): coberto pelo
+    botão que abre os workspaces.
   - **Decidido (Paulo, 2026-11-02): ir pelos hooks.** Em Configurações → Integrações, ao lado de "instalar MCP",
     um **"instalar hooks"** por agente. Desenho:
     - o hook chama o próprio `atelier-mcp` (ex.: `atelier-mcp hook esperando`), nada de script solto: é o binário

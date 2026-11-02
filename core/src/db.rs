@@ -355,6 +355,10 @@ const MIGRACOES: &[&str] = &[
     CREATE INDEX mencoes_codigo ON mencoes (codigo);
     CREATE INDEX mencoes_item ON mencoes (item_id);
     "#,
+    // 16 — consultas salvas (SQL só de leitura sobre a bancada; ver consultas.rs)
+    r#"
+    CREATE TABLE consultas (id INTEGER PRIMARY KEY, nome TEXT NOT NULL UNIQUE, sql TEXT NOT NULL, criado_em TEXT NOT NULL, atualizado_em TEXT NOT NULL);
+    "#,
 ];
 
 // ---------- relações ----------
@@ -726,6 +730,14 @@ pub fn id_por_codigo(conn: &Connection, codigo: &str) -> Res<i64> {
         .ok_or(Erro::NaoEncontrado(format!("documento #{c}")))
 }
 
+/// Banco em memória já migrado (para os testes dos outros módulos).
+#[cfg(test)]
+pub fn abrir_em_memoria() -> Connection {
+    let c = Connection::open_in_memory().unwrap();
+    migrar(&c).unwrap();
+    c
+}
+
 fn migrar(conn: &Connection) -> Res<()> {
     let versao: usize = conn.query_row("PRAGMA user_version", [], |r| r.get::<_, i64>(0))? as usize;
     for (i, sql) in MIGRACOES.iter().enumerate().skip(versao) {
@@ -858,7 +870,7 @@ pub struct Propriedade {
 
 pub const ESPECIES: &[&str] = &[
     "texto", "numero", "data", "checkbox", "url", "email", "telefone", "selecao", "multisselecao", "status", "relacao",
-    "links", "criado_em", "atualizado_em", "lista",
+    "links", "criado_em", "atualizado_em", "lista", "formula",
 ];
 
 /// Espécies que aceitam `config.lista` (vários valores).
@@ -923,6 +935,9 @@ fn normalizar_simples(nome: &str, especie: &str, config: &Value, v: &Value) -> R
 fn normalizar_valor(nome: &str, especie: &str, config: &Value, v: &Value) -> Res<Value> {
     if especie == "lista" {
         return Err(Erro::Invalido(format!("{nome}: é uma lista dinâmica, calculada pelos documentos ligados (não se escreve nela)")));
+    }
+    if especie == "formula" {
+        return Err(Erro::Invalido(format!("{nome}: é uma fórmula, calculada das outras propriedades (não se escreve nela)")));
     }
     let lista = config.get("lista").and_then(|x| x.as_bool()).unwrap_or(false) && LISTAVEIS.contains(&especie);
     if !lista {
@@ -1356,6 +1371,8 @@ pub struct Filtro {
     pub livres: Vec<i64>,
     /// preenchido por quem consulta quando há `livres`: (tipo, propriedade de status, opções de histórico)
     pub concluidos: Vec<(i64, i64, Vec<String>)>,
+    /// visão feita de uma consulta: só os documentos que o SQL devolve (coluna `codigo`), na ordem dele
+    pub sql: Option<String>,
 }
 
 /// Onde está o "concluído" de cada tipo: as opções de histórico de cada propriedade de status (a do tipo, se ele
@@ -1488,9 +1505,17 @@ pub fn listar_itens(conn: &Connection, f: &Filtro) -> Res<Vec<Item>> {
     sql_filtro(f, &mut sql, &mut args);
     sql.push_str(" ORDER BY atualizado_em DESC, id DESC");
     let mut st = conn.prepare(&sql)?;
-    let itens = st
+    let mut itens: Vec<Item> = st
         .query_map(rusqlite::params_from_iter(args.iter().map(|b| b.as_ref())), item_da_linha)?
         .collect::<Result<_, _>>()?;
+    // visão de consulta: fica só o que o SQL devolveu, na ordem dele
+    if let Some(q) = f.sql.as_deref().filter(|q| !q.trim().is_empty()) {
+        let cods = crate::consultas::codigos(conn, q)?;
+        let pos: std::collections::HashMap<&str, usize> = cods.iter().enumerate().map(|(i, c)| (c.as_str(), i)).collect();
+        itens.retain(|it| pos.contains_key(it.codigo.as_str()));
+        itens.sort_by_key(|it| pos[it.codigo.as_str()]);
+    }
+    crate::formulas::calcular(conn, &mut itens)?;
     Ok(itens)
 }
 
@@ -1541,6 +1566,7 @@ fn clone_filtro(f: &Filtro) -> Filtro {
         datas: f.datas.clone(),
         livres: f.livres.clone(),
         concluidos: f.concluidos.clone(),
+        sql: f.sql.clone(),
     }
 }
 
@@ -1573,6 +1599,7 @@ pub fn ler_item(conn: &Connection, id: i64) -> Res<Item> {
     }
     item.relacionados = Some(json!(resumos(conn, &cods)?));
     item.listas = Some(listas_do_item(conn, &item)?);
+    crate::formulas::calcular(conn, std::slice::from_mut(&mut item))?;
     Ok(item)
 }
 

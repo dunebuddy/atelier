@@ -8,6 +8,8 @@ export type Rota =
   /** visão avulsa, não salva: o filtro vem junto (ex.: "Filhos de X", aberta do "Apontado por" de um item) */
   | { v: "consulta"; titulo: string; icone?: string; filtro: FiltroVisao }
   | { v: "lista"; tipo: number | null }
+  /** consulta SQL (salva, com id; ou nova) */
+  | { v: "sql"; id?: number }
   | { v: "item"; id: number }
   | { v: "tipo"; id: number }
   /** janela de terminal: `sessao` identifica o processo (muda = outro terminal) */

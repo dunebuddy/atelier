@@ -207,6 +207,9 @@ pub fn rotas(banco: Banco) -> Router {
         .route("/api/lixeira/itens/{id}", axum::routing::delete(apagar_de_vez))
         .route("/api/abrir-pasta", post(abrir_pasta))
         .route("/api/lista", post(lista_no_texto))
+        .route("/api/consultas", get(listar_consultas).post(salvar_consulta))
+        .route("/api/consultas/rodar", post(rodar_consulta))
+        .route("/api/consultas/{id}", axum::routing::delete(apagar_consulta))
         .route("/api/agente/evento", post(evento_do_agente))
         .route("/api/hooks", get(|| async { Json(tokio::task::spawn_blocking(crate::hooks::listar).await.unwrap_or_default()) }))
         .route("/api/hooks/{id}", post(instalar_hooks).delete(remover_hooks))
@@ -469,6 +472,7 @@ fn filtro_de(q: &[(String, String)]) -> Filtro {
             .collect(),
         // livre=<id>,<id>: relações em que tudo o que está ligado já foi concluído (ou não há nada)
         livres: um("livre").map(|s| s.split(',').filter_map(|x| x.trim().parse().ok()).collect()).unwrap_or_default(),
+        sql: um("sql"),
         ..Default::default()
     }
 }
@@ -707,6 +711,30 @@ async fn instalar_hooks(Path(id): Path<String>) -> R {
 
 async fn remover_hooks(Path(id): Path<String>) -> R {
     Ok(Json(tokio::task::spawn_blocking(move || crate::hooks::aplicar(&id, false)).await.map_err(|e| Erro::Invalido(e.to_string()))??))
+}
+
+async fn listar_consultas(State(b): State<Banco>) -> R {
+    Ok(Json(json!(com(&b, crate::consultas::listar)?)))
+}
+
+/// Salva (com `id`, atualiza) uma consulta: `{ id?, nome, sql }`.
+async fn salvar_consulta(State(b): State<Banco>, Json(d): Json<Value>) -> R {
+    let id = d.get("id").and_then(|v| v.as_i64());
+    let nome = d.get("nome").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let sql = d.get("sql").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let id = com(&b, |c| crate::consultas::salvar(c, id, &nome, &sql))?;
+    Ok(Json(json!({ "id": id })))
+}
+
+async fn apagar_consulta(State(b): State<Banco>, Path(id): Path<i64>) -> R {
+    com(&b, |c| crate::consultas::apagar(c, id))?;
+    Ok(Json(json!({ "ok": true })))
+}
+
+/// Roda um SQL só de leitura: `{ sql }` → colunas e linhas.
+async fn rodar_consulta(State(b): State<Banco>, Json(d): Json<Value>) -> R {
+    let sql = d.get("sql").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    Ok(Json(com(&b, |c| crate::consultas::rodar(c, &sql))?))
 }
 
 /// A lista ao vivo de dentro do texto (bloco `atelier-lista`): `codigo` é o documento onde ela está ("este") e

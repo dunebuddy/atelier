@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { combinacao } from "../atalhos";
+import { PaginaConsulta } from "./Consultas";
 import {
   ArrowLeftToLine, Bot, ChevronDown, ChevronLeft, ChevronRight, Columns2, FolderOpen, FolderTree, GalleryHorizontalEnd, LayoutPanelLeft, List,
   Minimize2, PanelTop, Rows2, SquareTerminal, X,
@@ -451,6 +452,7 @@ function Conteudo({ j, ctx, visivel, mudar }: { j: Janela; ctx: Contexto; visive
     else if (tipoDaLista) rotular({ titulo: tipoDaLista.nome, icone: tipoDaLista.icone, tipo_id: tipoDaLista.id });
     else if (r.v === "consulta") rotular({ titulo: r.titulo, icone: r.icone ?? "🔗", tipo_id: null });
     else if (r.v === "lixeira") rotular({ titulo: "Lixeira", icone: "🗑️", tipo_id: null });
+    else if (r.v === "sql") rotular({ titulo: "Consulta", icone: "🔎", tipo_id: null });
     else if (tipoConfig) rotular({ titulo: `Tipo: ${tipoConfig.nome}`, icone: tipoConfig.icone, tipo_id: null });
     else if (r.v === "terminal") rotular({ titulo: r.titulo ?? "terminal", tipo_id: null });
     else if (r.v === "pastas") rotular({ titulo: r.titulo ?? r.raiz.split(/[\\/]/).filter(Boolean).pop() ?? "pastas", tipo_id: null });
@@ -509,6 +511,19 @@ function Conteudo({ j, ctx, visivel, mudar }: { j: Janela; ctx: Contexto; visive
       );
     case "lixeira":
       return <Lixeira esquema={esquema} ir={ir} />;
+    case "sql":
+      return (
+        <PaginaConsulta
+          key={r.id ?? "nova"}
+          id={r.id}
+          esquema={esquema}
+          aoMudarConsultas={() => window.dispatchEvent(new Event("atelier:consultas"))}
+          criarVisao={async (nome, sql) => {
+            const id = await ctx.criarVisao({ nome, icone: "🔎", layout: "tabela", filtro: { sql }, config: {} });
+            mudar((s) => P.substituir(s, j.id, { v: "visao", id }));
+          }}
+        />
+      );
     case "tipo":
       return <ConfigTipo key={r.id} esquema={esquema} id={r.id} ir={ir} aoMudarEsquema={ctx.aoMudarEsquema} />;
     case "terminal":

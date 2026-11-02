@@ -46,6 +46,7 @@ function rotuloSimples(r: Rota): string {
     case "item": return `Documento ${r.id}`;
     case "visao": return "Visão";
     case "lixeira": return "Lixeira";
+    case "sql": return "Consulta";
     case "terminal": return r.titulo ?? "terminal";
     case "arquivos": return r.titulo ?? "arquivos";
     case "pastas": return r.titulo ?? "pastas";

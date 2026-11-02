@@ -136,7 +136,7 @@ Versão sozinha, a pedido do Paulo, antes de fechar a segunda rodada.
   clique em outra janela.
 - Ctrl+Alt+setas da fita com o cursor num terminal (já estava no master).
 
-## Segunda rodada (proposta de 2026-11-02; o Paulo liberou executar em sequência)
+## Segunda rodada (2026-11-02; executada em sequência, 0.2.4 a 0.2.9, todas com CI verde)
 
 Fase de polimento: o Paulo usa o app no dia a dia e nada grave está quebrado. A régua é a mesma de cima, com um
 ajuste dele: **a prioridade é mais de UX do que de funcionalidade**, a não ser o que mexe com dado (risco de perder
@@ -223,7 +223,7 @@ Grande, e o bug que ele evita é raro (trocar de bancada com agente rodando).
   certa (o atelier, se fechado; a bancada certa, se houver várias janelas). Serve para colar em outros apps e para
   os agentes mandarem links clicáveis.
 
-## 0.2.9 · Consultas e fórmulas
+## 0.2.9 · Consultas e fórmulas · **saiu em 2026-11-02**
 
 Recursos novos e maiores; precisam de conversa antes (a linguagem da consulta, a sintaxe da fórmula).
 

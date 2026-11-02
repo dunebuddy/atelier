@@ -14,7 +14,7 @@ export interface Opcao {
 
 export type Especie =
   | "texto" | "numero" | "data" | "checkbox" | "url" | "email" | "telefone" | "selecao" | "multisselecao" | "status"
-  | "relacao" | "links" | "criado_em" | "atualizado_em" | "lista";
+  | "relacao" | "links" | "criado_em" | "atualizado_em" | "lista" | "formula";
 
 export const ESPECIES: { id: Especie; nome: string }[] = [
   { id: "texto", nome: "Texto" },
@@ -32,6 +32,7 @@ export const ESPECIES: { id: Especie; nome: string }[] = [
   { id: "criado_em", nome: "Criado em (automática)" },
   { id: "atualizado_em", nome: "Atualizado em (automática)" },
   { id: "lista", nome: "Lista dinâmica (documentos ligados a este)" },
+  { id: "formula", nome: "Fórmula (calculada de outras propriedades)" },
 ];
 
 export interface Propriedade {
@@ -62,6 +63,8 @@ export interface ConfigProp {
   relacao?: number;
   ordenar?: number | "titulo" | "criado_em" | null;
   desc?: boolean;
+  /** fórmula: ex. {Horas} * {Valor}, conta({Passos}), soma({Passos}, "Horas") */
+  expressao?: string;
 }
 
 /** O link de um valor pelo molde da propriedade, ou null. */
@@ -98,6 +101,7 @@ export const MOLDES: { nome: string; especie: Especie; config?: ConfigProp }[] =
   { nome: "E-mail", especie: "email" },
   { nome: "Telefone", especie: "telefone" },
   { nome: "Lista dinâmica (documentos ligados a este)", especie: "lista" },
+  { nome: "Fórmula (calculada)", especie: "formula" },
   { nome: "Criado em (automática)", especie: "criado_em" },
   { nome: "Atualizado em (automática)", especie: "atualizado_em" },
 ];
@@ -266,6 +270,10 @@ export const api = {
   esvaziarLixeira: () => req<{ itens: number; notas: number }>("DELETE", "/lixeira"),
   apagarDeVez: (id: number) => req("DELETE", `/lixeira/itens/${id}`),
   /** com: "arquivos" (padrão), "vscode" ou "terminal" */
+  consultas: () => req<{ id: number; nome: string; sql: string; atualizado_em: string }[]>("GET", "/consultas"),
+  salvarConsulta: (d: { id?: number; nome: string; sql: string }) => req<{ id: number }>("POST", "/consultas", d),
+  apagarConsulta: (id: number) => req("DELETE", `/consultas/${id}`),
+  rodarConsulta: (sql: string) => req<{ colunas: string[]; linhas: unknown[][]; total: number; cortada: boolean }>("POST", "/consultas/rodar", { sql }),
   /** a lista ao vivo do texto: `codigo` é "este", `config` com nomes (tipos, relacao, ordenar) */
   lista: (codigo: string, config: Record<string, unknown>) => req<Item[]>("POST", "/lista", { codigo, config }),
   abrirPasta: (caminho: string, com = "arquivos") => req<{ ok: boolean; pasta?: boolean }>("POST", "/abrir-pasta", { caminho, com }),
@@ -357,6 +365,8 @@ export interface FiltroVisao {
   datas?: Record<string, FiltroData>;
   /** relações "livres": tudo o que está ligado nelas já foi concluído, ou não há nada (ex.: Bloqueado por → pode andar) */
   livres?: number[];
+  /** visão feita de uma consulta: só os documentos que o SQL devolve (coluna codigo) */
+  sql?: string;
 }
 
 export type Sentido = "aponta" | "apontado";
@@ -430,6 +440,7 @@ function queryFiltro(f: FiltroVisao, periodo: { de: string; ate: string } | null
   if (f.sem_tipo) p.set("sem_tipo", "1");
   for (const [pid, vals] of Object.entries(f.props ?? {})) for (const v of vals) p.append(`p.${pid}`, v);
   if (f.livres?.length) p.set("livre", f.livres.join(","));
+  if (f.sql) p.set("sql", f.sql);
   const texto = [f.texto, q].filter(Boolean).join(" ").trim();
   if (texto) p.set("q", texto);
   if (periodo) { p.set("de", periodo.de); p.set("ate", periodo.ate); }

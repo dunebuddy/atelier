@@ -472,3 +472,12 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   (`ATELIER_BANCADA`), `atelier://` (tauri-plugin-deep-link + single-instance com deep-link). Testado sem janela:
   segunda aba com `?bancada=`, agente preso gravando na bancada dele, pergunta só na janela certa.
   Atenção: o `target/debug/atelier-mcp.exe` pode ficar velho; recompilar antes de testar pelo `mcp_teste.py`.
+- 0.2.9: `core/src/consultas.rs` (CTE `documentos`, `rodar` só leitura com prazo, consultas salvas: migração 16),
+  `core/src/formulas.rs` (avaliador pequeno; `calcular` em `ler_item` e `listar_itens`), visão com `filtro.sql`,
+  tela `components/Consultas.tsx` (rota `{ v: "sql" }`), MCP `consultar`/`consultas`.
+
+### Ponto de parada (fim da segunda rodada)
+- Roadmap da segunda rodada concluído: 0.2.3 a 0.2.9 no mesmo dia, cada uma com o CI conferido antes da próxima.
+- A conferir no uso (não dá no teste sem janela): janelas de bancada e `atelier://` no app de verdade; hooks
+  instalados no Claude Code do Paulo; Zen em tela cheia; Shift+Enter no Claude Code dentro do terminal.
+- Próximo: o que chegar em PENDENCIAS.md; ideias sem data no ROADMAP.md.

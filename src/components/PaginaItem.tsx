@@ -219,6 +219,10 @@ export function PaginaItem({
       </div>
       {p.especie === "lista" ? (
         <ListaDaFicha esquema={esquema} itens={item.listas?.[String(p.id)] ?? []} />
+      ) : p.especie === "formula" ? (
+        <div className="prop-valor calculada" title={`Fórmula: ${p.config?.expressao ?? ""}`}>
+          {String((item.props as Record<string, unknown>)[String(p.id)] ?? "") || <span className="vazio">—</span>}
+        </div>
       ) : (
         <ValorProp
           esquema={esquema}

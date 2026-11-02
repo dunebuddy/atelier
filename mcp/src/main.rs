@@ -213,6 +213,20 @@ fn ferramentas() -> Value {
             }, "required": ["operacoes"] }
         },
         {
+            "name": "consultar",
+            "description": "Roda um SQL só de leitura na bancada (SQLite). Use a tabela `documentos`: uma linha por documento, com codigo, titulo, tipo, corpo, criado_em, atualizado_em e uma coluna por propriedade, pelo nome entre aspas duplas (ex.: SELECT codigo, titulo, \"Status\" FROM documentos WHERE tipo = 'Task' AND \"Status\" <> 'Feito'). Relação vem como lista JSON de códigos. Devolve colunas e até 1000 linhas. `nome` roda uma consulta salva; `salvar_como` guarda esta com um nome (aparece em Consultas no app; com a coluna codigo, vira visão).",
+            "inputSchema": { "type": "object", "properties": {
+                "sql": { "type": "string" },
+                "nome": { "type": "string", "description": "nome de uma consulta salva para rodar" },
+                "salvar_como": { "type": "string" }
+            } }
+        },
+        {
+            "name": "consultas",
+            "description": "Lista as consultas salvas da bancada (nome e SQL).",
+            "inputSchema": { "type": "object", "properties": {} }
+        },
+        {
             "name": "anotar",
             "description": "Acrescenta uma nota datada na linha do tempo do documento (acompanhamento, decisão, o que foi feito).",
             "inputSchema": { "type": "object", "properties": {
@@ -357,7 +371,7 @@ fn ferramentas() -> Value {
         },
         {
             "name": "criar_propriedade",
-            "description": "Cria uma propriedade (compartilhada entre tipos) e, se quiser, já coloca em tipos. Espécies: texto, numero (inteiro, casas, formato), data (hora), checkbox (sim/não), url, email, telefone, selecao, multisselecao, status, links (vários links com rótulo), criado_em e atualizado_em (automáticas); texto/numero/data/email/telefone/url com lista: true guardam vários valores; relacao (aponta para outros documentos; `inverso` é como se lê do outro lado, ex.: \"Bloqueado por\" ↔ \"Bloqueia\"; `outro_lado`: false esconde essa lista do outro lado; `um_so` aceita um documento só, ex.: \"Pai\"); lista (lista dinâmica, calculada: os documentos dos tipos `lista_tipos` cuja relação `lista_relacao` aponta para o documento, na ordem de `lista_ordenar`, ex.: no tipo Task, \"Passos\" = tipo Passo com Pai = este, por Ordem; não se escreve nela). No texto de um documento, um bloco ```atelier-lista com linhas tipos: / relacao: / ordenar: / colunas: mostra a mesma lista ao vivo.",
+            "description": "Cria uma propriedade (compartilhada entre tipos) e, se quiser, já coloca em tipos. Espécies: texto, numero (inteiro, casas, formato), data (hora), checkbox (sim/não), url, email, telefone, selecao, multisselecao, status, links (vários links com rótulo), criado_em e atualizado_em (automáticas); texto/numero/data/email/telefone/url com lista: true guardam vários valores; relacao (aponta para outros documentos; `inverso` é como se lê do outro lado, ex.: \"Bloqueado por\" ↔ \"Bloqueia\"; `outro_lado`: false esconde essa lista do outro lado; `um_so` aceita um documento só, ex.: \"Pai\"); lista (lista dinâmica, calculada: os documentos dos tipos `lista_tipos` cuja relação `lista_relacao` aponta para o documento, na ordem de `lista_ordenar`, ex.: no tipo Task, \"Passos\" = tipo Passo com Pai = este, por Ordem; não se escreve nela); formula (valor calculado de outras propriedades: `expressao`; não se escreve nela). No texto de um documento, um bloco ```atelier-lista com linhas tipos: / relacao: / ordenar: / colunas: mostra a mesma lista ao vivo.",
             "inputSchema": { "type": "object", "properties": {
                 "nome": { "type": "string" },
                 "especie": { "type": "string" },
@@ -373,6 +387,7 @@ fn ferramentas() -> Value {
                 "lista_tipos": { "type": "array", "items": { "type": "string" }, "description": "lista: tipos dos documentos listados (vazio = qualquer)" },
                 "lista_relacao": { "type": "string", "description": "lista: a propriedade de relação que liga os documentos a este (ex.: Pai)" },
                 "lista_ordenar": { "type": "string", "description": "lista: propriedade para ordenar (ou titulo, criado_em); com - na frente, decrescente" },
+                "expressao": { "type": "string", "description": "formula: ex. {Horas} * {Valor}, {Título} + \" - \" + {Status}, conta({Passos}), soma({Passos}, \"Horas\"), se({Horas} > 8, \"longo\", \"curto\"); funções: conta, soma, media, min, max, arred, se" },
                 "tipos": { "type": "array", "items": { "type": "string" }, "description": "nomes dos tipos que passam a ter a propriedade" }
             }, "required": ["nome", "especie"] }
         },
@@ -1044,6 +1059,21 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
             }
             Ok(json!({ "ok": true, "feitas": feitos }))
         }
+        "consultar" => {
+            let sql = match (s(a, "sql").filter(|x| !x.trim().is_empty()), s(a, "nome")) {
+                (Some(q), _) => q.to_string(),
+                (None, Some(n)) => atelier_core::consultas::por_nome(&conn, n).map_err(e)?.ok_or(format!("não há consulta salva com o nome \"{n}\""))?.1,
+                _ => return Err("mande sql (ou o nome de uma consulta salva)".into()),
+            };
+            let mut r = atelier_core::consultas::rodar(&conn, &sql).map_err(e)?;
+            if let Some(nome) = s(a, "salvar_como").filter(|n| !n.trim().is_empty()) {
+                let id = atelier_core::consultas::por_nome(&conn, nome).map_err(e)?.map(|x| x.0);
+                atelier_core::consultas::salvar(&conn, id, nome, &sql).map_err(e)?;
+                r["salva_como"] = json!(nome);
+            }
+            Ok(r)
+        }
+        "consultas" => Ok(json!(atelier_core::consultas::listar(&conn).map_err(e)?)),
         "anotar" => {
             let id = id_de(&conn, a)?;
             let t = s(a, "texto").filter(|t| !t.trim().is_empty()).ok_or("nota vazia")?;
@@ -1113,7 +1143,7 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
                 .map(|o| json!({ "nome": o, "cor": "gray" }))
                 .collect();
             let mut config = Map::new();
-            for k in ["inverso", "um_so", "lista", "inteiro", "casas", "formato", "hora", "outro_lado"] {
+            for k in ["inverso", "um_so", "lista", "inteiro", "casas", "formato", "hora", "outro_lado", "expressao"] {
                 if let Some(v) = a.get(k).filter(|v| !v.is_null()) {
                     config.insert(k.into(), v.clone());
                 }

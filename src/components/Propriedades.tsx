@@ -112,6 +112,7 @@ export function MenuProp({
       </div>
       {prop.especie === "relacao" && <ConfigRelacao prop={prop} aoMudarEsquema={aoMudarEsquema} />}
       {prop.especie === "lista" && esquema && <ConfigLista esquema={esquema} prop={prop} aoMudarEsquema={aoMudarEsquema} />}
+      {prop.especie === "formula" && <ConfigFormula prop={prop} aoMudarEsquema={aoMudarEsquema} />}
       <ConfigGeral prop={prop} aoMudarEsquema={aoMudarEsquema} />
       <div className="menu-sep" />
       {tipo && (
@@ -175,6 +176,35 @@ function ConfigRelacao({ prop, aoMudarEsquema }: { prop: Propriedade; aoMudarEsq
         <input type="checkbox" checked={!!prop.config?.um_so} onChange={(e) => gravar({ um_so: e.target.checked })} style={{ accentColor: "var(--acento)" }} />
         Aponta para um documento só
       </label>
+    </>
+  );
+}
+
+/** Fórmula: a expressão (calculada na hora de ler; não se escreve no valor). */
+function ConfigFormula({ prop, aoMudarEsquema }: { prop: Propriedade; aoMudarEsquema: () => Promise<void> }) {
+  const gravar = async (expressao: string) => {
+    try {
+      await api.atualizarProp(prop.id, { config: { ...prop.config, expressao } });
+      await aoMudarEsquema();
+    } catch (e) {
+      falhou(e);
+    }
+  };
+  return (
+    <>
+      <div className="menu-rotulo">Fórmula</div>
+      <textarea
+        className="campo formula-campo"
+        rows={3}
+        spellCheck={false}
+        placeholder='{Horas} * {Valor}'
+        defaultValue={prop.config?.expressao ?? ""}
+        onBlur={(e) => e.target.value !== (prop.config?.expressao ?? "") && gravar(e.target.value)}
+      />
+      <div className="dica formula-dica">
+        {"{Nome}"} é o valor da propriedade; + − × ÷ e parênteses; texto entre aspas (+ junta textos).
+        Funções: conta({"{Lista}"}), soma({"{Lista}"}, "Prop"), media, min, max, arred(x, casas), se(cond, então, senão).
+      </div>
     </>
   );
 }

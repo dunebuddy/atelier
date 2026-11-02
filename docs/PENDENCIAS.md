@@ -70,35 +70,6 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 
 ### Recursos (mudam comportamento: precisam do ok do Paulo antes)
 
-- **Consultas: perguntar ao banco sem criar visão** (2026-11-02, Paulo). Na barra lateral, acima de Visões, um item
-  "Consultas" (nome a decidir: query, consultas). Fazer uma consulta rápida no banco da bancada, ver o resultado e,
-  se quiser, **salvar a consulta** (separado das visões: ele não quer uma visão, quer a consulta à mão) e **criar uma
-  visão a partir dela**. A decidir: a linguagem (SQL de verdade sobre o SQLite, só leitura, com as propriedades
-  expostas como colunas? ou o mesmo filtro das visões, em texto?), como o resultado aparece (tabela, contagem) e o
-  MCP poder rodar e salvar consultas também.
-
-- **Propriedades calculadas no tipo: listas dinâmicas e fórmulas** (2026-11-02, Paulo). **As listas dinâmicas, o
-  "mostrar do outro lado" e a lista no texto saíram na 0.2.6; falta a fórmula (0.2.9).**
-  - Hoje o "Filhos" da página não é fixo: é o rótulo inverso da propriedade de relação **Pai** (`inverso: "Filhos"`).
-    Todo documento que aponta para este em "Pai" aparece ali, de qualquer tipo, misturado; cada propriedade de relação
-    gera uma seção assim pelo nome inverso dela.
-  - O pedido: uma espécie nova de propriedade, **lista dinâmica**, configurada no tipo. Ela é um filtro salvo, "os
-    documentos dos tipos X (um ou vários) cuja propriedade de relação P aponta para este". Exemplo: no tipo Projeto,
-    "Demandas" = tipo Demanda com Pai = este; "Anexos" = tipos Anexo, Nota e Arquivo com Pai = este. A relação P é
-    qualquer uma (Pai é só uma propriedade, não algo fixo). Aparece na página e na tabela como as outras.
-  - E **fórmula**: valor calculado de outras propriedades (soma, texto concatenado...), como no Notion.
-  - Pensar junto: o que fazer com as seções de inverso que já aparecem (esconder quando uma lista dinâmica cobre a
-    mesma relação?), contagem/soma sobre a lista (rollup), e o MCP criar e ler essas propriedades.
-  - Como é hoje: o nome inverso só dá nome à seção; ela aparece sempre que alguém aponta (sem nome vira "Pai (de)"),
-    não dá para desligar e não filtra por tipo.
-  - **Decidido com o Paulo (2026-11-02): o jeito dele.** Hoje está automático e agressivo demais.
-    - A lista do outro lado deixa de ser sempre: na propriedade de relação, uma **caixinha** (desmarcada por padrão)
-      para mostrar do outro lado, com o nome dela. Marcada, vira uma propriedade dinâmica (lista) no outro lado.
-    - "Inverso" é nome feio: achar outro, de banco de dados ("relação inversa", "mão dupla", "do outro lado"...).
-    - E as listas dinâmicas mais completas (tipos X, relação P) vêm junto, porque algumas são mais que só o inverso.
-    - Na migração: as relações que já existem mantêm a lista do outro lado ligada? (decidir; o Paulo quer menos
-      poluição, então talvez só "Pai → Filhos").
-
 ### Ideias antigas (ninguém pediu agora)
 - Abrir o atelier por link (`atelier://`).
 - Propriedades calculadas (fórmula; soma a partir de itens ligados).
@@ -122,6 +93,17 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.9** (2026-11-02, consultas e fórmulas):
+  - **Consultas**, acima de Visões: SQL de verdade, só de leitura (conferido como só leitura, `query_only` e prazo de
+    4 s), sobre `documentos` (uma linha por documento, uma coluna por propriedade, pelo nome entre aspas duplas);
+    resultado em tabela, Ctrl+Enter roda, salvar à parte, e **virar visão** quando devolve `codigo` (a visão roda
+    o SQL de novo a cada abertura, em qualquer layout). Escolha feita sem conversar (o Paulo liberou seguir): SQL,
+    porque ele pediu "consulta no banco de dados"; trocar a linguagem é fácil se ele quiser;
+  - **fórmulas** (espécie "formula"): `{Horas} * {Valor}`, texto com `+`, `conta({Lista})`, `soma({Lista}, "Prop")`,
+    `media`, `min`, `max`, `arred`, `se(cond, então, senão)`; calculadas na hora (na ficha, na tabela e no MCP);
+    erro aparece como "erro: ..." no valor;
+  - **MCP:** `consultar` (sql, ou `nome` de uma salva; `salvar_como`), `consultas`, e `criar_propriedade` com
+    `especie: "formula"` e `expressao`.
 - **0.2.8** (2026-11-02, bancadas lado a lado e atelier://):
   - **uma janela por bancada:** no seletor de bancadas, o botão "abrir em nova janela" abre a bancada numa janela
     só dela (a que já está aberta só vem para a frente); a janela principal segue a bancada ativa;

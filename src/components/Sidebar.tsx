@@ -173,6 +173,16 @@ export function Sidebar({
     }
   };
 
+  // consultas salvas (mudam quando se salva ou apaga uma)
+  const [consultas, setConsultas] = useState<{ id: number; nome: string; sql: string }[]>([]);
+  useEffect(() => {
+    const carregar = () => api.consultas().then(setConsultas).catch(() => setConsultas([]));
+    carregar();
+    window.addEventListener("atelier:consultas", carregar);
+    window.addEventListener("focus", carregar);
+    return () => { window.removeEventListener("atelier:consultas", carregar); window.removeEventListener("focus", carregar); };
+  }, [bancadas?.ativa?.caminho]);
+
   return (
     <aside className={`sidebar${fechada ? " fechada" : ""}`} style={{ width: largura, marginLeft: fechada ? -largura : undefined }}>
       <div className="sb-alca" onMouseDown={arrastarBorda} title="Arraste para mudar a largura" />
@@ -183,6 +193,18 @@ export function Sidebar({
       ) : (
       <div className="sb-rolagem">
         <div className="sb-secao" style={{ marginTop: 6 }}>
+          <div className="sb-titulo-secao">
+            <span>Consultas</span>
+            <button title="Nova consulta (SQL só de leitura)" onClick={() => ir({ v: "sql" })}><Plus size={14} /></button>
+          </div>
+          {consultas.map((c) => (
+            <button key={c.id} className={`sb-item${rota.v === "sql" && rota.id === c.id ? " ativo" : ""}`} title={c.sql} onClick={() => ir({ v: "sql", id: c.id })}>
+              <span className="tipo-chip">🔎</span>
+              <span className="rotulo">{c.nome}</span>
+            </button>
+          ))}
+        </div>
+        <div className="sb-secao">
           <div className="sb-titulo-secao">
             <span>Visões</span>
             <button title="Nova visão" onClick={novaVisao}><Plus size={14} /></button>

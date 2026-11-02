@@ -111,6 +111,17 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
     ativasAntes.current = estado.metades.map((m) => m.ativa);
   }, [estado, tam.w]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // o teclado vai junto com o foco (Ctrl+Alt+setas): se ele ficou numa janela que deixou de ser a ativa (ou em lugar
+  // nenhum), passa para o terminal da nova ou sai da velha (senão o que se digita cai na janela de antes)
+  useEffect(() => {
+    const foco = document.activeElement as HTMLElement | null;
+    const velha = foco?.closest?.(".janela");
+    if (velha?.classList.contains("ativa") || (!velha && foco && foco !== document.body)) return;
+    const term = caixa.current?.querySelector<HTMLElement>(".janela.ativa .xterm-helper-textarea");
+    if (term) term.focus();
+    else if (velha) foco?.blur();
+  }, [estado]);
+
   const lugares: Lugar[] = estado.metades.flatMap((m, mi) => P.arrumar(m, mi, corpoDe(mi), rolagem[mi] ?? 0));
   // todas as janelas num lugar só do DOM: mudar de modo ou de metade não desmonta nada (o terminal continua vivo)
   const todas = estado.metades.flatMap((m, mi) => m.janelas.map((j) => ({ j, mi })));

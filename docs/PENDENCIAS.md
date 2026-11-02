@@ -13,7 +13,10 @@ Como usar:
 
 ## Próxima versão
 
-(vazio — escolher da caixa de entrada)
+- **Bug: andar na fita com o cursor num terminal** (2026-11-02, Paulo; corrigido no master, sem tag). Ctrl+Alt+←/→
+  dentro de um terminal digitava "D"/"C" (o xterm engolia a tecla e mandava a seta ao shell). Agora os atalhos do
+  painel e dos workspaces sobem do terminal para o app (menos Ctrl+W, que é do shell, e Ctrl+Alt+letra/número, que
+  é o AltGr), e o teclado vai junto com o foco: indo para um terminal, é nele que se digita.
 
 ## Caixa de entrada
 
@@ -31,6 +34,18 @@ Como usar:
 ### Pedidos do agente (de `pedidos-ao-atelier.md`, triados com o Paulo em 2026-11-01)
 
 ### Recursos (mudam comportamento: precisam do ok do Paulo antes)
+
+- **Propriedades calculadas no tipo: listas dinâmicas e fórmulas** (2026-11-02, Paulo).
+  - Hoje o "Filhos" da página não é fixo: é o rótulo inverso da propriedade de relação **Pai** (`inverso: "Filhos"`).
+    Todo documento que aponta para este em "Pai" aparece ali, de qualquer tipo, misturado; cada propriedade de relação
+    gera uma seção assim pelo nome inverso dela.
+  - O pedido: uma espécie nova de propriedade, **lista dinâmica**, configurada no tipo. Ela é um filtro salvo, "os
+    documentos dos tipos X (um ou vários) cuja propriedade de relação P aponta para este". Exemplo: no tipo Projeto,
+    "Demandas" = tipo Demanda com Pai = este; "Anexos" = tipos Anexo, Nota e Arquivo com Pai = este. A relação P é
+    qualquer uma (Pai é só uma propriedade, não algo fixo). Aparece na página e na tabela como as outras.
+  - E **fórmula**: valor calculado de outras propriedades (soma, texto concatenado...), como no Notion.
+  - Pensar junto: o que fazer com as seções de inverso que já aparecem (esconder quando uma lista dinâmica cobre a
+    mesma relação?), contagem/soma sobre a lista (rollup), e o MCP criar e ler essas propriedades.
 
 ### Ideias antigas (ninguém pediu agora)
 - Abrir o atelier por link (`atelier://`).

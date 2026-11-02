@@ -3,7 +3,7 @@ import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { BASE } from "../api";
-import { bate } from "../atalhos";
+import { bate, doPainel } from "../atalhos";
 
 // O terminal em si (xterm ligado ao processo pelo WebSocket). Fica num arquivo à parte para ser carregado só quando
 // o primeiro terminal abre (ver TerminalJanela em Terminal.tsx).
@@ -67,7 +67,8 @@ export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; ao
       if (e.type !== "keydown") return true;
       if (e.ctrlKey && e.key === "c" && term.hasSelection()) { navigator.clipboard.writeText(term.getSelection()); return false; }
       if (e.ctrlKey && e.key === "v") { navigator.clipboard.readText().then((t) => ws.send(JSON.stringify({ t: "i", d: t }))); return false; }
-      if (bate("terminal", e)) return false;
+      // false: o xterm não trata a tecla e ela sobe até o app (novo terminal, andar na fita...)
+      if (bate("terminal", e) || doPainel(e)) return false;
       return true;
     });
 

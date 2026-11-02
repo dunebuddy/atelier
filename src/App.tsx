@@ -15,7 +15,7 @@ import * as P from "./painel";
 import { EstadoPainel, janelaAtiva, rotaDe } from "./painel";
 import { avisar, falhou, guardar, ler, Rota, Tema } from "./ui";
 import * as W from "./workspaces";
-import { bate, definirAtalhos } from "./atalhos";
+import { bate, definirAtalhos, doPainel } from "./atalhos";
 import { BarraStatus, SeletorWorkspace, VisaoGeralWorkspaces } from "./components/Workspaces";
 
 // só carrega quando abre (é grande e quase nunca está na tela)
@@ -383,8 +383,9 @@ export default function App() {
     const f = (e: KeyboardEvent) => {
       const alvo = e.target as HTMLElement;
       const digitando = !!alvo.closest?.("input, textarea, [contenteditable=true]");
-      // no terminal, as teclas são do programa (Ctrl+W apaga palavra, setas...): só passam Ctrl+Alt e Ctrl+Shift sem seta
-      if (alvo.closest?.(".xterm") && !(e.ctrlKey && (e.altKey || e.shiftKey) && !e.code.startsWith("Arrow"))) return;
+      // no terminal, as teclas são do programa (Ctrl+W apaga palavra, setas...): só passam os atalhos do painel (andar
+      // na fita com Ctrl+Alt+setas, mover, dividir...), que o terminal também deixa subir
+      if (alvo.closest?.(".xterm") && !doPainel(e)) return;
       // digitando, Ctrl+Alt+letra/número é o AltGr do teclado (ABNT2: ?, °, ¹...): não é atalho
       if (digitando && e.ctrlKey && e.altKey && /^(Key|Digit)/.test(e.code)) return;
       const com = (g: (s: EstadoPainel, id: string) => EstadoPainel) => setPainel((s) => { const a = janelaAtiva(s); return a ? g(s, a.id) : s; });

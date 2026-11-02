@@ -87,6 +87,14 @@ export function bate(id: string, e: KeyboardEvent): boolean {
   return !!c && comboDe(e) === c;
 }
 
+/** Atalho do painel ou dos workspaces (andar na fita, mover, dividir...): vale também com o foco num terminal, que
+ *  senão engoliria a tecla. Fechar a janela fica de fora: o Ctrl+W é do shell (apagar palavra). */
+export function doPainel(e: KeyboardEvent): boolean {
+  // Ctrl+Alt+letra/número é o AltGr do teclado (ABNT2: ?, °, ¹...): fica com o terminal
+  if (e.ctrlKey && e.altKey && /^(Key|Digit)/.test(e.code)) return false;
+  return ATALHOS.some((a) => (a.grupo === "Painel de trabalho" || a.grupo === "Workspaces") && a.id !== "fechar-janela" && bate(a.id, e));
+}
+
 /** Qual atalho usa esta combinação (para avisar de conflito). */
 export function quemUsa(combo: string, fora?: string): DefAtalho | undefined {
   return ATALHOS.find((a) => a.id !== fora && combinacao(a.id) === combo);

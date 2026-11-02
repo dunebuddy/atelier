@@ -172,6 +172,12 @@ Como usar:
     agentes; salvamentos...);
   - os avisos dos agentes (`falta`, e o que vier pelo MCP) entram no histórico com quem mandou.
   - A decidir: guardar no banco da bancada ou só enquanto o app está aberto (sugestão: no app, os últimos ~200).
+  - Tempo e fechar (Paulo, 2026-11-02). Hoje: aviso comum some em 4 s; erro e "desfazer", em 8 s; o de versão
+    nova fica até fechar; o de "atualizado" some em 12 s; todos já têm o X. Proposta: **toast com ação** (instalar,
+    desfazer, abrir...) **fica até a pessoa interagir** (padrão; configurável para sumir também); toast sem ação
+    some no tempo configurado; **X** em todos e **clicar no corpo** também fecha (ou faz a ação principal, quando
+    for "abrir"); passar o mouse por cima segura o toast. O que sumiu sem interação fica no histórico do sininho,
+    marcado como não lido.
 
 - **Consultas: perguntar ao banco sem criar visão** (2026-11-02, Paulo). Na barra lateral, acima de Visões, um item
   "Consultas" (nome a decidir: query, consultas). Fazer uma consulta rápida no banco da bancada, ver o resultado e,

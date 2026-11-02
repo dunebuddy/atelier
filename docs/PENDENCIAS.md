@@ -199,6 +199,18 @@ Como usar:
     exatos (o atelier pode oferecer instalar esses hooks em Integrações). Codex tem o `notify` da configuração. O
     genérico (a, b, c) vale para todos; o exato (d) para quem tiver.
   - Frase cortada no fim do pedido ("a mesma regra, mesma rampa, só que..."): perguntar ao Paulo o resto.
+  - **Decidido (Paulo, 2026-11-02): ir pelos hooks.** Em Configurações → Integrações, ao lado de "instalar MCP",
+    um **"instalar hooks"** por agente. Desenho:
+    - o hook chama o próprio `atelier-mcp` (ex.: `atelier-mcp hook esperando`), nada de script solto: é o binário
+      que já está instalado, e ele avisa a API do atelier;
+    - o terminal do atelier passa ao processo um `ATELIER_SESSAO=<id do terminal>`; o hook manda junto, e assim o
+      atelier sabe **qual** workspace acender. Agente rodando fora do atelier não tem a variável: o hook não faz nada
+      (ou, se valer a pena, avisa como "fora do atelier");
+    - Claude Code: `UserPromptSubmit` (começou a trabalhar), `Notification` (esperando você), `Stop` (terminou);
+      Codex: o `notify` da configuração (fim de turno). Os outros (Gemini, Copilot, Kiro...): conferir se têm hook;
+      se não tiverem, ficam na detecção genérica (atividade, sino, título);
+    - instalar mexe na configuração do agente do usuário (ex.: `~/.claude/settings.json`): mostrar o que vai entrar,
+      juntar com os hooks que ele já tem (não apagar) e ter "remover hooks".
 
 - **Trabalhar em duas bancadas ao mesmo tempo** (2026-11-02, Paulo; análise feita, decidir no roadmap).
   - Hoje: uma instância só (`tauri-plugin-single-instance`: abrir de novo traz a janela para a frente), uma API na

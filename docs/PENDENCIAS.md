@@ -62,13 +62,14 @@ Como usar:
 
 ### Melhorias pedidas
 
-- **Botão "?" na barra de título: cola de atalhos com busca** (2026-11-02, Paulo). Ao lado do botão de
-  configurações, uma interrogação que abre a lista de atalhos (a mesma do Ctrl+/, `Atalhos.tsx`) com **busca**.
-  Cada atalho ganha palavras escondidas, tipo hashtags, para achar mesmo sem lembrar o nome: "Maximizar a janela com
-  foco" acha por "aumentar janela", "deixar grande", "tela cheia"; "Barra lateral" por "menu", "esconder lado"...
-  (um campo `tags` em cada atalho de `atalhos.ts`). Vale reaproveitar as tags na lista de ações do Ctrl+Shift+P,
-  que é da mesma revisão.
-
+- **Botão de atalhos na barra de título, abrindo a configuração com busca** (2026-11-02, Paulo). Ao lado do botão
+  de configurações, um ícone de teclado (⌨, de "atalho"; primeiro ele pensou numa "?") que abre **Configurações →
+  Atalhos** direto: lá se procura e se ajusta no mesmo lugar (melhor que uma cola só de leitura). A tela
+  (`ConfigAtalhos.tsx`) já deixa mudar todos, voltar um ao padrão e voltar todos; falta a **busca**. Cada atalho
+  ganha palavras escondidas, tipo hashtags (campo `tags` em `atalhos.ts`), para achar sem lembrar o nome: "Maximizar
+  a janela com foco" acha por "aumentar janela", "deixar grande", "tela cheia"; "Barra lateral" por "menu",
+  "esconder lado"... As mesmas tags servem à lista de ações do Ctrl+Shift+P (da revisão dos atalhos). Regra: todo
+  atalho novo da revisão entra configurável, com voltar ao padrão.
 - **Revisão dos atalhos: igual ao VS Code** (2026-11-02, Paulo: "o ideal é que para mim fosse igual do code"; **proposta
   abaixo aprovada por ele**). Lido
   nesta máquina: ele usa os atalhos **padrão** do VS Code no Windows, com duas mudanças próprias: Ctrl+Shift+Alt+J

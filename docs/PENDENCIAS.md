@@ -25,6 +25,21 @@ Como usar:
 
 ### Bugs
 
+- **Trocar de bancada derruba os agentes e desvia o MCP** (2026-11-02, pergunta do Paulo: "posso deixar o agente
+  trabalhando numa bancada e ir para outra?"). Hoje **não**, por dois motivos (lidos no código, não testados):
+  1. **Terminais morrem.** `aposTrocarBancada` (`App.tsx`) zera os workspaces (`setWs(null)`); as janelas desmontam,
+     o xterm fecha o websocket e o núcleo mata o shell e o que roda dentro (`terminal.rs`: no fim do socket,
+     `filho.kill()`). Agente em terminal do atelier cai.
+  2. **O MCP segue a bancada aberta no app, a cada chamada** (`mcp/src/main.rs`, `abrir()` lê `cfg.ativa()`). Um
+     agente trabalhando na bancada A passa a ler e gravar na B assim que o Paulo troca: cria documento no lugar
+     errado, sem aviso. Vale também para agentes fora do atelier (Claude Code, Codex).
+  - Correção pensada: (1) terminais e workspaces de cada bancada continuam vivos em segundo plano (só escondidos,
+    como já acontece entre workspaces), com a memória na pílula de recursos; (2) cada agente fica preso à bancada em
+    que nasceu: o terminal do atelier passa `ATELIER_BANCADA=<caminho>` para o processo e o MCP usa essa, não a
+    ativa; o agente de fora usa a ativa no momento em que o MCP **inicia** (e `bancadas`/`trocar_bancada` mudam
+    explicitamente). Toda resposta do MCP poderia dizer em que bancada gravou.
+  - Até corrigir: **não trocar de bancada com agente trabalhando**.
+
 - **MCP `tela` joga fora a resposta: `estado` volta vazio** (2026-11-02, pedido do agente em
   `pedidos-ao-atelier.md`, 11:57). O agente quis fechar o documento que acabou e abrir o próximo **no mesmo lugar**
   (mesma metade, mesma posição), consultou `tela` → `estado` e recebeu só `{"ok": true}`; abriu na direita no

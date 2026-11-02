@@ -25,6 +25,14 @@ Como usar:
 
 ### Bugs
 
+- **Menus suspensos não fecham clicando de novo no botão** (2026-11-02, Paulo). O seletor de bancadas lá em cima, o
+  dos workspaces, o dos recursos (memória/CPU) e os outros: clicou, abriu; clicou de novo no mesmo botão, continua
+  aberto. Só fecha clicando fora, com Esc ou escolhendo algo. Diagnóstico: todos usam o `usePopover`
+  (`src/components/Popover.tsx`). O clique fora ignora o próprio botão, de propósito, e o `abrir` do botão só
+  abre, não alterna. Correção numa linha só, valendo para todos: `abrir` fecha quando a âncora já é aquele botão
+  (`setAncora(a => a === e.currentTarget ? null : e.currentTarget)`). Conferir os que abrem por atalho (Ctrl+N) e por
+  botão direito (histórico do voltar), que passam pelo mesmo `abrir`.
+
 - **Tabela markdown sai como texto corrido no editor, e editar pode apagá-la** (2026-11-02, Paulo, num documento
   de trabalho). Diagnóstico:
   - o banco está certo: o agente gravou uma tabela GFM válida (`| ✓ | Passo | O que é |` + `|---|---|---|`...), a

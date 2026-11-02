@@ -27,6 +27,10 @@ Como usar:
 
 ### Melhorias pedidas
 
+- **Listas na ficha do documento com limite** (2026-11-02, Paulo). As propriedades de lista (relações, o lado inverso,
+  e depois as listas dinâmicas) mostram tudo no bloco de informações do documento: com 100, ocupam a página toda.
+  Mostrar os primeiros 5 ou 10 e um "ver mais" (ou uma paginação pequena para passar).
+
 - **Esconder a metade esquerda do painel** (2026-11-02, Paulo). Trabalhando só nos terminais, em fita na metade
   direita, ele quer mais espaço sem ter de arrastar a divisória: uma opção para recolher a esquerda (e trazer de
   volta). Não é a barra lateral, que já esconde; é a metade do painel de trabalho.
@@ -46,9 +50,15 @@ Como usar:
   - E **fórmula**: valor calculado de outras propriedades (soma, texto concatenado...), como no Notion.
   - Pensar junto: o que fazer com as seções de inverso que já aparecem (esconder quando uma lista dinâmica cobre a
     mesma relação?), contagem/soma sobre a lista (rollup), e o MCP criar e ler essas propriedades.
-  - Esclarecido com o Paulo: o nome inverso só dá nome à seção; ela aparece sempre que alguém aponta (sem nome vira
-    "Pai (de)"), não dá para desligar e não filtra por tipo. Ele achou a ideia boa mas genérica demais: considerar
-    uma opção "mostrar do outro lado: sim/não" na relação, ou trocar a seção crua pelas listas dinâmicas.
+  - Como é hoje: o nome inverso só dá nome à seção; ela aparece sempre que alguém aponta (sem nome vira "Pai (de)"),
+    não dá para desligar e não filtra por tipo.
+  - **Decidido com o Paulo (2026-11-02): o jeito dele.** Hoje está automático e agressivo demais.
+    - A lista do outro lado deixa de ser sempre: na propriedade de relação, uma **caixinha** (desmarcada por padrão)
+      para mostrar do outro lado, com o nome dela. Marcada, vira uma propriedade dinâmica (lista) no outro lado.
+    - "Inverso" é nome feio: achar outro, de banco de dados ("relação inversa", "mão dupla", "do outro lado"...).
+    - E as listas dinâmicas mais completas (tipos X, relação P) vêm junto, porque algumas são mais que só o inverso.
+    - Na migração: as relações que já existem mantêm a lista do outro lado ligada? (decidir; o Paulo quer menos
+      poluição, então talvez só "Pai → Filhos").
 
 ### Ideias antigas (ninguém pediu agora)
 - Abrir o atelier por link (`atelier://`).

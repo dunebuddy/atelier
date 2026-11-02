@@ -25,6 +25,21 @@ Como usar:
 
 ### Bugs
 
+- **Tabela markdown sai como texto corrido no editor, e editar pode apagá-la** (2026-11-02, Paulo, num documento
+  de trabalho). Diagnóstico:
+  - o banco está certo: o agente gravou uma tabela GFM válida (`| ✓ | Passo | O que é |` + `|---|---|---|`...), a
+    mesma que mostrou; não houve "mostrou uma coisa e escreveu outra";
+  - o editor (Tiptap 2 + `tiptap-markdown`) não tem a extensão de tabela. O markdown-it lê a tabela, mas sem o nó
+    `table` o Tiptap descarta a estrutura e junta o texto das células num parágrafo só (o que apareceu na tela);
+  - **risco de perda:** o editor só grava quando a pessoa edita (`onUpdate` → `getMarkdown()`), e aí regrava o corpo a
+    partir do que tem na tela: qualquer edição nesse documento troca a tabela por texto corrido. Dá para voltar pelas
+    versões do documento, mas é perda silenciosa. Vale para todo documento com tabela (os agentes fazem muitas).
+  - Correção: instalar `@tiptap/extension-table`, `-table-row`, `-table-header` e `-table-cell` (2.x, a mesma
+    versão do resto) e ligar no `Editor.tsx`; o `tiptap-markdown` já sabe gravar tabela de volta como GFM (célula com
+    texto simples; célula com lista ou várias linhas ele grava como HTML). Mais o CSS da tabela nos temas e um teste
+    de ida e volta (abrir, editar outra linha, conferir que a tabela continua igual no banco).
+  - Enquanto não sai: não editar na tela documentos com tabela (o agente pode editar pelo MCP sem problema).
+
 ### Melhorias pedidas
 
 - **Listas na ficha do documento com limite** (2026-11-02, Paulo). As propriedades de lista (relações, o lado inverso,

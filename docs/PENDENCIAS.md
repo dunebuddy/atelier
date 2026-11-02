@@ -23,14 +23,31 @@ Como usar:
 ### Bugs
 
 ### Melhorias pedidas
-- **Ditado: Nemotron 3.5 ASR Streaming (NVIDIA)** no catálogo (pedido de 2026-11-02). `nvidia/nemotron-3.5-asr-streaming-0.6b`,
-  de jun/2026, sucessor do Parakeet: 40 idiomas com pt-BR, pontuação e maiúsculas, feito para tempo real. Não é só uma
-  linha em `modelos-ditado.json`: é RNNT com cache (o parakeet.js só roda TDT, e o transformers.js não o conhece).
-  Precisa de um motor novo no `ditado.worker.ts`: onnxruntime-web direto com o ONNX de
-  `onnx-community/nemotron-3.5-asr-streaming-0.6b-onnx-int4` (encoder/decoder/joint, ~790 MB, licença MIT no ONNX,
-  OpenMDW no original), o mel calculado em JS (`audio_processor_config.json`), o laço guloso do RNNT e o idioma
-  passado como prompt. De bônus dá para transcrever enquanto fala (streaming).
-
+- **Ditado: motor de streaming, e o Nemotron 3.5 ASR Streaming (NVIDIA) no catálogo** (pedido de 2026-11-02; o
+  Paulo decide onde entra no roadmap). Decisão dele: **cada tipo de modelo no seu motor**. Modelo de streaming roda num
+  motor de streaming (transcreve enquanto fala); modelo de lote (Parakeet TDT, Whisper) continua no motor de hoje,
+  que transcreve ao parar. "O Handy faz, por que a gente não faz?"
+  - O modelo: `nvidia/nemotron-3.5-asr-streaming-0.6b` (jun/2026, sucessor do Parakeet), 40 idiomas com pt-BR
+    (WER 5,48% no FLEURS pt-BR), pontuação e maiúsculas. Licença OpenMDW (uso comercial ok).
+  - Por que não é só uma linha em `modelos-ditado.json`: é FastConformer cache-aware + RNNT; o parakeet.js só roda
+    TDT e o transformers.js não o conhece. Precisa de um terceiro motor (`motor: "streaming"` ou "nemotron").
+  - ONNX pronto para o navegador: `onnx-community/nemotron-3.5-asr-streaming-0.6b-onnx-int4` (~790 MB: `encoder.onnx`
+    + `.data` 690 MB, `decoder` 60 MB, `joint` 38 MB, `tokenizer.json`/`vocab.txt`, e um `silero_vad.onnx`).
+    Formato do onnxruntime-genai; no navegador, onnxruntime-web direto. Alternativa: o export do sherpa-onnx
+    (`csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-...`, ~680 MB).
+  - O que o motor precisa fazer (de `genai_config.json` e `audio_processor_config.json`):
+    - mel em JS: 128 mels, n_fft 512, hop 160, janela hann 400, pré-ênfase 0,97, log com +1e-10, sem normalizar;
+    - pedaços de 8960 amostras (560 ms); o encoder recebe e devolve o cache (`cache_last_channel`,
+      `cache_last_time`, `cache_last_channel_len`; contexto à esquerda 56, conv 8, pre-encode 9) e o `lang_id`
+      (o idioma escolhido, ou automático);
+    - RNNT guloso: decoder LSTM (2 camadas, 640; `h_in`/`c_in`), joint, blank 13087, até 10 símbolos por quadro;
+      tokens SentencePiece (`tokenizer.json`);
+    - o VAD (silero) para cortar silêncio, opcional.
+  - Na captura (`ditado.ts`, `gravar`): mandar o áudio ao Worker em pedaços enquanto grava (hoje junta tudo e manda
+    no fim) e mostrar o texto parcial na tela; ao parar, fecha o último pedaço.
+  - O catálogo ganha o campo `motor` novo; as versões antigas do app ignoram motor que não conhecem (hoje tratariam
+    como Whisper e dariam erro): filtrar isso no `catalogo()` antes de pôr o modelo no JSON do GitHub.
+  - Teste: só dá para conferir no app de verdade (microfone); antes, um teste com um .wav no Worker.
 ### Pedidos do agente (de `pedidos-ao-atelier.md`)
 
 Revisão crítica de 2026-11-02 (o Paulo pediu: dizer o que não faz sentido, o que já existe e o que engessa o app).

@@ -62,6 +62,13 @@ Como usar:
 
 ### Melhorias pedidas
 
+- **Ficha em cima do conteúdo e recolhível** (2026-11-02, Paulo). Hoje, com a janela larga, a ficha fica numa
+  coluna fixa à direita (`.pagina-grade`, 320px, sticky); com a janela estreita (até 860px) ela já vai para cima do
+  texto. Pedido: a ficha **sempre em cima** do conteúdo, com um botão para **recolher**: recolhida, sobra só uma
+  linha "Ficha" (com a setinha) e o texto sobe; clicando, expande de novo. Não é esconder de vez. A decidir: lembrar
+  recolhida por documento, por tipo ou para todos (sugestão: para todos, como preferência). Junto com o limite nas
+  listas da ficha (já anotado), ela deixa de tomar a página.
+
 - **Barra lateral com Ctrl+B** (2026-11-02, Paulo: "em todos os outros softwares é Ctrl+B"). Hoje é `Ctrl+\`
   (`atalhos.ts`, id `menu`). Cuidado: no editor de texto Ctrl+B é **negrito** (Tiptap). Proposta: Ctrl+B esconde a
   barra em qualquer lugar menos digitando no editor, onde continua negrito (como o VS Code faz fora do texto); o

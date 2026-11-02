@@ -481,3 +481,6 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 - A conferir no uso (não dá no teste sem janela): janelas de bancada e `atelier://` no app de verdade; hooks
   instalados no Claude Code do Paulo; Zen em tela cheia; Shift+Enter no Claude Code dentro do terminal.
 - Próximo: o que chegar em PENDENCIAS.md; ideias sem data no ROADMAP.md.
+- 0.2.10: `tela` abrir com `lista` (lista temporária pelo MCP, sem salvar; rota `consulta` ganhou `layout` e `config`);
+  terminal com `@xterm/addon-unicode11` (largura dos símbolos dos agentes), nova medida da fonte depois de carregar e
+  redesenho a cada ajuste; Ctrl+V cola só pelo navegador (antes colava duas vezes).

@@ -486,9 +486,9 @@ function Conteudo({ j, ctx, visivel, mudar }: { j: Janela; ctx: Contexto; visive
     case "consulta":
       return (
         <VisaoTela
-          key={JSON.stringify(r.filtro)}
+          key={JSON.stringify([r.filtro, r.config])}
           esquema={esquema}
-          visao={{ id: 0, nome: r.titulo, icone: r.icone ?? "🔗", ordem: 0, layout: "tabela", filtro: r.filtro, config: {} }}
+          visao={{ id: 0, nome: r.titulo, icone: r.icone ?? "🔗", ordem: 0, layout: r.layout ?? "tabela", filtro: r.filtro, config: r.config ?? {} }}
           salvar={null}
           aoSalvarComo={async (v) => {
             const id = await ctx.criarVisao({ nome: v.nome, icone: v.icone, layout: v.layout, filtro: v.filtro, config: v.config });

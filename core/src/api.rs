@@ -982,8 +982,13 @@ async fn tela(State(b): State<Banco>, Json(d): Json<Value>) -> R {
                 ev["rota"] = json!({ "v": "tipo", "id": t["id"] });
             } else if sim("lixeira") == Some(true) {
                 ev["rota"] = json!({ "v": "lixeira" });
+            } else if let Some(l) = d.get("lista").filter(|v| v.is_object()) {
+                // lista avulsa: abre como visão sem salvar (o MCP já traduziu nomes para ids)
+                ev["rota"] = json!({ "v": "consulta", "titulo": l.get("titulo").and_then(|v| v.as_str()).unwrap_or("Lista"),
+                    "icone": l.get("icone").and_then(|v| v.as_str()).unwrap_or("🔗"), "filtro": l.get("filtro").cloned().unwrap_or(json!({})), "config": l.get("config").cloned().unwrap_or(json!({})),
+                    "layout": l.get("layout").and_then(|v| v.as_str()).unwrap_or("tabela") });
             } else {
-                return Err(Erro::Invalido("abrir: informe codigo (documento), visao, tipo (a configuração dele), pasta (código do documento), arquivo (caminho) ou lixeira: true".into()));
+                return Err(Erro::Invalido("abrir: informe codigo (documento), visao, tipo (a configuração dele), pasta (código do documento), arquivo (caminho), lista (temporária) ou lixeira: true".into()));
             }
         }
         // workspace do item (codigo) ou o da bancada (sem codigo); fechar_workspace suspende (os terminais param)

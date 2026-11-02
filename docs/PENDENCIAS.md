@@ -93,6 +93,16 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.10** (2026-11-02, bugs do uso):
+  - **"Clicar em Filhos criou duas visões"**: não foi o clique (o "Filhos" da ficha já abre lista avulsa); foi o agente
+    da calculadora, que chamou `criar_visao` para mostrar os passos, porque o MCP não tinha lista temporária. Agora
+    `tela` com `acao: "abrir"` aceita `lista` (os campos de `criar_visao`) e abre sem salvar nada; a descrição de
+    `criar_visao` diz que é só quando o usuário pede uma visão. As duas visões que já existem ficam (apagar à mão);
+  - **terminal com texto "na borda" e desenho velho até maximizar**: faltava a tabela de larguras Unicode 11 no
+    xterm (os agentes contam ⏺ ✻ ✅ como 2 colunas, o xterm contava 1); entrou o `@xterm/addon-unicode11`, e o
+    terminal mede a fonte de novo quando ela termina de carregar e redesenha a cada ajuste de tamanho;
+  - **Ctrl+V colava duas vezes no terminal**: o atalho lia a área de transferência e mandava, e o navegador também
+    colava; agora só o navegador cola (com bracketed paste).
 - **0.2.9** (2026-11-02, consultas e fórmulas):
   - **Consultas**, acima de Visões: SQL de verdade, só de leitura (conferido como só leitura, `query_only` e prazo de
     4 s), sobre `documentos` (uma linha por documento, uma coluna por propriedade, pelo nome entre aspas duplas);

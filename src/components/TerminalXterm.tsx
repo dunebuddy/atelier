@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { Unicode11Addon } from "@xterm/addon-unicode11";
 import "@xterm/xterm/css/xterm.css";
 import { BASE } from "../api";
 import { bate, doPainel } from "../atalhos";
@@ -50,8 +51,18 @@ export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; ao
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
+    // larguras do Unicode 11: os agentes (Claude Code, Codex) contam ⏺ ✻ ✅ e emojis como 2 colunas; com a tabela
+    // antiga o xterm contava 1, o cursor ficava fora do lugar e o texto "grudava na borda" até redesenhar tudo
+    term.loadAddon(new Unicode11Addon());
+    term.unicode.activeVersion = "11";
     term.open(caixa.current!);
     try { fit.fit(); } catch { /* ainda sem tamanho */ }
+    // a fonte pode chegar depois do open: mede de novo a célula e redesenha
+    document.fonts?.ready.then(() => {
+      if (morto) return;
+      term.options.fontFamily = term.options.fontFamily + " ";
+      ajustar.current();
+    });
 
     const q = new URLSearchParams({ cols: String(term.cols), rows: String(term.rows) });
     if (aba.cwd) q.set("cwd", aba.cwd);
@@ -65,14 +76,16 @@ export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; ao
     ws.onclose = () => !morto && term.write("\r\n\x1b[2m[sessão encerrada]\x1b[0m\r\n");
     const dados = term.onData((d) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify({ t: "i", d })));
 
-    // Ctrl+V cola, Ctrl+C copia quando há seleção (senão manda o Ctrl+C para o programa)
+    // Ctrl+V: false deixa o navegador colar sozinho (o xterm recebe o "paste", com bracketed paste); antes o atalho
+    // também lia a área de transferência e mandava, e colava duas vezes. Ctrl+C copia quando há seleção (senão manda
+    // o Ctrl+C para o programa)
     // o sino do terminal (vários agentes tocam quando esperam você) acende o workspace; digitar responde
     term.onBell(() => marcarAgente(aba.id, "esperando"));
     term.onData(() => { if (estadoDaSessao(aba.id) === "esperando") marcarAgente(aba.id, "trabalhando"); });
     term.attachCustomKeyEventHandler((e) => {
       if (e.type !== "keydown") return true;
       if (e.ctrlKey && e.key === "c" && term.hasSelection()) { navigator.clipboard.writeText(term.getSelection()); return false; }
-      if (e.ctrlKey && e.key === "v") { navigator.clipboard.readText().then((t) => ws.send(JSON.stringify({ t: "i", d: t }))); return false; }
+      if (e.ctrlKey && !e.shiftKey && e.key === "v") return false;
       // Shift+Enter: quebra de linha no Claude Code (ESC + Enter, como no VS Code do Paulo), em vez de enviar
       if (e.key === "Enter" && e.shiftKey && !e.ctrlKey && !e.altKey) { ws.send(JSON.stringify({ t: "i", d: "\x1b\r" })); return false; }
       // false: o xterm não trata a tecla e ela sobe até o app (novo terminal, andar na fita...)
@@ -85,6 +98,7 @@ export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; ao
       try {
         fit.fit();
         if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: "r", c: term.cols, l: term.rows }));
+        term.refresh(0, term.rows - 1);
       } catch { /* ignore */ }
     };
     const obs = new ResizeObserver(() => ajustar.current());

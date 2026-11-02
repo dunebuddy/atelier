@@ -244,7 +244,7 @@ fn ferramentas() -> Value {
         },
         {
             "name": "tela",
-            "description": "Mexe na tela do app atelier (precisa estar aberto). O painel de trabalho tem uma ou duas metades (esquerda/direita), cada uma com janelas em abas, tile ou fita; cada documento tem um workspace (um painel só dele) e a bancada tem o seu. Ações: abrir (codigo = documento; visao = nome; tipo = configuração do tipo; pasta = código do documento, abre a árvore da pasta dele; arquivo = caminho absoluto; lixeira: true) · workspace (codigo = do documento; sem codigo = o da bancada) · fechar_workspace · visao_geral (mostra todos os workspaces) · dividir · juntar · modo (modo: abas|tile|fita) · fechar (janela: id do estado|atual|todas|parte do título) · focar (janela: id do estado, ou painel) · terminal (codigo = na pasta do documento; bancada: true = na raiz; programa = id do agente, ex.: claude-code; shell = pwsh|cmd|wsl...) · explorador_sistema (abre a pasta no Explorer: codigo ou a bancada; app = claude|codex|deepseek abre esse agente com janela própria na pasta, em vez do Explorer) · barra_lateral (mostrar) · tema (tema) · zoom (80-160) · configuracoes (secao: aparencia, bancadas, integracoes, editor, atalhos, automacao, bancada, tipos) · busca (texto: abre a busca rápida) · recarregar (depois de mudar coisas) · filtrar (texto, na visão aberta) · destacar (codigo) · estado (o que está aberto agora: os painéis numerados 0 e 1 e cada janela com id, posição e o que mostra). Em abrir e terminal, painel: 0|1 (ou lado: esquerda|direita) escolhe o painel (o 1 nasce se preciso) e ao_lado: true abre numa janela nova. Para trocar uma janela por outra no mesmo lugar: leia o estado, feche pelo id e abra no mesmo painel.",
+            "description": "Mexe na tela do app atelier (precisa estar aberto). O painel de trabalho tem uma ou duas metades (esquerda/direita), cada uma com janelas em abas, tile ou fita; cada documento tem um workspace (um painel só dele) e a bancada tem o seu. Ações: abrir (codigo = documento; visao = nome; lista = lista temporária, sem salvar; tipo = configuração do tipo; pasta = código do documento, abre a árvore da pasta dele; arquivo = caminho absoluto; lixeira: true) · workspace (codigo = do documento; sem codigo = o da bancada) · fechar_workspace · visao_geral (mostra todos os workspaces) · dividir · juntar · modo (modo: abas|tile|fita) · fechar (janela: id do estado|atual|todas|parte do título) · focar (janela: id do estado, ou painel) · terminal (codigo = na pasta do documento; bancada: true = na raiz; programa = id do agente, ex.: claude-code; shell = pwsh|cmd|wsl...) · explorador_sistema (abre a pasta no Explorer: codigo ou a bancada; app = claude|codex|deepseek abre esse agente com janela própria na pasta, em vez do Explorer) · barra_lateral (mostrar) · tema (tema) · zoom (80-160) · configuracoes (secao: aparencia, bancadas, integracoes, editor, atalhos, automacao, bancada, tipos) · busca (texto: abre a busca rápida) · recarregar (depois de mudar coisas) · filtrar (texto, na visão aberta) · destacar (codigo) · estado (o que está aberto agora: os painéis numerados 0 e 1 e cada janela com id, posição e o que mostra). Em abrir e terminal, painel: 0|1 (ou lado: esquerda|direita) escolhe o painel (o 1 nasce se preciso) e ao_lado: true abre numa janela nova. Para trocar uma janela por outra no mesmo lugar: leia o estado, feche pelo id e abra no mesmo painel.",
             "inputSchema": { "type": "object", "properties": {
                 "acao": { "type": "string", "enum": ["abrir", "workspace", "fechar_workspace", "visao_geral", "dividir", "juntar", "modo", "fechar", "focar", "terminal", "explorador_sistema", "barra_lateral", "tema", "zoom", "configuracoes", "busca", "recarregar", "filtrar", "destacar", "estado"] },
                 "codigo": { "type": "string", "description": "código do documento" },
@@ -253,6 +253,7 @@ fn ferramentas() -> Value {
                 "pasta": { "type": "string", "description": "abrir: código do documento cuja pasta abre em árvore" },
                 "arquivo": { "type": "string", "description": "abrir: caminho absoluto de um arquivo" },
                 "lixeira": { "type": "boolean" },
+                "lista": { "type": "object", "additionalProperties": true, "description": "abrir: uma lista TEMPORÁRIA, que não fica salva em lugar nenhum (o jeito certo de mostrar algo ao usuário, ex.: os filhos de um documento). Os mesmos campos de criar_visao: nome (título da janela), layout, tipos, filtros ({\"Pai\": [\"#abc1234\"]}), ordenar, colunas..." },
                 "lado": { "type": "string", "enum": ["esquerda", "direita"] },
                 "painel": { "type": "integer", "description": "abrir, terminal, focar, fechar, modo: o painel pelo número que o estado mostra (0 = esquerda, 1 = direita); vale mais que lado" },
                 "app": { "type": "string", "enum": ["claude", "codex", "deepseek"] },
@@ -286,7 +287,7 @@ fn ferramentas() -> Value {
         },
         {
             "name": "criar_visao",
-            "description": "Cria uma visão (uma lista salva no menu): nome, layout (tabela, lista, kanban, linha), tipos (nomes), filtros (propriedade → valores aceitos; numa relação, o código do documento: {\"Pai\": [\"#abc1234\"]} = filhos dele), livres (relações em que tudo o que está ligado já foi concluído, ou não há nada: livres [\"Bloqueado por\"] = pode andar agora), sem_tipo (só documentos sem tipo), texto, agrupar_por (kanban: nome da propriedade), grupo (pasta no menu), icone (emoji), ordenar ({propriedade, crescente}; null volta à ordem padrão), colunas (nomes das propriedades na ordem em que aparecem na tabela; [] volta ao padrão), larguras (coluna → px; Título, Tipo e Atualizado também; {} volta ao automático).",
+            "description": "Cria uma visão: uma lista SALVA, que fica para sempre no menu da esquerda. Só crie quando o usuário pedir uma visão nova; para mostrar uma lista a ele (filhos, passos, uma busca), use tela abrir com lista, que é temporária. Campos: nome, layout (tabela, lista, kanban, linha), tipos (nomes), filtros (propriedade → valores aceitos; numa relação, o código do documento: {\"Pai\": [\"#abc1234\"]} = filhos dele), livres (relações em que tudo o que está ligado já foi concluído, ou não há nada: livres [\"Bloqueado por\"] = pode andar agora), sem_tipo (só documentos sem tipo), texto, agrupar_por (kanban: nome da propriedade), grupo (pasta no menu), icone (emoji), ordenar ({propriedade, crescente}; null volta à ordem padrão), colunas (nomes das propriedades na ordem em que aparecem na tabela; [] volta ao padrão), larguras (coluna → px; Título, Tipo e Atualizado também; {} volta ao automático).",
             "inputSchema": { "type": "object", "properties": {
                 "nome": { "type": "string" },
                 "layout": { "type": "string", "enum": ["tabela", "lista", "kanban", "linha"] },
@@ -1114,6 +1115,18 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
             Ok(json!({ "de": de, "ate": ate, "total": eventos.len(), "eventos": eventos }))
         }
         "tela" => {
+            // lista temporária: os mesmos campos de criar_visao, com nomes; vai para o app já com ids, e nada se salva
+            let traduzida;
+            let a = if let Some(l) = a.get("lista").filter(|v| v.is_object()) {
+                let mut d = mapa.dados_visao(l)?;
+                let mut x = a.clone();
+                x["lista"] = json!({ "titulo": s(l, "nome").or(s(l, "titulo")).unwrap_or("Lista"), "icone": s(l, "icone"), "layout": s(l, "layout"),
+                    "filtro": d.get("filtro").cloned().unwrap_or(json!({})), "config": d.get_mut("config").map(|c| c.take()).unwrap_or(json!({})) });
+                traduzida = x;
+                &traduzida
+            } else {
+                a
+            };
             let r = post_api("/api/tela", a)?;
             if r["ok"] == true {
                 // a resposta inteira: o estado da tela, a pasta aberta...

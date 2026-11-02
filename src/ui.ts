@@ -1,4 +1,4 @@
-import type { FiltroVisao } from "./api";
+import type { FiltroVisao, Layout, Visao } from "./api";
 // Pequenos utilitários de interface compartilhados.
 
 export type Rota =
@@ -6,7 +6,7 @@ export type Rota =
   | { v: "lixeira" }
   | { v: "visao"; id: number }
   /** visão avulsa, não salva: o filtro vem junto (ex.: "Filhos de X", aberta do "Apontado por" de um item) */
-  | { v: "consulta"; titulo: string; icone?: string; filtro: FiltroVisao }
+  | { v: "consulta"; titulo: string; icone?: string; filtro: FiltroVisao; layout?: Layout; config?: Visao["config"] }
   | { v: "lista"; tipo: number | null }
   /** consulta SQL (salva, com id; ou nova) */
   | { v: "sql"; id?: number }

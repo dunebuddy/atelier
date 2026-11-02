@@ -54,6 +54,11 @@ Como usar:
 
 ### Melhorias pedidas
 
+- **Ícone no workspace da bancada** (2026-11-02, Paulo). É o único sem ícone na barra de workspaces e na lista (só a
+  visão geral usa 🏠). Ele é fixo: sempre existe, pode ser fechado mas não apagado. Algo diferente dos outros: uma
+  estrela, um ícone de bancada ou o ícone do atelier. (`Workspaces.tsx`: `info.icone` vem do documento; o da
+  bancada, chave `GERAL`, não tem.)
+
 - **Listas na ficha do documento com limite** (2026-11-02, Paulo). As propriedades de lista (relações, o lado inverso,
   e depois as listas dinâmicas) mostram tudo no bloco de informações do documento: com 100, ocupam a página toda.
   Mostrar os primeiros 5 ou 10 e um "ver mais" (ou uma paginação pequena para passar).
@@ -65,6 +70,13 @@ Como usar:
 ### Pedidos do agente (de `pedidos-ao-atelier.md`, triados com o Paulo em 2026-11-01)
 
 ### Recursos (mudam comportamento: precisam do ok do Paulo antes)
+
+- **Consultas: perguntar ao banco sem criar visão** (2026-11-02, Paulo). Na barra lateral, acima de Visões, um item
+  "Consultas" (nome a decidir: query, consultas). Fazer uma consulta rápida no banco da bancada, ver o resultado e,
+  se quiser, **salvar a consulta** (separado das visões: ele não quer uma visão, quer a consulta à mão) e **criar uma
+  visão a partir dela**. A decidir: a linguagem (SQL de verdade sobre o SQLite, só leitura, com as propriedades
+  expostas como colunas? ou o mesmo filtro das visões, em texto?), como o resultado aparece (tabela, contagem) e o
+  MCP poder rodar e salvar consultas também.
 
 - **Propriedades calculadas no tipo: listas dinâmicas e fórmulas** (2026-11-02, Paulo).
   - Hoje o "Filhos" da página não é fixo: é o rótulo inverso da propriedade de relação **Pai** (`inverso: "Filhos"`).

@@ -211,6 +211,10 @@ Como usar:
       se não tiverem, ficam na detecção genérica (atividade, sino, título);
     - instalar mexe na configuração do agente do usuário (ex.: `~/.claude/settings.json`): mostrar o que vai entrar,
       juntar com os hooks que ele já tem (não apagar) e ter "remover hooks".
+    - Desempenho e segurança (conferido, nada contra): o hook roda a cada evento, e o binário em Rust abre em
+      milissegundos. Regras: **nunca travar o agente** (aviso em segundo plano, prazo curto, sai sempre com sucesso,
+      mesmo com o atelier fechado ou desinstalado); mandar **só o evento e a sessão**, nunca o texto do prompt nem a
+      conversa que o agente passa ao hook; a API continua aceitando só da própria máquina.
 
 - **Trabalhar em duas bancadas ao mesmo tempo** (2026-11-02, Paulo; análise feita, decidir no roadmap).
   - Hoje: uma instância só (`tauri-plugin-single-instance`: abrir de novo traz a janela para a frente), uma API na

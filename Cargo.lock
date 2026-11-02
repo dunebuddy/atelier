@@ -201,7 +201,7 @@ dependencies = [
 
 [[package]]
 name = "atelier"
-version = "0.2.8"
+version = "0.2.9"
 dependencies = [
  "atelier-core",
  "serde",
@@ -221,7 +221,7 @@ dependencies = [
 
 [[package]]
 name = "atelier-core"
-version = "0.2.8"
+version = "0.2.9"
 dependencies = [
  "axum",
  "base64 0.22.1",
@@ -245,7 +245,7 @@ dependencies = [
 
 [[package]]
 name = "atelier-mcp"
-version = "0.2.8"
+version = "0.2.9"
 dependencies = [
  "atelier-core",
  "rusqlite",

@@ -131,7 +131,7 @@ Guarde os arquivos nessas subpastas e registre o andamento no documento com `ano
 TELA: com o app aberto, `tela` mostra as coisas para o usuário (abrir documento, visão, pasta, arquivo; metade esquerda ou \
 direita; workspaces; terminal; tema...); `tela` com acao \"estado\" diz o que está aberto agora. \
 QUANDO NÃO DER: se o usuário pedir algo que estas ferramentas não fazem, NÃO improvise por fora (arquivos, comandos, \
-banco): chame `nao_consigo` com o pedido e o que faltou, e diga a ele que ficou anotado.";
+banco): chame `nao_consigo` com o pedido e o que faltou, e diga a ele que ficou anotado. LINKS: para o usuário abrir um documento com um clique (de fora do atelier, numa mensagem), escreva atelier://doc/<código> (também atelier://visao/<nome> e atelier://bancada/<nome>). BANCADA: você trabalha na bancada em que nasceu (a do terminal do atelier, ou a da pasta onde está); trocar_bancada só pede, o usuário aceita na tela.";
 
 fn ferramentas() -> Value {
     #[allow(non_snake_case)]
@@ -433,11 +433,30 @@ fn ferramentas() -> Value {
 
 // ---------- execução ----------
 
+/// A bancada deste agente: a do terminal do atelier em que ele nasceu (`ATELIER_BANCADA`); senão, a da pasta onde
+/// ele está, se ela fica dentro de uma bancada; senão, a ativa no app. Assim o agente não muda de bancada quando o
+/// Paulo troca a da janela.
+fn bancada_do_agente(cfg: &bancada::Config) -> Option<bancada::Bancada> {
+    if let Ok(c) = std::env::var("ATELIER_BANCADA") {
+        if let Some(b) = cfg.bancadas.iter().find(|b| bancada::mesmo_caminho(&b.caminho, &c)) {
+            return Some(b.clone());
+        }
+    }
+    if let Ok(aqui) = std::env::current_dir() {
+        let aqui = aqui.to_string_lossy().to_lowercase().replace('/', "\\");
+        if let Some(b) = cfg.bancadas.iter().filter(|b| {
+            let c = b.caminho.to_lowercase().replace('/', "\\");
+            aqui == c || aqui.starts_with(&format!("{}\\", c.trim_end_matches('\\')))
+        }).max_by_key(|b| b.caminho.len()) {
+            return Some(b.clone());
+        }
+    }
+    cfg.ativa().cloned()
+}
+
 fn abrir() -> Result<(Connection, bancada::Bancada), String> {
     let cfg = bancada::carregar();
-    let b = cfg
-        .ativa()
-        .cloned()
+    let b = bancada_do_agente(&cfg)
         .ok_or("nenhuma bancada aberta: abra o app atelier uma vez para criar a primeira")?;
     let conn = db::abrir(&bancada::banco_da(&b.caminho)).map_err(|e| e.to_string())?;
     Ok((conn, b))
@@ -732,8 +751,10 @@ fn post_api(caminho: &str, corpo: &Value) -> Result<Value, String> {
     s.set_read_timeout(Some(std::time::Duration::from_secs(10))).ok();
     let b = corpo.to_string();
     let req = format!(
-        "POST {caminho} HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{b}",
-        b.len()
+        "POST {caminho} HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\nContent-Length: {}\r\n{}Connection: close\r\n\r\n{b}",
+        b.len(),
+        // a tela que recebe é a da bancada deste agente
+        bancada_do_agente(&bancada::carregar()).map(|x| format!("x-atelier-bancada: {}\r\n", atelier_core::api::codificar_bancada(&x.caminho))).unwrap_or_default()
     );
     s.write_all(req.as_bytes()).map_err(|e| e.to_string())?;
     let mut resp = String::new();
@@ -786,11 +807,16 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
                 [] => return Err(format!("bancada \"{nome}\" não existe (bancadas: {})", cfg.bancadas.iter().map(|b| b.nome.as_str()).collect::<Vec<_>>().join(", "))),
                 v => return Err(format!("mais de uma bancada com \"{nome}\": {}", v.iter().map(|b| b.nome.as_str()).collect::<Vec<_>>().join(", "))),
             };
-            // com o app aberto, ele troca (e a tela junto); fechado, muda direto o config.toml
-            match post_api("/api/bancadas/ativar", &json!({ "caminho": b.caminho })) {
-                Ok(r) if r.get("erro").is_none() => {}
-                Ok(r) => return Err(r["erro"].as_str().unwrap_or("o app recusou").to_string()),
-                Err(_) => {
+            // trocar de bancada é sério: com o app aberto, a tela pergunta ao Paulo e só troca se ele aceitar;
+            // fechado, muda direto o config.toml (vale quando ele abrir)
+            match post_api("/api/tela", &json!({ "acao": "pedir_bancada", "caminho": b.caminho, "nome": b.nome })) {
+                Ok(r) if r["ok"] == true => {
+                    return Ok(json!({ "pedido": true, "bancada": b.nome,
+                        "diga_ao_usuario": format!("pedi para trocar para a bancada {}: aceite na tela do atelier", b.nome),
+                        "aviso": "a troca só acontece se o usuário aceitar; confira depois com a ferramenta bancadas. Este agente continua na bancada em que nasceu (a do terminal dele)." }));
+                }
+                Ok(r) if r.get("erro").is_some() => return Err(r["erro"].as_str().unwrap_or("o app recusou").to_string()),
+                _ => {
                     cfg.ativa = Some(b.caminho.clone());
                     bancada::salvar(&cfg).map_err(|e| e.to_string())?;
                 }

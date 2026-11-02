@@ -22,25 +22,6 @@ Como usar:
 
 ### Bugs
 
-- **Trocar de bancada derruba os agentes e desvia o MCP** (2026-11-02, pergunta do Paulo: "posso deixar o agente
-  trabalhando numa bancada e ir para outra?"). Hoje **não**, por dois motivos (lidos no código, não testados):
-  1. **Terminais morrem.** `aposTrocarBancada` (`App.tsx`) zera os workspaces (`setWs(null)`); as janelas desmontam,
-     o xterm fecha o websocket e o núcleo mata o shell e o que roda dentro (`terminal.rs`: no fim do socket,
-     `filho.kill()`). Agente em terminal do atelier cai.
-  2. **O MCP segue a bancada aberta no app, a cada chamada** (`mcp/src/main.rs`, `abrir()` lê `cfg.ativa()`). Um
-     agente trabalhando na bancada A passa a ler e gravar na B assim que o Paulo troca: cria documento no lugar
-     errado, sem aviso. Vale também para agentes fora do atelier (Claude Code, Codex).
-  - Correção pensada: (1) terminais e workspaces de cada bancada continuam vivos em segundo plano (só escondidos,
-    como já acontece entre workspaces), com a memória na pílula de recursos; (2) cada agente fica preso à bancada em
-    que nasceu: o terminal do atelier passa `ATELIER_BANCADA=<caminho>` para o processo e o MCP usa essa, não a
-    ativa; o agente de fora usa a ativa no momento em que o MCP **inicia** (e `bancadas`/`trocar_bancada` mudam
-    explicitamente). Toda resposta do MCP poderia dizer em que bancada gravou.
-  - Até corrigir: **não trocar de bancada com agente trabalhando**.
-  - O Paulo esclareceu (2026-11-02): trocar de bancada é raro e "tenso", não é para ser comum. O que importa é
-    trocar de **workspace** (esse é seguro: os terminais de todos os workspaces abertos continuam vivos). E o MCP
-    **`trocar_bancada` hoje troca na hora, sem perguntar**: passar a pedir confirmação na tela ("O agente quer mudar
-    para a bancada X. Aceitar?"), e o agente só segue com o sim.
-
 ### Melhorias pedidas
 
 ### Pedidos do agente (de `pedidos-ao-atelier.md`)
@@ -89,34 +70,6 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 
 ### Recursos (mudam comportamento: precisam do ok do Paulo antes)
 
-- **Trabalhar em duas bancadas ao mesmo tempo** (2026-11-02, Paulo; análise feita, decidir no roadmap).
-  - Hoje: uma instância só (`tauri-plugin-single-instance`: abrir de novo traz a janela para a frente), uma API na
-    porta 7487, uma bancada "ativa" na configuração, e o MCP de cada agente abre o banco da ativa a cada chamada.
-  - **Caminho recomendado: um app só, várias janelas, cada janela com a sua bancada** (o Tauri abre várias janelas
-    no mesmo processo). Uma bandeja, uma API, um MCP, e o núcleo sabe quais bancadas estão abertas. Abrir a bancada
-    que já está numa janela só traz essa janela para a frente: é o que evita duas janelas na mesma bancada.
-  - Duas instâncias separadas (processos) seria o caminho pior: precisa de uma porta por instância, o MCP teria de
-    descobrir qual instância chamar, duas bandejas, duas atualizações.
-  - **Agentes:** cada um fica preso à bancada em que nasceu. O terminal do atelier passa a bancada ao processo
-    (`ATELIER_BANCADA`), e o MCP usa essa. Agente de fora (Claude Code, Codex) usa a bancada de onde foi aberto: se a
-    pasta dele estiver dentro de uma bancada, é ela; senão, a da janela em foco quando o MCP iniciou. Toda resposta
-    do MCP diz em que bancada gravou, e a `tela` age na janela da bancada certa.
-  - **Mesma bancada em dois lugares faz diferença?** No banco, pouca: o SQLite já está em WAL com espera de 5 s, e
-    hoje o app e vários MCPs já gravam no mesmo banco ao mesmo tempo sem problema. O risco é de tela: uma janela não
-    vê na hora o que a outra mudou, e as duas mexem nas mesmas pastas, no backup e na migração. Por isso a regra "uma
-    janela por bancada" basta, sem trava complicada.
-  - Depende de: terminais e workspaces vivos por bancada (ver o bug de trocar de bancada).
-  - **Aprovado pelo Paulo (2026-11-02), com a mecânica:**
-    - no seletor de bancadas, clicar no nome troca a bancada **desta** janela, e **toda troca pede confirmação**,
-      inclusive quando é ele que clica (e quando é o agente, pelo MCP);
-    - ao lado de cada nome, um botãozinho **"abrir em nova janela"**: abre aquela bancada numa janela nova e não
-      mexe na atual (se ela já está aberta em outra janela, só traz essa para a frente).
-  - Ideia, só se fizer falta (ele mesmo achou que talvez não precise, porque o nome da bancada já aparece lá em
-    cima): um **indicador visual por bancada**, uma cor própria em algum elemento (barra de título, borda), para
-    reconhecer a janela de longe e pela miniatura da barra de tarefas, como ele faz no VS Code com um add-on que muda
-    a cor por projeto. Mudar a cor da moldura do Windows não serve (não vale no Linux); a cor teria de ser dentro do
-    app.
-
 - **Consultas: perguntar ao banco sem criar visão** (2026-11-02, Paulo). Na barra lateral, acima de Visões, um item
   "Consultas" (nome a decidir: query, consultas). Fazer uma consulta rápida no banco da bancada, ver o resultado e,
   se quiser, **salvar a consulta** (separado das visões: ele não quer uma visão, quer a consulta à mão) e **criar uma
@@ -152,6 +105,10 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 - Migrar o posto `daily-work` para dentro do atelier.
 
 ### A conferir no uso
+- **0.2.8 no app de verdade** (o teste sem janela não tem Tauri): abrir uma bancada em nova janela, fechar essa
+  janela (fecha de verdade; a principal vai para a bandeja), clicar num link `atelier://doc/<código>` com o app
+  aberto e com ele fechado, e a janela nova abrindo o documento de outra bancada.
+- **Hooks dos agentes** (0.2.7): instalar em Integrações → Claude Code e ver a carinha mudar num agente de verdade.
 - Microfone do ditado na janela de verdade (só foi testado no navegador; o WebView2 pode pedir permissão).
 - Comando para o agente com o MCP instalado no Claude Code real.
 - Ler `~/atelier/pedidos-ao-atelier.md` (o que os agentes não conseguiram fazer) e trazer para cá. Lido em
@@ -165,6 +122,17 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.8** (2026-11-02, bancadas lado a lado e atelier://):
+  - **uma janela por bancada:** no seletor de bancadas, o botão "abrir em nova janela" abre a bancada numa janela
+    só dela (a que já está aberta só vem para a frente); a janela principal segue a bancada ativa;
+  - **toda troca de bancada pergunta**, seja o Paulo clicando, seja o agente (`trocar_bancada` agora só pede: a tela
+    pergunta e oferece "abrir em nova janela");
+  - **cada agente preso à sua bancada:** o terminal passa `ATELIER_BANCADA`; o MCP usa essa (ou a da pasta onde o
+    agente está, ou a ativa) e marca os pedidos à tela com ela, então a tela certa responde;
+  - **núcleo:** cada pedido à API diz a bancada (`x-atelier-bancada` ou `?bancada=`) e a API abre a conexão dela;
+    os eventos da tela e o estado da tela são por bancada; o "mudou" vale para todas as bancadas abertas;
+  - **atelier://** (plugin deep-link): `doc/<código>` abre o documento na janela da bancada dele (abrindo a janela
+    se for de outra), `visao/<nome>`, `bancada/<nome>`. Os agentes sabem (instruções do MCP).
 - **0.2.7** (2026-11-02, notificações e status dos agentes):
   - **um sistema só de avisos:** todo aviso (avisar/falhou, desfazer, `nao_consigo`, versão nova, atualizado, agentes)
     passa por `src/notificacoes.ts` e aparece na mesma pilha, no canto escolhido (padrão embaixo à direita);

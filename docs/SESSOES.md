@@ -466,3 +466,9 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   com o hook de verdade (`ATELIER_SESSAO=<sessão> atelier-mcp hook esperando`) contra o teste sem janela: carinha,
   toast e sininho. Os hooks não foram instalados no Claude Code do Paulo (mexeria no settings.json real): conferir
   no uso, em Integrações. O Codex dele já tem um `notify`; o atelier não troca.
+- 0.2.8: bancada por pedido (`api.rs`: `BANCADA_DO_PEDIDO` task-local, `escolher_bancada`, `com` abre a conexão
+  da bancada pedida; CORS libera `x-atelier-bancada`), janela por bancada (`abrir_janela_bancada`, rótulo
+  `bancada-<hash>`, capacidade `bancada-*`), `src/janela.ts` (marca todo fetch), confirmação de troca, agente preso
+  (`ATELIER_BANCADA`), `atelier://` (tauri-plugin-deep-link + single-instance com deep-link). Testado sem janela:
+  segunda aba com `?bancada=`, agente preso gravando na bancada dele, pergunta só na janela certa.
+  Atenção: o `target/debug/atelier-mcp.exe` pode ficar velho; recompilar antes de testar pelo `mcp_teste.py`.

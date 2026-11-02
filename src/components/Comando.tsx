@@ -26,6 +26,11 @@ export interface PedidoTela {
   tema?: string;
   zoom?: number;
   secao?: string;
+  /** a bancada a que o pedido se destina (cada janela só faz os da sua) */
+  bancada?: string;
+  /** pedir_bancada: para onde o agente quer trocar */
+  caminho?: string;
+  nome?: string;
   /** agente: a sessão do terminal e o estado que o hook mandou; falta: quem pediu */
   sessao?: number;
   estado?: string;

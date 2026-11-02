@@ -118,13 +118,100 @@ async fn atualizar_sozinho(app: tauri::AppHandle) {
     }
 }
 
+/// Rótulo da janela de uma bancada (o mesmo caminho dá sempre o mesmo rótulo: uma janela por bancada).
+fn rotulo_da_bancada(caminho: &str) -> String {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    caminho.trim().trim_end_matches(['\\', '/']).to_lowercase().replace('/', "\\").hash(&mut h);
+    format!("bancada-{:016x}", h.finish())
+}
+
+/// Abre a bancada numa janela nova (ou traz para a frente a que já está com ela). A janela principal é a da bancada
+/// ativa: pedir a ativa só traz a principal. `abrir` (código de documento) é aberto quando a janela carrega.
+#[tauri::command]
+fn abrir_janela_bancada(app: tauri::AppHandle, caminho: String, nome: String, abrir: Option<String>) -> Result<(), String> {
+    let ativa = bancada::carregar().ativa().map(|b| b.caminho.clone()).unwrap_or_default();
+    if bancada::mesmo_caminho(&ativa, &caminho) && abrir.is_none() {
+        trazer_para_frente(&app);
+        return Ok(());
+    }
+    let rotulo = if bancada::mesmo_caminho(&ativa, &caminho) { "main".to_string() } else { rotulo_da_bancada(&caminho) };
+    if let Some(w) = app.get_webview_window(&rotulo) {
+        if rotulo == "main" {
+            trazer_para_frente(&app);
+        } else {
+            let _ = w.unminimize();
+            let _ = w.show();
+            let _ = w.set_focus();
+        }
+        if let Some(c) = abrir {
+            let _ = w.emit("atelier:link", format!("atelier://doc/{c}"));
+        }
+        return Ok(());
+    }
+    let mut url = format!("index.html?bancada={}", api::codificar_bancada(&caminho).replace('%', "%25").replace('&', "%26").replace('#', "%23"));
+    if let Some(c) = abrir {
+        url.push_str(&format!("&abrir={c}"));
+    }
+    let w = tauri::WebviewWindowBuilder::new(&app, &rotulo, tauri::WebviewUrl::App(url.into()))
+        .title(format!("atelier · {nome}"))
+        .inner_size(1320.0, 860.0)
+        .min_inner_size(720.0, 480.0)
+        .decorations(false)
+        .build()
+        .map_err(|e| e.to_string())?;
+    #[cfg(windows)]
+    ajustar_janela(&w);
+    let _ = w.set_focus();
+    Ok(())
+}
+
+/// Um link `atelier://...`: `doc/<código>` abre o documento na janela da bancada dele (abrindo a janela se for de
+/// outra); `visao/<nome>` e o resto vão para a janela principal, que sabe abrir.
+fn tratar_link(app: &tauri::AppHandle, url: &str) {
+    let resto = url.trim().trim_start_matches("atelier://").trim_end_matches('/');
+    if let Some(codigo) = resto.strip_prefix("doc/") {
+        let ativa = bancada::carregar().ativa().map(|b| b.caminho.clone()).unwrap_or_default();
+        match bancada::achar_codigo(codigo) {
+            Some(b) if !bancada::mesmo_caminho(&b.caminho, &ativa) => {
+                let _ = abrir_janela_bancada(app.clone(), b.caminho, b.nome, Some(codigo.to_string()));
+                return;
+            }
+            _ => {}
+        }
+    }
+    trazer_para_frente(app);
+    let _ = app.emit_to("main", "atelier:link", url.to_string());
+}
+
+/// O link com que o app foi aberto (a tela pede quando termina de carregar).
+static LINK_INICIAL: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+
+/// A tela manda seguir um link (o inicial, ou um clicado dentro do app).
+#[tauri::command]
+fn seguir_link(app: tauri::AppHandle, url: String) {
+    tratar_link(&app, &url);
+}
+
+#[tauri::command]
+fn link_inicial() -> Option<String> {
+    LINK_INICIAL.lock().ok().and_then(|mut l| l.take())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let estado = api::Estado::iniciar().unwrap_or_else(|e| panic!("não abri a bancada: {e}"));
 
     tauri::Builder::default()
         // um atelier só: abrir de novo traz para a frente o que já está aberto (vem primeiro, antes de tudo)
-        .plugin(tauri_plugin_single_instance::init(|app, _, _| trazer_para_frente(app)))
+        .plugin(tauri_plugin_single_instance::init(|app, args, _| {
+            // abrir de novo (ou clicar num link atelier://) com o app já aberto: o link vem aqui
+            match args.iter().find(|a| a.starts_with("atelier://")) {
+                Some(link) => tratar_link(app, link),
+                None => trazer_para_frente(app),
+            }
+        }))
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -132,6 +219,15 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(move |app| {
             tauri::async_runtime::spawn(api::servir(estado));
+            // atelier:// registrado para este executável (o instalador também registra); aberto por um link, guarda
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                #[cfg(any(windows, target_os = "linux"))]
+                let _ = app.deep_link().register_all();
+                if let Some(link) = std::env::args().find(|a| a.starts_with("atelier://")) {
+                    *LINK_INICIAL.lock().unwrap_or_else(|e| e.into_inner()) = Some(link);
+                }
+            }
             #[cfg(windows)]
             if let Some(w) = app.get_webview_window("main") {
                 ajustar_janela(&w);
@@ -182,17 +278,19 @@ pub fn run() {
             }
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![abrir_janela_bancada, link_inicial, seguir_link])
         .on_window_event(|janela, ev| match ev {
-            // "fechar vai para a bandeja" (Configurações → Geral): o × só esconde; sair é pelo menu da bandeja
+            // "fechar vai para a bandeja" (Configurações → Geral): o × só esconde; sair é pelo menu da bandeja.
+            // As janelas de outras bancadas fecham de verdade.
             WindowEvent::CloseRequested { api, .. } => {
-                if bancada::carregar().preferencias.captura.bandeja {
+                if janela.label() == "main" && bancada::carregar().preferencias.captura.bandeja {
                     api.prevent_close();
                     esconder(janela.app_handle());
                 }
             }
             // "minimizar vai para a bandeja": minimizada, some da barra de tarefas
             WindowEvent::Resized(_) => {
-                if janela.is_minimized().unwrap_or(false) && bancada::carregar().preferencias.janela.minimizar_bandeja {
+                if janela.label() == "main" && janela.is_minimized().unwrap_or(false) && bancada::carregar().preferencias.janela.minimizar_bandeja {
                     // esconde ainda minimizada (sem piscar); trazer_para_frente mostra e restaura
                     esconder(janela.app_handle());
                 }

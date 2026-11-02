@@ -21,14 +21,50 @@ pub fn porta() -> u16 {
     std::env::var("ATELIER_PORTA").ok().and_then(|p| p.parse().ok()).unwrap_or(PORTA)
 }
 
+tokio::task_local! {
+    /// A bancada deste pedido (cabeçalho `x-atelier-bancada` ou `?bancada=`): cada janela do app é de uma bancada, e
+    /// cada agente fica preso à sua. Sem ela, vale a bancada ativa (a da janela principal).
+    static BANCADA_DO_PEDIDO: Option<String>;
+}
+
+/// A bancada deste pedido (None: a ativa). O terminal usa para prender o agente à bancada da janela.
+pub fn bancada_do_pedido() -> Option<String> {
+    BANCADA_DO_PEDIDO.try_with(|b| b.clone()).ok().flatten()
+}
+
+/// O caminho de bancada para ir num cabeçalho HTTP (só ASCII visível): `%` + hexa no resto.
+pub fn codificar_bancada(caminho: &str) -> String {
+    caminho.bytes().map(|b| if b.is_ascii_alphanumeric() || b"-_.:/\\".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }).collect()
+}
+
+pub fn decodificar_bancada(s: &str) -> String {
+    let b = s.as_bytes();
+    let mut v = Vec::with_capacity(b.len());
+    let mut i = 0;
+    while i < b.len() {
+        if b[i] == b'%' && i + 2 < b.len() {
+            if let Ok(x) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
+                v.push(x);
+                i += 3;
+                continue;
+            }
+        }
+        v.push(b[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&v).into_owned()
+}
+
 /// Estado do app: a conexão da bancada aberta e a lista de bancadas. Trocar de bancada troca a conexão.
 pub struct Estado {
     conn: Mutex<Connection>,
+    /// conexões das outras bancadas abertas em outras janelas (ou presas a agentes), abertas quando pedidas
+    outras: Mutex<std::collections::HashMap<String, Arc<Mutex<Connection>>>>,
     cfg: Mutex<Config>,
     /// pedidos para a tela (vindos do MCP e do Comando): veja ACOES_TELA
     tela: tokio::sync::broadcast::Sender<String>,
-    /// o que a tela está mostrando, em texto (ela manda a cada mudança)
-    tela_estado: Mutex<String>,
+    /// o que cada janela está mostrando, em texto (ela manda a cada mudança), por bancada
+    tela_estado: Mutex<std::collections::HashMap<String, String>>,
 }
 
 pub type Banco = Arc<Estado>;
@@ -43,11 +79,25 @@ impl Estado {
         if let Err(e) = crate::temas::semear() {
             eprintln!("atelier: temas: {e}");
         }
-        Ok(Arc::new(Estado { conn: Mutex::new(conn), cfg: Mutex::new(cfg), tela: tokio::sync::broadcast::channel(64).0, tela_estado: Mutex::new(String::new()) }))
+        Ok(Arc::new(Estado {
+            conn: Mutex::new(conn), outras: Mutex::new(Default::default()), cfg: Mutex::new(cfg),
+            tela: tokio::sync::broadcast::channel(64).0, tela_estado: Mutex::new(Default::default()),
+        }))
     }
 
+    /// A bancada deste pedido: a da janela (ou do agente) que pediu; sem ela, a ativa.
     pub fn bancada_ativa(&self) -> Option<Bancada> {
-        self.cfg.lock().unwrap_or_else(|e| e.into_inner()).ativa().cloned()
+        let cfg = self.cfg.lock().unwrap_or_else(|e| e.into_inner());
+        let pedida = BANCADA_DO_PEDIDO.try_with(|b| b.clone()).ok().flatten();
+        match pedida {
+            Some(c) => cfg.bancadas.iter().find(|b| bancada::mesmo_caminho(&b.caminho, &c)).cloned(),
+            None => cfg.ativa().cloned(),
+        }
+    }
+
+    /// O caminho que marca os eventos e o estado da tela deste pedido.
+    fn chave_da_tela(&self) -> String {
+        self.bancada_ativa().map(|b| b.caminho.to_lowercase().replace('/', "\\")).unwrap_or_default()
     }
 }
 
@@ -64,9 +114,42 @@ impl IntoResponse for Erro {
 
 type R = Result<Json<Value>, Erro>;
 
+/// Roda `f` na conexão da bancada deste pedido (a ativa, ou a da janela/agente que pediu).
 fn com<T>(b: &Banco, f: impl FnOnce(&Connection) -> db::Res<T>) -> db::Res<T> {
-    let conn = b.conn.lock().unwrap_or_else(|e| e.into_inner());
-    f(&conn)
+    let pedida = BANCADA_DO_PEDIDO.try_with(|x| x.clone()).ok().flatten();
+    let ativa = b.cfg.lock().unwrap_or_else(|e| e.into_inner()).ativa().map(|x| x.caminho.clone());
+    match pedida {
+        Some(c) if !ativa.as_deref().is_some_and(|a| bancada::mesmo_caminho(a, &c)) => {
+            let alvo = b.bancada_ativa().ok_or_else(|| Erro::NaoEncontrado(format!("bancada {c}")))?;
+            let chave = alvo.caminho.to_lowercase();
+            let conn = {
+                let mut outras = b.outras.lock().unwrap_or_else(|e| e.into_inner());
+                match outras.get(&chave) {
+                    Some(c) => c.clone(),
+                    None => {
+                        let c = Arc::new(Mutex::new(db::abrir(&bancada::banco_da(&alvo.caminho))?));
+                        outras.insert(chave, c.clone());
+                        c
+                    }
+                }
+            };
+            let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
+            f(&conn)
+        }
+        _ => {
+            let conn = b.conn.lock().unwrap_or_else(|e| e.into_inner());
+            f(&conn)
+        }
+    }
+}
+
+/// Lê a bancada do pedido (cabeçalho ou `?bancada=`) e roda o resto dentro dela.
+async fn escolher_bancada(req: axum::extract::Request, next: axum::middleware::Next) -> Response {
+    let do_cabecalho = req.headers().get("x-atelier-bancada").and_then(|v| v.to_str().ok()).map(String::from);
+    let da_query = req.uri().query().and_then(|q| q.split('&').find_map(|p| p.strip_prefix("bancada=").map(String::from)));
+    // na query vem codificada duas vezes (a da URL e a nossa); no cabeçalho, uma
+    let bancada = do_cabecalho.map(|c| decodificar_bancada(&c)).or(da_query.map(|c| decodificar_bancada(&decodificar_bancada(&c)))).filter(|c| !c.trim().is_empty());
+    BANCADA_DO_PEDIDO.scope(bancada, next.run(req)).await
 }
 
 pub fn rotas(banco: Banco) -> Router {
@@ -79,7 +162,8 @@ pub fn rotas(banco: Banco) -> Router {
     let cors = CorsLayer::new()
         .allow_origin(origens)
         .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::PUT, Method::DELETE])
-        .allow_headers([axum::http::header::CONTENT_TYPE]);
+        // a janela de outra bancada manda qual é a dela
+        .allow_headers([axum::http::header::CONTENT_TYPE, axum::http::HeaderName::from_static("x-atelier-bancada")]);
 
     Router::new()
         .route("/api/saude", get(|| async { Json(json!({ "ok": true, "app": "atelier", "versao": env!("CARGO_PKG_VERSION") })) }))
@@ -146,6 +230,7 @@ pub fn rotas(banco: Banco) -> Router {
         .route("/api/integracoes/{id}", post(instalar_integracao).delete(remover_integracao))
         .route("/api/temas", get(|| async { Json(json!({ "pasta": crate::temas::pasta(), "temas": crate::temas::listar() })) }))
         .layer(cors)
+        .layer(axum::middleware::from_fn(escolher_bancada))
         .layer(axum::middleware::from_fn(guarda))
         .with_state(banco)
 }
@@ -222,15 +307,26 @@ async fn manutencao(b: Banco) {
 /// conexão quando outra conexão grava (as gravações da própria tela não mexem nele). Conferido a cada segundo; quando
 /// muda, a tela recebe `{"acao": "mudou"}` e recarrega o que estiver à vista.
 async fn vigiar_banco(b: Banco) {
-    let mut ultimo: Option<(String, i64)> = None;
+    // a ativa e as outras bancadas abertas (em outras janelas): cada janela recebe o "mudou" da sua
+    let mut ultimos: std::collections::HashMap<String, i64> = Default::default();
     loop {
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-        let Some(banc) = b.bancada_ativa() else { continue };
-        let Ok(v) = com(&b, |c| Ok(c.query_row("PRAGMA data_version", [], |r| r.get::<_, i64>(0))?)) else { continue };
-        if matches!(&ultimo, Some((cam, antes)) if *cam == banc.caminho && *antes != v) {
-            let _ = b.tela.send(json!({ "acao": "mudou" }).to_string());
+        let mut caminhos: Vec<Option<String>> = vec![None];
+        caminhos.extend(b.outras.lock().unwrap_or_else(|e| e.into_inner()).keys().cloned().map(Some));
+        for cam in caminhos {
+            let b2 = b.clone();
+            let lido = BANCADA_DO_PEDIDO
+                .scope(cam.clone(), async move {
+                    let chave = b2.chave_da_tela();
+                    com(&b2, |c| Ok(c.query_row("PRAGMA data_version", [], |r| r.get::<_, i64>(0))?)).ok().map(|v| (chave, v))
+                })
+                .await;
+            let Some((chave, v)) = lido else { continue };
+            if ultimos.get(&chave).is_some_and(|antes| *antes != v) {
+                let _ = b.tela.send(json!({ "acao": "mudou", "bancada": chave }).to_string());
+            }
+            ultimos.insert(chave, v);
         }
-        ultimo = Some((banc.caminho, v));
     }
 }
 
@@ -930,7 +1026,7 @@ async fn tela(State(b): State<Banco>, Json(d): Json<Value>) -> R {
         "filtrar" => ev["texto"] = json!(txt("texto").unwrap_or_default()),
         // o que está na tela agora (a tela manda a cada mudança)
         "estado" => {
-            let e = b.tela_estado.lock().unwrap_or_else(|e| e.into_inner()).clone();
+            let e = b.tela_estado.lock().unwrap_or_else(|e| e.into_inner()).get(&b.chave_da_tela()).cloned().unwrap_or_default();
             if e.is_empty() {
                 return Ok(Json(json!({ "ok": false, "estado": "o app não informou a tela (está aberto?)" })));
             }
@@ -938,9 +1034,16 @@ async fn tela(State(b): State<Banco>, Json(d): Json<Value>) -> R {
             let e = com(&b, |c| Ok(codigos_no_estado(c, &e))).unwrap_or(e);
             return Ok(Json(json!({ "ok": true, "estado": e })));
         }
+        // o agente pediu para trocar de bancada: a tela pergunta ao Paulo
+        "pedir_bancada" => {
+            ev["caminho"] = json!(txt("caminho").ok_or(Erro::Invalido("pedir_bancada: informe o caminho".into()))?);
+            ev["nome"] = json!(txt("nome").unwrap_or_default());
+        }
         "recarregar" | "dividir" | "juntar" | "visao_geral" => {}
         outro => return Err(Erro::Invalido(format!("ação desconhecida: {outro} (ações: {ACOES_TELA}). Se for algo que a tela devia saber fazer, registre com nao_consigo."))),
     }
+    // só a janela desta bancada faz (as outras ignoram)
+    ev["bancada"] = json!(b.chave_da_tela());
     let telas = b.tela.send(ev.to_string()).unwrap_or(0);
     Ok(Json(json!({ "ok": telas > 0, "telas": telas })))
 }
@@ -973,7 +1076,8 @@ fn codigos_no_estado(c: &rusqlite::Connection, e: &str) -> String {
 
 /// A tela conta o que está mostrando (bancada, workspace, janelas de cada metade), para o agente saber onde está.
 async fn tela_estado(State(b): State<Banco>, Json(d): Json<Value>) -> R {
-    *b.tela_estado.lock().unwrap_or_else(|e| e.into_inner()) = d.get("texto").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let chave = b.chave_da_tela();
+    b.tela_estado.lock().unwrap_or_else(|e| e.into_inner()).insert(chave, d.get("texto").and_then(|v| v.as_str()).unwrap_or("").to_string());
     Ok(Json(json!({ "ok": true })))
 }
 
@@ -990,7 +1094,7 @@ async fn falta(State(b): State<Banco>, Json(d): Json<Value>) -> R {
     let motivo = d.get("motivo").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
     let agente = d.get("agente").and_then(|v| v.as_str()).unwrap_or("Agente").to_string();
     let arquivo = bancada::anotar_pedido(&pedido, &motivo, &agente)?;
-    let _ = b.tela.send(json!({ "acao": "falta", "texto": pedido, "motivo": motivo, "arquivo": arquivo, "agente": agente }).to_string());
+    let _ = b.tela.send(json!({ "acao": "falta", "texto": pedido, "motivo": motivo, "arquivo": arquivo, "agente": agente, "bancada": b.chave_da_tela() }).to_string());
     Ok(Json(json!({ "ok": true, "arquivo": arquivo })))
 }
 

@@ -1199,3 +1199,8 @@ body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grab
 .carinha.trabalhando { color: #fff; background: linear-gradient(90deg, var(--t-blue, #3e63dd), var(--t-purple, #8e4ec6), var(--acento), var(--t-blue, #3e63dd)); background-size: 300% 100%; animation: carinha-trabalha 2.4s linear infinite; }
 @keyframes carinha-trabalha { from { background-position: 0% 0; } to { background-position: 300% 0; } }
 @media (prefers-reduced-motion: reduce) { .carinha.trabalhando { animation: none; } }
+
+/* trocar de bancada: confirmação */
+.modal.confirmar-bancada { max-width: 460px; padding: 20px 22px 16px; }
+.modal.confirmar-bancada h3 { margin: 0 0 8px; }
+.modal.confirmar-bancada .ca-acoes { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }

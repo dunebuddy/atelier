@@ -1,3 +1,5 @@
+import { abrirCodigo } from "./components/Mencoes";
+import { abrirJanelaDaBancada, ABRIR_AO_CARREGAR, BANCADA_DA_JANELA, bancadaNaQuery, codificarBancada, decodificarBancada, mesmaBancada } from "./janela";
 import { desfazerAgora, notificarFalta, PilhaDeAvisos } from "./components/Avisos";
 import { notificar } from "./notificacoes";
 import { EstadoAgente, marcarAgente, verSessoes } from "./agentes";
@@ -166,7 +168,13 @@ export default function App() {
     await Promise.all([carregarEsquema(), carregarVisoes()]);
   }, [carregarEsquema, carregarVisoes]);
 
-  const carregarBancadas = useCallback(() => api.bancadas().then(setBancadas).catch(() => {}), []);
+  const carregarBancadas = useCallback(() => api.bancadas().then((b) => {
+    if (BANCADA_DA_JANELA) {
+      const minha = b.bancadas.find((x) => mesmaBancada(x.caminho, decodificarBancada(BANCADA_DA_JANELA!)));
+      if (minha) b = { ...b, ativa: minha };
+    }
+    setBancadas(b);
+  }).catch(() => {}), []);
 
   useEffect(() => {
     aoMudarEsquema();
@@ -226,13 +234,24 @@ export default function App() {
     await Promise.all([aoMudarEsquema(), carregarBancadas()]);
   }, [aoMudarEsquema, carregarBancadas]);
 
-  const trocarBancada = async (caminho: string) => {
+  const trocarBancadaJa = async (caminho: string) => {
     try {
+      // janela de outra bancada: troca só esta janela (a principal e a ativa ficam como estão)
+      if (BANCADA_DA_JANELA) {
+        location.search = `?bancada=${encodeURIComponent(codificarBancada(caminho))}`;
+        return;
+      }
       await api.ativarBancada(caminho);
       await aposTrocarBancada();
     } catch (e) {
       falhou(e);
     }
+  };
+  // toda troca pergunta antes, seja o Paulo clicando, seja o agente pedindo
+  const [pedidoTroca, setPedidoTroca] = useState<{ caminho: string; nome: string; doAgente: boolean } | null>(null);
+  const trocarBancada = (caminho: string) => {
+    const b = bancadas?.bancadas.find((x) => mesmaBancada(x.caminho, caminho));
+    setPedidoTroca({ caminho, nome: b?.nome ?? caminho, doAgente: false });
   };
 
   useEffect(() => guardar("sidebarFechada", fechada), [fechada]);
@@ -311,6 +330,8 @@ export default function App() {
       case "configuracoes": setConfig((d.secao as SecaoConfig) ?? "aparencia"); return;
       case "busca": window.dispatchEvent(new CustomEvent("atelier:busca", { detail: d.texto ?? "" })); return;
       case "bancada": return;
+      // o agente pediu para trocar de bancada: pergunta
+      case "pedir_bancada": if (d.caminho) setPedidoTroca({ caminho: d.caminho, nome: d.nome ?? d.caminho, doAgente: true }); return;
       case "recarregar": window.dispatchEvent(new Event("focus")); return;
       // outro processo (o agente, pelo MCP) gravou no banco: esquema, visões, bancadas e o que está à vista
       case "mudou": recarregarTudo(); return;
@@ -342,6 +363,11 @@ export default function App() {
   // trocar e já mandar abrir alguma coisa)
   const fila = useRef(Promise.resolve());
   const enfileirar = (d: PedidoTela) => {
+    if (d.bancada) {
+      const minha = BANCADA_DA_JANELA ? decodificarBancada(BANCADA_DA_JANELA) : bancadasRef.current?.ativa?.caminho;
+      if (minha && !mesmaBancada(minha, d.bancada)) return;
+    }
+    if (d.acao === "bancada" && BANCADA_DA_JANELA) return;
     fila.current = fila.current.then(async () => {
       if (d.acao === "bancada") {
         await aposTrocarBancadaRef.current();
@@ -349,6 +375,8 @@ export default function App() {
       } else pedidoRef.current(d);
     }).catch(() => {});
   };
+  const bancadasRef = useRef(bancadas);
+  bancadasRef.current = bancadas;
   const aposTrocarBancadaRef = useRef(aposTrocarBancada);
   aposTrocarBancadaRef.current = aposTrocarBancada;
   useEffect(() => {
@@ -356,7 +384,7 @@ export default function App() {
     let parar = false;
     let espera = 0;
     const ligar = () => {
-      ws = new WebSocket(BASE.replace(/^http/, "ws") + "/tela/eventos");
+      ws = new WebSocket(BASE.replace(/^http/, "ws") + "/tela/eventos" + (bancadaNaQuery() ? `?${bancadaNaQuery()}` : ""));
       ws.onmessage = (m) => enfileirar(JSON.parse(String(m.data)) as PedidoTela);
       ws.onopen = () => { espera = 0; };
       ws.onclose = () => { if (!parar) window.setTimeout(ligar, Math.min(10000, (espera = espera * 2 || 500))); };
@@ -364,6 +392,42 @@ export default function App() {
     ligar();
     return () => { parar = true; ws?.close(); };
   }, []);
+
+  useEffect(() => {
+    let solta: (() => void) | undefined;
+    const seguir = (url: string) => {
+      const resto = url.replace(/^atelier:\/\//, "").replace(/\/+$/, "");
+      const [tipo, ...nome] = resto.split("/");
+      const valor = decodeURIComponent(nome.join("/"));
+      if (tipo === "doc") abrirCodigo(valor, (r) => abrirAoLado(r));
+      else if (tipo === "visao") {
+        api.visoes().then((vs) => {
+          const v = vs.find((x) => x.nome.toLowerCase() === valor.toLowerCase());
+          if (v) abrirAoLado({ v: "visao", id: v.id });
+          else avisar(`A visão “${valor}” não existe nesta bancada.`);
+        }).catch(falhou);
+      } else if (tipo === "bancada") {
+        const b = bancadasRef.current?.bancadas.find((x) => x.nome.toLowerCase() === valor.toLowerCase());
+        if (b) abrirJanelaDaBancada(b.caminho, b.nome);
+        else avisar(`A bancada “${valor}” não existe.`);
+      }
+    };
+    (async () => {
+      try {
+        const { listen } = await import("@tauri-apps/api/event");
+        const { getCurrentWebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+        solta = await getCurrentWebviewWindow().listen<string>("atelier:link", (e) => seguir(e.payload));
+        void listen;
+        if (!BANCADA_DA_JANELA) {
+          const { invoke } = await import("@tauri-apps/api/core");
+          const inicial = await invoke<string | null>("link_inicial");
+          if (inicial) await invoke("seguir_link", { url: inicial });
+        }
+      } catch { /* no navegador de teste não há Tauri */ }
+      if (ABRIR_AO_CARREGAR) window.setTimeout(() => seguir(`atelier://doc/${ABRIR_AO_CARREGAR}`), 800);
+    })();
+    return () => solta?.();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // o que está na tela, em texto: vai para a API (o agente consulta com tela → estado) e para o Comando
   const descricaoTela = useMemo(() => (ws ? descreverTela(ws, bancadas, visoes) : ""), [ws, bancadas, visoes]);
@@ -602,6 +666,25 @@ export default function App() {
         />
       )}
       <PilhaDeAvisos />
+      {pedidoTroca && (
+        <div className="modal-fundo" onMouseDown={(e) => e.target === e.currentTarget && setPedidoTroca(null)}>
+          <div className="modal confirmar-bancada">
+            <h3>{pedidoTroca.doAgente ? "O agente quer trocar de bancada" : "Trocar de bancada"}</h3>
+            <p>
+              Trocar esta janela para a bancada <strong>{pedidoTroca.nome}</strong>?
+              {ws && ws.abertos.some((k) => ws.estados[k] && W.sessoesDe(ws.estados[k]).length > 0)
+                ? " Os terminais e agentes abertos nesta janela vão fechar."
+                : ""}
+            </p>
+            <p className="dica">Para trabalhar nas duas ao mesmo tempo, abra a outra numa janela nova.</p>
+            <div className="ca-acoes">
+              <button className="btn" onClick={() => setPedidoTroca(null)}>Cancelar</button>
+              <button className="btn" onClick={() => { const p = pedidoTroca; setPedidoTroca(null); abrirJanelaDaBancada(p.caminho, p.nome); }}>Abrir em nova janela</button>
+              <button className="btn primario" autoFocus onClick={() => { const p = pedidoTroca; setPedidoTroca(null); trocarBancadaJa(p.caminho); }}>Trocar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

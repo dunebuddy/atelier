@@ -80,10 +80,13 @@ pub async fn terminal(ws: WebSocketUpgrade, headers: HeaderMap, Query(q): Query<
     let rows = q.get("rows").and_then(|v| v.parse().ok()).unwrap_or(30);
     // número da sessão que a tela deu: a barra de status soma a memória por workspace
     let num: Option<u64> = q.get("sessao").and_then(|v| v.parse().ok());
-    ws.on_upgrade(move |s| sessao(s, num, agente, escolhido, cwd, cols, rows))
+    // o agente que nascer aqui fica preso à bancada desta janela (o MCP dele usa ATELIER_BANCADA, não a ativa)
+    let banc = crate::api::bancada_do_pedido().or_else(|| crate::bancada::carregar().ativa().map(|b| b.caminho.clone()));
+    ws.on_upgrade(move |s| sessao(s, num, banc, agente, escolhido, cwd, cols, rows))
 }
 
-async fn sessao(socket: WebSocket, num: Option<u64>, agente: Option<std::path::PathBuf>, escolhido: Option<std::path::PathBuf>, cwd: Option<String>, cols: u16, rows: u16) {
+#[allow(clippy::too_many_arguments)]
+async fn sessao(socket: WebSocket, num: Option<u64>, banc: Option<String>, agente: Option<std::path::PathBuf>, escolhido: Option<std::path::PathBuf>, cwd: Option<String>, cols: u16, rows: u16) {
     let (mut saida, mut entrada) = socket.split();
     let par = match native_pty_system().openpty(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 }) {
         Ok(p) => p,
@@ -122,6 +125,9 @@ async fn sessao(socket: WebSocket, num: Option<u64>, agente: Option<std::path::P
     // o hook do agente (atelier-mcp hook ...) diz à tela de qual terminal veio o aviso
     if let Some(n) = num {
         cmd.env("ATELIER_SESSAO", n.to_string());
+    }
+    if let Some(b) = &banc {
+        cmd.env("ATELIER_BANCADA", b);
     }
     cmd.env("COLORTERM", "truecolor");
     let mut filho = match par.slave.spawn_command(cmd) {

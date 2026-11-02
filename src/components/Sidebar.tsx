@@ -1,6 +1,7 @@
 import type { SecaoConfig } from "./Configuracoes";
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, ChevronRight, ChevronsUpDown, ListTree, Plus, Settings2, Trash2 } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, ChevronsUpDown, ExternalLink, ListTree, Plus, Settings2, Trash2 } from "lucide-react";
+import { abrirJanelaDaBancada } from "../janela";
 import { api, Bancadas, Esquema, Visao } from "../api";
 import { falhou, guardar, ler, Rota } from "../ui";
 import { datasDo } from "../visao";
@@ -237,7 +238,14 @@ export function Sidebar({
               onClick={() => { seletor.fechar(); if (b.caminho !== bancadas.ativa?.caminho) trocarBancada(b.caminho); }}
             >
               <span className="bancada-icone pequeno">{b.nome.slice(0, 1).toUpperCase()}</span> {b.nome}
-              {b.caminho === bancadas.ativa?.caminho && <span className="dir"><Check size={14} /></span>}
+              {b.caminho === bancadas.ativa?.caminho ? (
+                <span className="dir"><Check size={14} /></span>
+              ) : (
+                <span className="dir btn-icone mini" role="button" title="Abrir em nova janela (esta fica como está)"
+                  onClick={(e) => { e.stopPropagation(); seletor.fechar(); abrirJanelaDaBancada(b.caminho, b.nome); }}>
+                  <ExternalLink size={13} />
+                </span>
+              )}
             </button>
           ))}
           <div className="menu-sep" />

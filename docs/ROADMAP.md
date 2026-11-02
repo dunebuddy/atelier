@@ -209,7 +209,7 @@ Para trabalhar com vários agentes ao mesmo tempo sem ficar procurando quem paro
   workspace e no botão dos workspaces: vermelho esperando > trabalhando (animação) > verde terminou > claro parado >
   cinza sem agente; bolinha no sininho; toast configurável.
 
-## 0.2.8 · Bancadas lado a lado
+## 0.2.8 · Bancadas lado a lado · **saiu em 2026-11-02**
 
 Grande, e o bug que ele evita é raro (trocar de bancada com agente rodando).
 

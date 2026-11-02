@@ -5,6 +5,7 @@ import "@xterm/xterm/css/xterm.css";
 import { BASE } from "../api";
 import { bate, doPainel } from "../atalhos";
 import { estadoDaSessao, marcarAgente } from "../agentes";
+import { BANCADA_DA_JANELA } from "../janela";
 
 // O terminal em si (xterm ligado ao processo pelo WebSocket). Fica num arquivo à parte para ser carregado só quando
 // o primeiro terminal abre (ver TerminalJanela em Terminal.tsx).
@@ -57,6 +58,7 @@ export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; ao
     if (aba.programa) q.set("programa", aba.programa);
     if (aba.shell) q.set("shell", aba.shell);
     q.set("sessao", String(aba.id));
+    if (BANCADA_DA_JANELA) q.set("bancada", BANCADA_DA_JANELA);
     const ws = new WebSocket(`${WS}/terminal?${q}`);
     ws.binaryType = "arraybuffer";
     ws.onmessage = (ev) => !morto && term.write(typeof ev.data === "string" ? ev.data : new Uint8Array(ev.data));

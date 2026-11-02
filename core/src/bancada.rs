@@ -398,3 +398,17 @@ mod testes {
         assert_eq!(normalizar("/"), "/");
     }
 }
+
+/// Em que bancada mora o documento deste código (para um link `atelier://doc/<código>` abrir a janela certa).
+pub fn achar_codigo(codigo: &str) -> Option<Bancada> {
+    let c = codigo.trim().trim_start_matches('#').to_lowercase();
+    let cfg = carregar();
+    let mut ordem: Vec<&Bancada> = cfg.ativa().into_iter().collect();
+    ordem.extend(cfg.bancadas.iter().filter(|b| cfg.ativa().is_none_or(|a| !mesmo_caminho(&a.caminho, &b.caminho))));
+    ordem.into_iter().find(|b| {
+        crate::db::abrir(&banco_da(&b.caminho))
+            .ok()
+            .and_then(|conn| conn.query_row("SELECT 1 FROM itens WHERE codigo = ?", [&c], |_| Ok(())).ok())
+            .is_some()
+    }).cloned()
+}

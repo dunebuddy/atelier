@@ -25,6 +25,18 @@ Como usar:
 
 ### Bugs
 
+- **MCP `tela` joga fora a resposta: `estado` volta vazio** (2026-11-02, pedido do agente em
+  `pedidos-ao-atelier.md`, 11:57). O agente quis fechar o documento que acabou e abrir o próximo **no mesmo lugar**
+  (mesma metade, mesma posição), consultou `tela` → `estado` e recebeu só `{"ok": true}`; abriu na direita no
+  chute. Diagnóstico: a tela publica certinho o que está aberto (`descreverTela` → `/api/tela/estado`) e a API
+  devolve no campo `estado`, mas o MCP (`mcp/src/main.rs`, braço `"tela"`) devolve sempre `{ "ok": true }` e
+  descarta o resto. Perde também o `pasta`/`app` do `explorador_sistema`. Correção: devolver a resposta inteira da
+  API. Junto, o que o agente pediu:
+  - o `estado` dizer de cada janela o título, o código, a metade (esquerda/direita) e a posição;
+  - o `fechar` dizer de qual metade/posição fechou;
+  - uma ação **substituir** (janela antiga + código novo): abre o novo no mesmo lugar da antiga. Hoje o `abrir` só
+    escolhe a metade (`lado`), não a posição.
+
 - **Menus suspensos não fecham clicando de novo no botão** (2026-11-02, Paulo). O seletor de bancadas lá em cima, o
   dos workspaces, o dos recursos (memória/CPU) e os outros: clicou, abriu; clicou de novo no mesmo botão, continua
   aberto. Só fecha clicando fora, com Esc ou escolhendo algo. Diagnóstico: todos usam o `usePopover`
@@ -143,6 +155,19 @@ Como usar:
 ### Pedidos do agente (de `pedidos-ao-atelier.md`, triados com o Paulo em 2026-11-01)
 
 ### Recursos (mudam comportamento: precisam do ok do Paulo antes)
+
+- **Notificações: sininho com histórico e configuração** (2026-11-02, Paulo). O aviso (toast) do `nao_consigo`
+  apareceu e sumiu rápido demais (aviso comum fica 4 s; erro e "desfazer", 8 s) e não há onde rever. Pedido:
+  - **sininho na barra de título**, perto das configurações, com contador; abre o **histórico**: cada notificação
+    guardada, dá para apagar uma, **agir** sobre ela (abrir o documento, o arquivo, "desfazer" se ainda vale) e
+    **limpar todas**;
+  - fechar o toast não apaga do histórico;
+  - **Configurações → Notificações**: onde o toast aparece (as posições comuns: cantos de cima e de baixo, direita e
+    esquerda; ele quer garantir que fique sempre no mesmo lugar), quanto tempo fica, não mostrar toast (só guardar),
+    **nível** (só erros / erros e avisos / tudo) e por **assunto** (ex.: não avisar de atualização; avisos de
+    agentes; salvamentos...);
+  - os avisos dos agentes (`falta`, e o que vier pelo MCP) entram no histórico com quem mandou.
+  - A decidir: guardar no banco da bancada ou só enquanto o app está aberto (sugestão: no app, os últimos ~200).
 
 - **Consultas: perguntar ao banco sem criar visão** (2026-11-02, Paulo). Na barra lateral, acima de Visões, um item
   "Consultas" (nome a decidir: query, consultas). Fazer uma consulta rápida no banco da bancada, ver o resultado e,

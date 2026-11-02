@@ -453,3 +453,7 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 - Dica do teste sem janela: com o painel do navegador escondido, a página demora a carregar e o teclado não
   funciona; usar `javascript_tool` (ex.: `import('/src/ui.ts')` para abrir) e `cargo test --lib` (o
   `servidor.exe` do teste fica travado enquanto roda).
+- 0.2.5: atalhos do VS Code (motor com extras e palavras escondidas; `dispararAtalho` executa uma ação apertando o
+  atalho de mentira, é o que a lista de ações usa), barra de título, maximizar/Zen, terminal com Shift+Enter.
+  Testado por script no teste sem janela (lista de ações, maximizar, Ctrl+B fora e dentro do editor, Zen e
+  Esc Esc, ir ao terminal, busca nos atalhos). A tela cheia do Zen pede `core:window:allow-set-fullscreen`.

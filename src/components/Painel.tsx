@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { combinacao } from "../atalhos";
 import {
   ArrowLeftToLine, Bot, ChevronDown, ChevronLeft, ChevronRight, Columns2, FolderOpen, FolderTree, GalleryHorizontalEnd, LayoutPanelLeft, List,
-  PanelTop, Rows2, SquareTerminal, X,
+  Minimize2, PanelTop, Rows2, SquareTerminal, X,
 } from "lucide-react";
 import { Esquema, Visao } from "../api";
 import * as P from "../painel";
@@ -122,7 +123,11 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
     else if (velha) foco?.blur();
   }, [estado]);
 
-  const lugares: Lugar[] = estado.metades.flatMap((m, mi) => P.arrumar(m, mi, corpoDe(mi), rolagem[mi] ?? 0));
+  // maximizada: a janela ativa do painel com foco ocupa tudo; as outras ficam montadas, só escondidas (terminal vivo)
+  const maxi = estado.maximizada ? P.janelaAtiva(estado) : null;
+  const lugares: Lugar[] = estado.metades
+    .flatMap((m, mi) => P.arrumar(m, mi, corpoDe(mi), rolagem[mi] ?? 0))
+    .map((l) => (!maxi ? l : l.id === maxi.id ? { ...l, r: { x: 0, y: CABECA, w: tam.w, h: tam.h - CABECA }, visivel: true } : { ...l, visivel: false }));
   // todas as janelas num lugar só do DOM: mudar de modo ou de metade não desmonta nada (o terminal continua vivo)
   const todas = estado.metades.flatMap((m, mi) => m.janelas.map((j) => ({ j, mi })));
   todas.sort((a, b) => (a.j.id < b.j.id ? -1 : 1));
@@ -225,13 +230,14 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
   return (
     <div className={`painel${arrastando ? " arrastando" : ""}${animar ? " animar" : ""}`} ref={caixa}>
       {estado.metades.map((m, mi) => {
-        const r = retMetade(mi);
         const focada = estado.foco === mi;
+        // maximizada: só a cabeça do painel com foco, na largura toda
+        const r = maxi ? (focada ? { x: 0, y: 0, w: tam.w, h: tam.h } : { x: 0, y: 0, w: 0, h: 0 }) : retMetade(mi);
         return (
           <div
             key={`cab${mi}`}
-            className={`metade-cabeca${focada && duas ? " focada" : ""}${sobre === `m${mi}` ? " soltar" : ""}`}
-            style={{ left: r.x, width: r.w, height: CABECA }}
+            className={`metade-cabeca${focada && duas ? " focada" : ""}${sobre === `m${mi}` ? " soltar" : ""}${maxi ? " maximizada" : ""}`}
+            style={{ left: r.x, width: r.w, height: CABECA, display: maxi && !focada ? "none" : undefined }}
             {...alvo(`m${mi}`, mi)}
             onMouseDown={() => !focada && mudar((s) => ({ ...s, foco: mi }))}
           >
@@ -249,6 +255,7 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
                   {...alvo(j.id, mi, j.id)}
                   onPointerDown={pegar(j)}
                   onClick={() => mudar((s) => P.ativar(s, mi, j.id))}
+                  onDoubleClick={() => mudar((s) => P.alternarMaximizada(P.ativar(s, mi, j.id)))}
                   onContextMenu={(e) => { e.preventDefault(); setMenu({ ancora: e.currentTarget, id: j.id, mi }); }}
                   onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); mudar((s) => P.fechar(s, j.id)); } }}
                   title={j.titulo}
@@ -268,7 +275,7 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
             <SeletorModo modo={m.modo} aoEscolher={(x) => mudar((s) => P.mudarModo(s, mi, x))} />
             <BotaoTerminal />
             {mi === estado.metades.length - 1 && (
-              <button className="btn-icone" title={duas ? "Juntar as metades (Ctrl+Alt+\\)" : "Dividir o painel em dois (Ctrl+Alt+\\)"} onClick={() => mudar(P.dividir)}>
+              <button className="btn-icone" title={`${duas ? "Juntar as metades" : "Dividir o painel em dois"} (${combinacao("dividir")})`} onClick={() => mudar(P.dividir)}>
                 {duas ? <ArrowLeftToLine size={15} /> : <Columns2 size={15} />}
               </button>
             )}
@@ -276,19 +283,25 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
         );
       })}
 
-      {duas && <div className="alca-painel" title="Arraste para mudar o tamanho das metades" style={{ left: retMetade(0).w - 1, width: 8 }} onMouseDown={arrastarDivisao} />}
+      {maxi && (
+        <button className="btn maximizada-sair" title="Voltar ao painel (Ctrl+Alt+Shift+J ou duplo clique na aba)" onClick={() => mudar(P.alternarMaximizada)}>
+          <Minimize2 size={13} /> Voltar
+        </button>
+      )}
+
+      {duas && !maxi && <div className="alca-painel" title="Arraste para mudar o tamanho das metades" style={{ left: retMetade(0).w - 1, width: 8 }} onMouseDown={arrastarDivisao} />}
 
       {estado.metades.map((m, mi) =>
-        m.modo === "tile" && m.janelas.length > 1 ? (
+        m.modo === "tile" && m.janelas.length > 1 && !maxi ? (
           <div key={`prop${mi}`} className="alca-painel" style={{ left: corpoDe(mi).x + corpoDe(mi).w * m.proporcao - 3, top: CABECA, width: 6, bottom: 0 }} onMouseDown={arrastarProporcao(mi)} />
         ) : null,
       )}
 
       {estado.metades.map((m, mi) =>
-        !m.janelas.length ? (
+        !m.janelas.length && !maxi ? (
           <div key={`vazia${mi}`} className="metade-vazia" style={{ left: corpoDe(mi).x, top: CABECA, width: corpoDe(mi).w, bottom: 0 }}
             onMouseDown={() => mudar((s) => ({ ...s, foco: mi }))} {...alvo(`m${mi}`, mi)}>
-            Metade vazia. Clique aqui e escolha uma visão na barra ao lado, use Ctrl+K, abra um terminal ou arraste uma aba para cá.
+            Metade vazia. Clique aqui e escolha uma visão na barra ao lado, use {combinacao("busca")}, abra um terminal ou arraste uma aba para cá.
           </div>
         ) : null,
       )}
@@ -297,7 +310,7 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
         const l = lugares.find((x) => x.id === j.id);
         if (!l) return null;
         const m = estado.metades[mi];
-        const corpo = corpoDe(mi);
+        const corpo = maxi ? l.r : corpoDe(mi);
         // fita: a parte que sai da metade fica cortada
         const corte = {
           top: Math.max(0, corpo.y - l.r.y),
@@ -313,14 +326,14 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
             style={{
               left: l.r.x, top: l.r.y, width: l.r.w, height: l.r.h,
               // na fita, as janelas de fora seguem no lugar (cortadas): assim deslizam para dentro em vez de surgir
-              display: l.visivel || m.modo === "fita" ? undefined : "none",
+              display: l.visivel || (m.modo === "fita" && !maxi) ? undefined : "none",
               // na fita o corte vale sempre (mesmo zerado), para animar junto com a posição
               clipPath: m.modo === "fita" || corte.top || corte.right || corte.bottom || corte.left ? `inset(${corte.top}px ${corte.right}px ${corte.bottom}px ${corte.left}px)` : undefined,
             }}
             onMouseDownCapture={() => { if (m.ativa !== j.id || estado.foco !== mi) mudar((s) => P.ativar(s, mi, j.id)); }}
           >
             {l.cabeca && m.janelas.length > 1 && (
-              <div className="janela-cabeca" onPointerDown={pegar(j)}>
+              <div className="janela-cabeca" onPointerDown={pegar(j)} onDoubleClick={() => mudar((s) => P.alternarMaximizada(P.ativar(s, mi, j.id)))}>
                 <IconeJanela j={j} />
                 <span className="aba-rotulo">{j.titulo ?? "…"}</span>
                 {m.modo === "fita" && (

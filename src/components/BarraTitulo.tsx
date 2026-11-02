@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { BotaoWorkspace } from "./BotaoWorkspace";
 import {
-  Copy, Minus, PanelLeft, Search, Settings, Sparkles, Square, Trash2, X,
+  ChevronLeft, ChevronRight, Copy, Keyboard, Minus, PanelLeft, Search, Settings, Sparkles, Square, Trash2, X,
 } from "lucide-react";
 import { api, Esquema, Item } from "../api";
 import { falhou, ler, Rota } from "../ui";
 import { Popover, usePopover } from "./Popover";
-import { bate, combinacao } from "../atalhos";
+import { acharAtalhos, bate, combinacao, dispararAtalho } from "../atalhos";
+import type { Navegacao } from "./Sidebar";
 import { Marca } from "./Marca";
 
 /** Janela do Tauri, se estivermos no app (no navegador de teste não há). */
@@ -22,8 +23,11 @@ async function janela() {
 export { Marca };
 
 export function BarraTitulo({
-  esquema, rota, ir, trilha, alternarMenu, abrirConfig, aoApagarItem, workspace,
+  esquema, rota, ir, trilha, alternarMenu, abrirConfig, abrirAtalhos, aoApagarItem, workspace, nav,
 }: {
+  /** voltar/avançar da janela com o foco: ficam aqui em cima, à vista mesmo com a barra lateral escondida */
+  nav: Navegacao;
+  abrirAtalhos: () => void;
   /** seletor de workspace */
   workspace?: React.ReactNode;
   esquema: Esquema | null;
@@ -43,6 +47,7 @@ export function BarraTitulo({
   }, []);
   const [apagando, setApagando] = useState(false);
   const novo = usePopover();
+  const pHist = usePopover();
   // sem botão Novo na barra: o Ctrl+N abre o menu "Criar" embaixo da busca
   const ancoraNovo = useRef<HTMLButtonElement>(null);
 
@@ -60,7 +65,9 @@ export function BarraTitulo({
 
   useEffect(() => {
     const f = (e: KeyboardEvent) => {
-      if (bate("busca", e)) { e.preventDefault(); setBuscando(true); }
+      if (bate("busca", e) || bate("buscar-texto", e)) { e.preventDefault(); setBuscando(true); }
+      // a lista de ações é a busca começando com ">" (como no VS Code)
+      if (bate("acoes", e)) { e.preventDefault(); setBuscando(">"); }
       if (bate("novo", e) && ancoraNovo.current) { e.preventDefault(); novo.abrir({ currentTarget: ancoraNovo.current }); }
     };
     window.addEventListener("keydown", f);
@@ -81,7 +88,9 @@ export function BarraTitulo({
     <header className="barra-titulo" data-tauri-drag-region>
       <div className="bt-esq" data-tauri-drag-region>
         <Marca />
-        <button className="bt-btn" title="Menu lateral (Ctrl+\)" onClick={alternarMenu}><PanelLeft size={16} /></button>
+        <button className="bt-btn" title={`Menu lateral (${combinacao("menu")})`} onClick={alternarMenu}><PanelLeft size={16} /></button>
+        <button className="bt-btn" title={`Voltar (${combinacao("voltar")}) · botão direito: histórico`} onClick={nav.voltar} disabled={!nav.podeVoltar} onContextMenu={(e) => { e.preventDefault(); pHist.abrir(e); }}><ChevronLeft size={17} /></button>
+        <button className="bt-btn" title={`Avançar (${combinacao("avancar")}) · botão direito: histórico`} onClick={nav.avancar} disabled={!nav.podeAvancar} onContextMenu={(e) => { e.preventDefault(); pHist.abrir(e); }}><ChevronRight size={17} /></button>
         {workspace}
         <nav className="trilha" data-tauri-drag-region>
           {trilha.map((t, i) => (
@@ -108,7 +117,8 @@ export function BarraTitulo({
           </button>
         )}
         <button className="bt-btn" title={`Comando para o agente (${combinacao("comando")})`} onClick={() => window.dispatchEvent(new Event("atelier:comando"))}><Sparkles size={16} /></button>
-        <button className="bt-btn" title="Configurações do app (Ctrl+,)" onClick={abrirConfig}><Settings size={16} /></button>
+        <button className="bt-btn" title={`Atalhos: ver, procurar e mudar (${combinacao("atalhos")})`} onClick={abrirAtalhos}><Keyboard size={16} /></button>
+        <button className="bt-btn" title={`Configurações do app (${combinacao("config")})`} onClick={abrirConfig}><Settings size={16} /></button>
         <div className="bt-janela">
           <button title="Minimizar" onClick={() => janela().then((w) => w?.minimize())}><Minus size={15} /></button>
           <button title={maximizada ? "Restaurar" : "Maximizar"} onClick={() => janela().then((w) => w?.toggleMaximize())}>
@@ -132,6 +142,18 @@ export function BarraTitulo({
         </Popover>
       )}
 
+      {pHist.ancora && (
+        <Popover ancora={pHist.ancora} aoFechar={pHist.fechar} largura={280}>
+          <div className="menu-rotulo">Histórico desta janela</div>
+          {nav.passos.map((p, i) => ({ p, i })).reverse().map(({ p, i }) => (
+            <button key={i} className="menu-item" onClick={() => { nav.irPara(i); pHist.fechar(); }} style={p.atual ? { fontWeight: 600 } : undefined}>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.rotulo}</span>
+              {p.atual && <span className="dir">aqui</span>}
+            </button>
+          ))}
+        </Popover>
+      )}
+
       {buscando !== false && esquema && <BuscaRapida esquema={esquema} ir={ir} inicial={typeof buscando === "string" ? buscando : ""} aoFechar={() => setBuscando(false)} />}
     </header>
   );
@@ -145,11 +167,14 @@ function BuscaRapida({ esquema, ir, aoFechar, inicial = "" }: { esquema: Esquema
   const lista = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (q.startsWith(">")) { setFoco(0); return; }
     const t = window.setTimeout(() => api.itens({ q }).then((r) => { setItens(r.slice(0, 30)); setFoco(0); }).catch(() => {}), 120);
     return () => window.clearTimeout(t);
   }, [q]);
 
-  const b = q.trim().toLowerCase();
+  // ">" no começo: a lista de ações (todos os atalhos, com as palavras escondidas)
+  const emAcoes = q.startsWith(">");
+  const b = emAcoes ? "" : q.trim().toLowerCase();
   const tipos = esquema.tipos.filter((t) => b && t.nome.toLowerCase().includes(b));
   // busca vazia: os itens abertos por último
   const recentes = !b
@@ -161,7 +186,9 @@ function BuscaRapida({ esquema, ir, aoFechar, inicial = "" }: { esquema: Esquema
         item: r,
       }))
     : [];
-  const opcoes: { rotulo: string; icone: string; detalhe: string; rota: Rota; item?: { id: number; titulo: string; tipo_id: number | null } }[] = [
+  const opcoes: { rotulo: string; icone: string; detalhe: string; rota?: Rota; acao?: string; item?: { id: number; titulo: string; tipo_id: number | null } }[] = emAcoes
+    ? acharAtalhos(q.slice(1)).map((a) => ({ rotulo: a.nome, icone: "⌨", detalhe: combinacao(a.id), acao: a.id }))
+    : [
     ...recentes,
     ...tipos.map((t) => ({ rotulo: t.nome, icone: t.icone, detalhe: "tipo", rota: { v: "lista", tipo: t.id } as Rota })),
     ...itens.filter((it) => !recentes.some((r) => (r.rota as { id: number }).id === it.id)).map((it) => {
@@ -172,7 +199,10 @@ function BuscaRapida({ esquema, ir, aoFechar, inicial = "" }: { esquema: Esquema
 
   const escolher = (i: number) => {
     const o = opcoes[i];
-    if (o) { ir(o.rota); aoFechar(); }
+    if (!o) return;
+    aoFechar();
+    if (o.acao) { const id = o.acao; window.setTimeout(() => dispararAtalho(id), 30); }
+    else if (o.rota) ir(o.rota);
   };
 
   useEffect(() => {
@@ -186,7 +216,7 @@ function BuscaRapida({ esquema, ir, aoFechar, inicial = "" }: { esquema: Esquema
           <Search size={17} />
           <input
             autoFocus
-            placeholder="Buscar documentos ou tipos…"
+            placeholder={emAcoes ? "Ação… (apague o > para buscar documentos)" : "Buscar documentos ou tipos… (> para as ações)"}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
@@ -207,7 +237,7 @@ function BuscaRapida({ esquema, ir, aoFechar, inicial = "" }: { esquema: Esquema
               {o.item && <BotaoWorkspace esquema={esquema} item={o.item} depois={aoFechar} />}
             </button>
           ))}
-          {opcoes.length === 0 && <div className="br-vazio">{b ? "Nada encontrado." : "Nenhum documento ainda."}</div>}
+          {opcoes.length === 0 && <div className="br-vazio">{emAcoes ? "Nenhuma ação com isso." : b ? "Nada encontrado." : "Nenhum documento ainda."}</div>}
         </div>
       </div>
     </div>

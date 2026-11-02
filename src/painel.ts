@@ -36,6 +36,8 @@ export interface EstadoPainel {
   foco: number;
   /** com duas metades: fração da largura da primeira */
   divisao: number;
+  /** a janela ativa do painel com foco ocupa o painel inteiro (as outras ficam escondidas, sem desmontar) */
+  maximizada?: boolean;
 }
 
 export const LARGURAS = [1, 2, 3, 4];
@@ -152,6 +154,11 @@ export function irParaPasso(e: EstadoPainel, id: string, pos: number): EstadoPai
 
 export function ativar(e: EstadoPainel, mi: number, id: string): EstadoPainel {
   return { ...trocarMetade(e, mi, (m) => ({ ...m, ativa: id })), foco: mi };
+}
+
+/** Liga e desliga o "maximizar": a janela ativa do painel com foco ocupa o painel inteiro. */
+export function alternarMaximizada(e: EstadoPainel): EstadoPainel {
+  return { ...e, maximizada: !e.maximizada };
 }
 
 /** Fecha a janela. A metade fica aberta mesmo vazia (só o "juntar" tira uma metade). */

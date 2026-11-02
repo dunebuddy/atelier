@@ -41,59 +41,7 @@ Como usar:
     **`trocar_bancada` hoje troca na hora, sem perguntar**: passar a pedir confirmação na tela ("O agente quer mudar
     para a bancada X. Aceitar?"), e o agente só segue com o sim.
 
-- **Maximizar a janela e modo Zen** (2026-11-02, Paulo: "só dar uma olhada" numa janela com mais espaço, como o
-  duplo clique no VS Code). Hoje **não existe**: o mais perto é a largura 1/1 da fita (`painel.ts`, `LARGURAS`), que
-  só enche a metade. Dois níveis, como no VS Code:
-  1. **Maximizar a janela** (liga/desliga): a janela com foco ocupa o painel de trabalho inteiro (as duas metades);
-     a barra lateral, a de título e a de status ficam. **Duplo clique na cabeça/aba da janela** e o atalho
-     **Ctrl+Shift+Alt+J** (o dele, da revisão dos atalhos). Desfaz voltando tudo como estava. Resolve também o
-     pedido de "esconder a metade esquerda" (ver acima).
-  2. **Modo Zen**: a janela ocupa a **tela toda**: esconde a barra lateral, a de status e enxuga a de título, e a
-     janela do app vai para tela cheia; **Esc** (ou o mesmo atalho) sai. No VS Code é Ctrl+K Z (combinação em duas
-     etapas, que o atelier não tem): sugerir **F11** ou **Ctrl+Shift+Enter**, configurável.
-
-- **Botão de atalhos na barra de título, abrindo a configuração com busca** (2026-11-02, Paulo). Ao lado do botão
-  de configurações, um ícone de teclado (⌨, de "atalho"; primeiro ele pensou numa "?") que abre **Configurações →
-  Atalhos** direto: lá se procura e se ajusta no mesmo lugar (melhor que uma cola só de leitura). A tela
-  (`ConfigAtalhos.tsx`) já deixa mudar todos, voltar um ao padrão e voltar todos; falta a **busca**. Cada atalho
-  ganha palavras escondidas, tipo hashtags (campo `tags` em `atalhos.ts`), para achar sem lembrar o nome: "Maximizar
-  a janela com foco" acha por "aumentar janela", "deixar grande", "tela cheia"; "Barra lateral" por "menu",
-  "esconder lado"... As mesmas tags servem à lista de ações do Ctrl+Shift+P (da revisão dos atalhos). Regra: todo
-  atalho novo da revisão entra configurável, com voltar ao padrão.
-- **Revisão dos atalhos: igual ao VS Code** (2026-11-02, Paulo: "o ideal é que para mim fosse igual do code"; **proposta
-  abaixo aprovada por ele**). Lido
-  nesta máquina: ele usa os atalhos **padrão** do VS Code no Windows, com duas mudanças próprias: Ctrl+Shift+Alt+J
-  maximiza o painel, e Shift+Enter no terminal manda ESC+Enter (a quebra de linha do Claude Code). Proposta (o que
-  o atelier tem de próprio fica onde não briga com o VS Code; quem mudou um atalho nas configurações fica com o seu):
-
-  | Ação no atelier | Hoje | Proposta | No VS Code |
-  |---|---|---|---|
-  | Ir para um documento | Ctrl+K | **Ctrl+P** (Ctrl+K segue valendo) | Ctrl+P abre arquivo |
-  | Lista de ações (nova: todas as ações com busca) | — | **Ctrl+Shift+P** | paleta de comandos |
-  | Barra lateral | Ctrl+\ | **Ctrl+B** (no editor de texto segue negrito) | Ctrl+B |
-  | Dividir o painel | Ctrl+Alt+\ | **Ctrl+\** | Ctrl+\ divide o editor |
-  | Foco na metade 1 / 2 | Ctrl+Alt+O (troca) | **Ctrl+1 / Ctrl+2** (Ctrl+Alt+O segue) | Ctrl+1/2 foca o grupo |
-  | Novo terminal | Ctrl+` | **Ctrl+Shift+`** | Ctrl+Shift+` novo terminal |
-  | Ir ao terminal | — | **Ctrl+`** (vai ao último terminal; sem terminal, abre um) | Ctrl+` mostra o terminal |
-  | Próxima / anterior janela | Ctrl+Tab | igual, e **Ctrl+PgDn / Ctrl+PgUp** também | os dois |
-  | Mover a janela | Ctrl+Alt+Shift+←/→ | **Ctrl+Shift+PgUp/PgDn** | move o editor no grupo |
-  | Maximizar a janela com foco (liga/desliga) | — | **Ctrl+Shift+Alt+J** (o dele; resolve o "esconder a metade esquerda") | o dele |
-  | Workspaces (visão geral) | Ctrl+Shift+O | **Ctrl+R** | Ctrl+R abre recentes |
-  | Explorador em árvore da pasta | — | **Ctrl+Shift+E** | Ctrl+Shift+E explorador |
-  | Buscar no texto de todos | — (na busca rápida) | **Ctrl+Shift+F** | Ctrl+Shift+F |
-  | Buscar na página | — | **Ctrl+F** (o do navegador, se já não funciona) | Ctrl+F |
-  | Lista de atalhos | Ctrl+/ | igual (o do VS Code é Ctrl+K Ctrl+S, combinação em duas etapas, que o atelier não tem) | — |
-
-  - Ficam como estão (iguais ao VS Code): Ctrl+N, Ctrl+W, Ctrl+, Ctrl+=/-/0, Alt+←/→, Ctrl+Tab.
-  - Ficam como estão (só do atelier, sem par no VS Code): andar na fita Ctrl+Alt+←/→ (o VS Code usa para mover o
-    editor de grupo; aqui é o jeito Niri que ele já usa), empilhar Ctrl+Alt+↑/↓, modos Ctrl+Alt+1/2/3, largura
-    Ctrl+Alt+R, principal Ctrl+Alt+Enter, workspaces Ctrl+Alt+PgUp/PgDn, Comando do agente Ctrl+J (no VS Code é o
-    painel de baixo, que o atelier não tem).
-  - **Terminal: Shift+Enter manda ESC+Enter**, como no VS Code dele: quebra de linha no Claude Code rodando no
-    terminal do atelier (hoje manda Enter e envia a mensagem).
-  - Motor: hoje cada ação tem uma combinação só (`atalhos.ts`, `combinacao`); para manter a antiga junto (Ctrl+K,
-    Ctrl+Alt+O...) precisa aceitar mais de uma. Conferir também que Ctrl+R e Ctrl+F não recarregam/abrem coisa do
-    WebView2.
+### Melhorias pedidas
 
 - **Ficha em cima do conteúdo e recolhível** (2026-11-02, Paulo). Hoje, com a janela larga, a ficha fica numa
   coluna fixa à direita (`.pagina-grade`, 320px, sticky); com a janela estreita (até 860px) ela já vai para cima do
@@ -102,33 +50,9 @@ Como usar:
   recolhida por documento, por tipo ou para todos (sugestão: para todos, como preferência). Junto com o limite nas
   listas da ficha (já anotado), ela deixa de tomar a página.
 
-- **Barra lateral com Ctrl+B** (2026-11-02, Paulo: "em todos os outros softwares é Ctrl+B"). Hoje é `Ctrl+\`
-  (`atalhos.ts`, id `menu`). Cuidado: no editor de texto Ctrl+B é **negrito** (Tiptap). Proposta: Ctrl+B esconde a
-  barra em qualquer lugar menos digitando no editor, onde continua negrito (como o VS Code faz fora do texto); o
-  `Ctrl+\` segue valendo também. Quem já mudou o atalho nas configurações fica com o dele.
-- **Voltar/avançar na barra de título** (2026-11-02, Paulo). Os botões ← → (histórico da janela) estão no topo da
-  barra lateral (`Sidebar.tsx`): escondendo a barra, eles somem e não há como voltar com o mouse. Subir para a barra
-  de título, perto do seletor de bancada, como no app do Claude (que tem ← → lá em cima, junto da barra lateral).
-  Levar o botão direito (lista do histórico) junto.
-
-- **Pílula do disco para a direita, junto da de recursos** (2026-11-02, Paulo; ele gostou do indicador). Na barra
-  de baixo, o espaço em disco está à esquerda, logo depois do "Workspace:"; levar para a direita, ao lado do ditado e
-  da memória/CPU (`Workspaces.tsx`: `<IndicadorDisco>` vai para depois do `<span style={{ flex: 1 }} />`). Só
-  reorganizar; mais detalhe no disco fica para depois. O popover dela tem o mesmo defeito do segundo clique (ver
-  em Bugs).
-
-- **Ícone no workspace da bancada** (2026-11-02, Paulo). É o único sem ícone na barra de workspaces e na lista (só a
-  visão geral usa 🏠). Ele é fixo: sempre existe, pode ser fechado mas não apagado. **Decidido: o ícone do
-  atelier** (o mesmo do app, pequeno; trocar também o 🏠 da visão geral, para ficar igual em todo lugar). (`Workspaces.tsx`: `info.icone` vem do documento; o da
-  bancada, chave `GERAL`, não tem.)
-
 - **Listas na ficha do documento com limite** (2026-11-02, Paulo). As propriedades de lista (relações, o lado inverso,
   e depois as listas dinâmicas) mostram tudo no bloco de informações do documento: com 100, ocupam a página toda.
   Mostrar os primeiros 5 ou 10 e um "ver mais" (ou uma paginação pequena para passar).
-
-- **Esconder a metade esquerda do painel** (2026-11-02, Paulo). Trabalhando só nos terminais, em fita na metade
-  direita, ele quer mais espaço sem ter de arrastar a divisória: uma opção para recolher a esquerda (e trazer de
-  volta). Não é a barra lateral, que já esconde; é a metade do painel de trabalho.
 
 ### Pedidos do agente (de `pedidos-ao-atelier.md`)
 
@@ -318,6 +242,21 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.5** (2026-11-02, atalhos e barra de título):
+  - **atalhos do VS Code** (padrões novos; cada ação aceita extras que valem enquanto não for mudada): Ctrl+P buscar
+    (Ctrl+K segue), Ctrl+Shift+P lista de ações, Ctrl+Shift+F buscar no texto, Ctrl+B barra lateral (no editor
+    continua negrito), Ctrl+\ dividir, Ctrl+1/Ctrl+2 painel 0/1, Ctrl+` ir ao terminal, Ctrl+Shift+` novo terminal,
+    Ctrl+Shift+E explorador, Ctrl+PgUp/PgDn janela anterior/próxima, Ctrl+Shift+PgUp/PgDn mover, Ctrl+R
+    workspaces (Ctrl+Shift+O segue). Os que não brigam com o shell valem com o cursor no terminal; Ctrl+W, Ctrl+B,
+    Ctrl+J e Ctrl+R ficam com o terminal (Claude Code e shell usam);
+  - **Shift+Enter no terminal** manda ESC+Enter (quebra de linha no Claude Code), como no VS Code do Paulo;
+  - **lista de ações** (Ctrl+Shift+P, ou ">" na busca): todas as ações, achadas pelo nome ou por palavras
+    escondidas ("aumentar janela" acha Maximizar);
+  - **barra de título:** voltar/avançar (histórico no botão direito) e botão de teclado que abre Configurações →
+    Atalhos, agora com busca (nome, palavras, combinação);
+  - **maximizar a janela** (Ctrl+Alt+Shift+J, ou duplo clique na aba/cabeça): a ativa ocupa o painel inteiro, as
+    outras ficam montadas (terminal vivo); **modo Zen** (F11): sem barras e em tela cheia, Esc duas vezes sai;
+  - pílula do disco à direita, junto do ditado e da memória; a marca do atelier no workspace da bancada.
 - **0.2.4** (2026-11-02, editor sem perda e MCP que enxerga a tela):
   - **editor:** tabela, imagem, código com cores e diagrama Mermaid aparecem e voltam para o markdown como
     entraram (teste de ida e volta: a barra `\|` da célula, a imagem em bloco próprio e a lista de tarefas

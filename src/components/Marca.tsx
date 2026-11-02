@@ -1,9 +1,9 @@
 // A marca do app: o carimbo hanko em "A", pintado com as cores do tema aberto
 // (variáveis --marca-* em styles.css; fallbacks do Nord).
 
-export function Marca() {
+export function Marca({ tamanho = 22 }: { tamanho?: number }) {
   return (
-    <svg className="marca" viewBox="0 0 1024 1024" width={22} height={22} role="img" aria-label="atelier">
+    <svg className="marca" viewBox="0 0 1024 1024" width={tamanho} height={tamanho} role="img" aria-label="atelier">
       <rect x="32" y="32" width="960" height="960" rx="220" fill="var(--marca-fundo, #2E3440)" />
       <rect
         x="150" y="150" width="724" height="724" rx="120" fill="none"

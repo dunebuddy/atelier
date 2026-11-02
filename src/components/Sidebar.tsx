@@ -1,6 +1,6 @@
 import type { SecaoConfig } from "./Configuracoes";
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, History, ListTree, Plus, Settings2, Trash2 } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, ChevronsUpDown, ListTree, Plus, Settings2, Trash2 } from "lucide-react";
 import { api, Bancadas, Esquema, Visao } from "../api";
 import { falhou, guardar, ler, Rota } from "../ui";
 import { datasDo } from "../visao";
@@ -19,9 +19,8 @@ export interface Navegacao {
 }
 
 export function Sidebar({
-  visoes, esquema, rota, ir, bancadas, abrirConfig, trocarBancada, fechada, aoMudarVisoes, nav, largura, setLargura,
+  visoes, esquema, rota, ir, bancadas, abrirConfig, trocarBancada, fechada, aoMudarVisoes, largura, setLargura,
 }: {
-  nav: Navegacao;
   largura: number;
   setLargura: (n: number) => void;
   visoes: Visao[];
@@ -40,7 +39,6 @@ export function Sidebar({
   const [sobre, setSobre] = useState<number | string | null>(null);
   const [contagens, setContagens] = useState<Record<number, number>>({});
   const [focada, setFocada] = useState<number | null>(() => ler("visaoFocada", null));
-  const pHist = usePopover();
   useEffect(() => guardar("visaoFocada", focada), [focada]);
   const visaoFocada = focada != null ? visoes.find((v) => v.id === focada) : undefined;
 
@@ -177,11 +175,6 @@ export function Sidebar({
   return (
     <aside className={`sidebar${fechada ? " fechada" : ""}`} style={{ width: largura, marginLeft: fechada ? -largura : undefined }}>
       <div className="sb-alca" onMouseDown={arrastarBorda} title="Arraste para mudar a largura" />
-      <div className="sb-nav">
-        <button className="btn-icone" title="Voltar (Alt+←) · botão direito: histórico" onClick={nav.voltar} disabled={!nav.podeVoltar} onContextMenu={(e) => { e.preventDefault(); pHist.abrir(e); }}><ChevronLeft size={17} /></button>
-        <button className="btn-icone" title="Avançar (Alt+→) · botão direito: histórico" onClick={nav.avancar} disabled={!nav.podeAvancar} onContextMenu={(e) => { e.preventDefault(); pHist.abrir(e); }}><ChevronRight size={17} /></button>
-        <button className="btn-icone" title="Histórico desta janela" onClick={pHist.abrir} disabled={nav.passos.length < 2}><History size={15} /></button>
-      </div>
       {visaoFocada ? (
         <div className="sb-rolagem">
           <ArvoreVisao visao={visaoFocada} esquema={esquema} rota={rota} ir={ir} aoSair={() => setFocada(null)} aoMudarVisoes={aoMudarVisoes} />
@@ -232,18 +225,6 @@ export function Sidebar({
           <Settings2 size={16} />
         </button>
       </div>
-
-      {pHist.ancora && (
-        <Popover ancora={pHist.ancora} aoFechar={pHist.fechar} largura={280}>
-          <div className="menu-rotulo">Histórico desta janela</div>
-          {nav.passos.map((p, i) => ({ p, i })).reverse().map(({ p, i }) => (
-            <button key={i} className="menu-item" onClick={() => { nav.irPara(i); pHist.fechar(); }} style={p.atual ? { fontWeight: 600 } : undefined}>
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.rotulo}</span>
-              {p.atual && <span className="dir">aqui</span>}
-            </button>
-          ))}
-        </Popover>
-      )}
 
       {seletor.ancora && bancadas && (
         <Popover ancora={seletor.ancora} aoFechar={seletor.fechar} largura={260}>

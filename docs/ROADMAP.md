@@ -160,7 +160,7 @@ O que pode perder dado ou faz o agente errar. Curto.
   mostram, **painel numerado** (0, 1) e posição; `fechar`/`focar` pelo id; `abrir` com `painel`.
 - Menus suspensos fecham no segundo clique (o mesmo `usePopover` para todos).
 
-## 0.2.5 · Atalhos e barra de título
+## 0.2.5 · Atalhos e barra de título · **saiu em 2026-11-02**
 
 O pacote de conforto que ele mais sente no dia a dia: igual ao VS Code dele.
 

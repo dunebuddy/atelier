@@ -1127,3 +1127,24 @@ body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grab
 /* ficha: arrastando o nome de uma propriedade para mudar a ordem */
 .prop-nome.soltar-antes { box-shadow: inset 0 2px 0 var(--acento); }
 .prop-nome.arrastando { opacity: .45; }
+
+/* ícone do workspace (a marca do atelier no da bancada) */
+.ws-icone { display: inline-flex; align-items: center; margin-right: 5px; vertical-align: -2px; }
+.ws-cartao-icone .marca { vertical-align: -3px; }
+
+/* barra de título: voltar/avançar desligados quando não há para onde ir */
+.bt-btn:disabled { opacity: .35; cursor: default; }
+
+/* janela maximizada: botão para voltar ao painel */
+.maximizada-sair { position: absolute; right: 10px; bottom: 10px; z-index: 30; font-size: 12px; padding: 3px 9px; opacity: .55; }
+.maximizada-sair:hover { opacity: 1; }
+
+/* modo Zen: só a janela com foco (a barra de título encolhe, as outras somem) */
+.app.zen .barra-titulo { display: none; }
+.app.zen .barra-status { display: none; }
+.app.zen .sidebar { display: none; }
+
+/* Configurações → Atalhos: busca e os atalhos extras */
+.atalhos-busca { display: flex; align-items: center; gap: 8px; border: 1px solid var(--borda); border-radius: 8px; padding: 6px 10px; margin-bottom: 12px; color: var(--texto-3); }
+.atalhos-busca input { flex: 1; border: 0; outline: none; background: none; color: var(--texto); font: inherit; }
+.atalho-extra { color: var(--texto-3); font-size: 11.5px; }

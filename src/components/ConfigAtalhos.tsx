@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Search } from "lucide-react";
 import { Preferencias } from "../api";
-import { ATALHOS, comboDe, combinacao, partes, quemUsa } from "../atalhos";
+import { acharAtalhos, ATALHOS, comboDe, combinacao, partes, quemUsa } from "../atalhos";
 
 /** Configurações → Atalhos: clique no atalho e aperte a combinação nova. */
 export function SecaoAtalhos({ prefs, mudar }: { prefs: Preferencias; mudar: (d: Partial<Preferencias>) => void }) {
   const [gravando, setGravando] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [busca, setBusca] = useState("");
   const [, setN] = useState(0);
   // o registro avisa quando os atalhos mudam (para redesenhar as combinações)
   useEffect(() => {
@@ -37,7 +38,9 @@ export function SecaoAtalhos({ prefs, mudar }: { prefs: Preferencias; mudar: (d:
     return () => window.removeEventListener("keydown", f, true);
   }, [gravando, prefs.atalhos]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const grupos = [...new Set(ATALHOS.map((a) => a.grupo))];
+  // a busca acha pelo nome, pelas palavras escondidas ("aumentar janela" → Maximizar) e pela combinação
+  const achados = acharAtalhos(busca);
+  const grupos = [...new Set(achados.map((a) => a.grupo))];
   const mudados = ATALHOS.filter((a) => prefs.atalhos?.[a.id]).length;
 
   return (
@@ -52,16 +55,24 @@ export function SecaoAtalhos({ prefs, mudar }: { prefs: Preferencias; mudar: (d:
           <RotateCcw size={14} /> Voltar todos ao padrão ({mudados} mudados)
         </button>
       )}
+      <div className="atalhos-busca">
+        <Search size={14} />
+        <input autoFocus placeholder="Procurar um atalho (ex.: aumentar janela, terminal, Ctrl+B)…" value={busca} onChange={(e) => setBusca(e.target.value)} />
+      </div>
       {aviso && <div className="agente-nota erro" style={{ marginBottom: 10 }}>{aviso}</div>}
+      {achados.length === 0 && <p className="dica">Nenhum atalho com isso.</p>}
       {grupos.map((g) => (
         <div key={g}>
           <h4>{g}</h4>
           <div className="atalhos-config">
-            {ATALHOS.filter((a) => a.grupo === g).map((a) => {
+            {achados.filter((a) => a.grupo === g).map((a) => {
               const mudado = !!prefs.atalhos?.[a.id];
               return (
                 <div key={a.id} className="atalho">
-                  <span>{a.nome}</span>
+                  <span>
+                    {a.nome}
+                    {!mudado && a.extras?.length ? <span className="atalho-extra"> · também {a.extras.join(", ")}</span> : null}
+                  </span>
                   <span style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end" }}>
                     <button className={`atalho-botao${gravando === a.id ? " gravando" : ""}${mudado ? " mudado" : ""}`} onClick={() => { setGravando(a.id); setAviso(null); }}>
                       {gravando === a.id ? "aperte a combinação…" : partes(combinacao(a.id)).map((t, i) => <kbd key={i}>{t}</kbd>)}

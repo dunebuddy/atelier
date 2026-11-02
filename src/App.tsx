@@ -9,7 +9,7 @@ import { ComandoAgente, descreverTela, PedidoTela } from "./components/Comando";
 import { AvisoAtualizacao } from "./components/Atualizacao";
 import { CapturaGlobal } from "./components/Captura";
 import { Atalhos } from "./components/Atalhos";
-import { Sidebar } from "./components/Sidebar";
+import { Sidebar, type Navegacao } from "./components/Sidebar";
 import { Contexto, PainelTrabalho } from "./components/Painel";
 import * as P from "./painel";
 import { EstadoPainel, janelaAtiva, rotaDe } from "./painel";
@@ -66,6 +66,11 @@ export default function App() {
   const [prefs, setPrefs] = useState<Preferencias | null>(null);
   const [verAtalhos, setVerAtalhos] = useState(false);
   const [verWs, setVerWs] = useState(false);
+  // modo Zen: a janela com foco maximizada, sem barras, e o app em tela cheia (F11; Esc duas vezes sai)
+  const [zen, setZen] = useState(false);
+  useEffect(() => {
+    import("@tauri-apps/api/window").then(({ getCurrentWindow }) => getCurrentWindow().setFullscreen(zen)).catch(() => {});
+  }, [zen]);
   useEffect(() => {
     const abrir = () => setVerWs(true);
     // Ctrl+Shift+O (o "O" do overview do Niri)
@@ -383,6 +388,9 @@ export default function App() {
   const avancarRef = useRef(avancar);
   avancarRef.current = avancar;
 
+  const zenRef = useRef(zen);
+  zenRef.current = zen;
+  const ultimoEsc = useRef(0);
   // atalhos do painel de trabalho e da navegação (todos configuráveis: src/atalhos.ts)
   useEffect(() => {
     const f = (e: KeyboardEvent) => {
@@ -415,12 +423,33 @@ export default function App() {
         ["workspace-anterior", () => setWs((w) => (w ? W.vizinho(w, -1) : w))],
         ["menu", () => setFechada((x) => !x)],
         ["config", () => setConfig("aparencia")],
-        ["atalhos", () => setVerAtalhos((v) => !v)],
+        ["atalhos", () => setConfig("atalhos")],
+        ["maximizar", () => setPainel(P.alternarMaximizada)],
+        ["zen", () => setZen((z) => { setPainel((s) => ({ ...s, maximizada: !z })); return !z; })],
+        ["painel-0", () => setPainel((s) => ({ ...s, foco: 0 }))],
+        ["painel-1", () => setPainel((s) => (s.metades.length > 1 ? { ...s, foco: 1 } : P.dividir(s)))],
+        ["ir-terminal", () => setPainel((s) => {
+          // o último terminal do painel com foco (ou de qualquer um); sem terminal, abre um
+          const ordem = [s.foco, ...s.metades.map((_, i) => i).filter((i) => i !== s.foco)];
+          for (const mi of ordem) {
+            const t = [...s.metades[mi].janelas].reverse().find((j) => P.rotaDe(j).v === "terminal");
+            if (t) return P.ativar(s, mi, t.id);
+          }
+          window.setTimeout(() => abrirTerminal(), 0);
+          return s;
+        })],
         ["voltar", voltarRef.current],
         ["avancar", avancarRef.current],
       ];
       for (const [id, faz] of acoes) {
+        // Ctrl+B no texto é negrito: a barra lateral só fora do editor
+        if (id === "menu" && alvo.closest?.(".ProseMirror")) continue;
         if (bate(id, e)) { e.preventDefault(); faz(); return; }
+      }
+      // Esc duas vezes seguidas sai do modo Zen
+      if (e.key === "Escape" && zenRef.current) {
+        if (Date.now() - ultimoEsc.current < 600) { setZen(false); setPainel((s) => ({ ...s, maximizada: false })); }
+        ultimoEsc.current = Date.now();
       }
     };
     const mouse = (e: MouseEvent) => {
@@ -479,8 +508,17 @@ export default function App() {
     aoMudarEsquema,
   };
 
+  const nav: Navegacao = {
+    podeVoltar: !!ativa && ativa.pos > 0,
+    podeAvancar: !!ativa && ativa.pos < ativa.hist.length - 1,
+    voltar,
+    avancar,
+    passos: ativa ? ativa.hist.map((r, i) => ({ rotulo: ativa.rotulos?.[P.chaveRota(r)] ?? rotuloSimples(r), atual: i === ativa.pos })) : [],
+    irPara: (i) => ativa && setPainel((e) => P.irParaPasso(e, ativa.id, i)),
+  };
+
   return (
-    <div className="app">
+    <div className={`app${zen ? " zen" : ""}`}>
       <BarraTitulo
         esquema={esquema}
         rota={rota}
@@ -488,6 +526,8 @@ export default function App() {
         trilha={trilha}
         alternarMenu={() => setFechada((f) => !f)}
         abrirConfig={() => setConfig("aparencia")}
+        abrirAtalhos={() => setConfig("atalhos")}
+        nav={nav}
         workspace={
           <SeletorWorkspace
             ws={ws}
@@ -512,7 +552,7 @@ export default function App() {
             : null
         }
       />
-      <div className={`corpo-app${fechada ? " sem-barra" : ""}`}>
+      <div className={`corpo-app${fechada || zen ? " sem-barra" : ""}`}>
         <Sidebar
           visoes={visoes}
           esquema={esquema}
@@ -525,14 +565,6 @@ export default function App() {
           aoMudarVisoes={carregarVisoes}
           largura={largura}
           setLargura={setLargura}
-          nav={{
-            podeVoltar: !!ativa && ativa.pos > 0,
-            podeAvancar: !!ativa && ativa.pos < ativa.hist.length - 1,
-            voltar,
-            avancar,
-            passos: ativa ? ativa.hist.map((r, i) => ({ rotulo: ativa.rotulos?.[P.chaveRota(r)] ?? rotuloSimples(r), atual: i === ativa.pos })) : [],
-            irPara: (i) => ativa && setPainel((e) => P.irParaPasso(e, ativa.id, i)),
-          }}
         />
         <main className="principal">
           {/* os workspaces abertos ficam montados por trás: trocar não mata terminal nem agente */}

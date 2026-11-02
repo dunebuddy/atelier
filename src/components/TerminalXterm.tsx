@@ -67,6 +67,8 @@ export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; ao
       if (e.type !== "keydown") return true;
       if (e.ctrlKey && e.key === "c" && term.hasSelection()) { navigator.clipboard.writeText(term.getSelection()); return false; }
       if (e.ctrlKey && e.key === "v") { navigator.clipboard.readText().then((t) => ws.send(JSON.stringify({ t: "i", d: t }))); return false; }
+      // Shift+Enter: quebra de linha no Claude Code (ESC + Enter, como no VS Code do Paulo), em vez de enviar
+      if (e.key === "Enter" && e.shiftKey && !e.ctrlKey && !e.altKey) { ws.send(JSON.stringify({ t: "i", d: "\x1b\r" })); return false; }
       // false: o xterm não trata a tecla e ela sobe até o app (novo terminal, andar na fita...)
       if (bate("terminal", e) || doPainel(e)) return false;
       return true;

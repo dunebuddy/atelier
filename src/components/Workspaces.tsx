@@ -7,8 +7,15 @@ import { rotaDe } from "../painel";
 import { api, BASE } from "../api";
 import { GERAL, itemDa, sessoesDe, Workspaces } from "../workspaces";
 import { Popover, usePopover } from "./Popover";
+import { Marca } from "./Marca";
 
 /** Pede para abrir o workspace de um item (ou o "Geral", sem id). */
+/** O ícone do workspace: o da bancada (fixo, nunca some) é a marca do atelier; o de um documento, o ícone dele. */
+function IconeWs({ k, icone }: { k: string; icone?: string }) {
+  if (k === GERAL) return <span className="ws-icone"><Marca tamanho={13} /></span>;
+  return icone ? <span className="ws-icone">{icone}</span> : null;
+}
+
 export function abrirWorkspace(item?: { id: number; titulo: string; icone?: string }) {
   window.dispatchEvent(new CustomEvent("atelier:workspace", { detail: item ?? null }));
 }
@@ -29,7 +36,7 @@ export function SeletorWorkspace({ ws, trocar, fechar, esquecer }: {
     <>
       <button className="bt-btn seletor-ws" title="Workspace (Ctrl+Alt+PgUp / PgDn troca entre os abertos)" onClick={pop.abrir}>
         <LayoutDashboard size={14} />
-        <span className="ws-nome">{info.icone ? `${info.icone} ` : ""}{info.titulo}</span>
+        <span className="ws-nome"><IconeWs k={ws.ativo} icone={info.icone} />{info.titulo}</span>
         {ws.abertos.length > 1 && <span className="ws-conta">{ws.abertos.length}</span>}
         <ChevronDown size={12} />
       </button>
@@ -43,7 +50,7 @@ export function SeletorWorkspace({ ws, trocar, fechar, esquecer }: {
             return (
               <div key={k} className={`menu-item ws-linha${k === ws.ativo ? " atual" : ""}`} onClick={() => { trocar(k); pop.fechar(); }}>
                 <span className={`ws-ponto${aberto ? " vivo" : ""}`} title={aberto ? "Aberto (terminais rodando)" : "Fechado (as janelas voltam ao abrir)"} />
-                <span className="ws-titulo">{i.icone ? `${i.icone} ` : ""}{i.titulo}</span>
+                <span className="ws-titulo"><IconeWs k={k} icone={i.icone} />{i.titulo}</span>
                 <span className="dir" style={{ fontSize: 11 }}>{janelas} {janelas === 1 ? "janela" : "janelas"}</span>
                 {aberto && k !== ws.ativo && (
                   <button className="btn-icone mini" title="Fechar (para os terminais; as janelas ficam guardadas)" onClick={(e) => { e.stopPropagation(); fechar(k); }}><Power size={12} /></button>
@@ -155,12 +162,12 @@ export function BarraStatus({ ws }: { ws: Workspaces }) {
 
   return (
     <footer className="barra-status">
-      <button className="bs-ws" title="Workspace aberto agora (cada documento tem o seu; o da bancada é o geral). Clique para ver todos (Ctrl+Shift+O)" onClick={() => window.dispatchEvent(new Event("atelier:ver-workspaces"))}>
+      <button className="bs-ws" title="Workspace aberto agora (cada documento tem o seu; o da bancada é o geral). Clique para ver todos (Ctrl+R)" onClick={() => window.dispatchEvent(new Event("atelier:ver-workspaces"))}>
         <LayoutPanelLeft size={12} /> <span className="rotulo-fraco">Workspace:</span> <span>{ws.info[ws.ativo]?.titulo}</span>
       </button>
-      <IndicadorDisco ativo={ws.ativo} />
       <span style={{ flex: 1 }} />
       <IndicadorDitado interfaceRam={m.interface} />
+      <IndicadorDisco ativo={ws.ativo} />
       <button className="bs-medida" onClick={pop.abrir} title={`Memória: ${mb(m.ram)} de ${mb(m.ram_maquina)} da máquina · CPU ${m.cpu.toFixed(0)}% (clique para ver por workspace)`}>
         <MemoryStick size={12} />
         <span className="bs-barra"><span style={{ width: `${Math.max(2, pct)}%` }} className={pct > 25 ? "alto" : ""} /></span>
@@ -174,7 +181,7 @@ export function BarraStatus({ ws }: { ws: Workspaces }) {
           {porWs.map((w) => (
             <div key={w.k} className="bs-grupo">
               <div className="bs-linha forte">
-                <span>{w.info.icone ? `${w.info.icone} ` : ""}{w.info.titulo}{w.k === ws.ativo ? " (atual)" : ""}</span>
+                <span><IconeWs k={w.k} icone={w.info.icone} />{w.info.titulo}{w.k === ws.ativo ? " (atual)" : ""}</span>
                 <span>{mb(w.ram)} · {w.cpu.toFixed(0)}%</span>
               </div>
               {w.ss.map((s) => (
@@ -281,7 +288,7 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs }: {
               onClick={() => aoEscolher(k)}
             >
               <div className="ws-cartao-cabeca">
-                <span className="ws-cartao-icone">{info.icone ?? (k === GERAL ? "🏠" : "📄")}</span>
+                <span className="ws-cartao-icone">{k === GERAL ? <Marca tamanho={18} /> : info.icone ?? "📄"}</span>
                 <span className="ws-cartao-titulo">{info.titulo}</span>
                 {aberto && k !== ws.ativo && (
                   <button className="btn-icone mini" title="Fechar (para os terminais; as janelas ficam guardadas)" onClick={(ev) => { ev.stopPropagation(); fecharWs(k); }}><Power size={12} /></button>

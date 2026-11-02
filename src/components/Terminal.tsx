@@ -205,6 +205,11 @@ export function EscolherAgente() {
         e.preventDefault();
         abrirTerminal();
       }
+      // Ctrl+Shift+E: o explorador em árvore da pasta do workspace
+      if (bate("explorador", e)) {
+        e.preventDefault();
+        naPasta((p) => abrir({ v: "pastas", raiz: p }, true));
+      }
     };
     window.addEventListener("atelier:terminal", f);
     window.addEventListener("keydown", tecla);

@@ -97,6 +97,17 @@ Como usar:
 
 ### Melhorias pedidas
 
+- **Maximizar a janela e modo Zen** (2026-11-02, Paulo: "só dar uma olhada" numa janela com mais espaço, como o
+  duplo clique no VS Code). Hoje **não existe**: o mais perto é a largura 1/1 da fita (`painel.ts`, `LARGURAS`), que
+  só enche a metade. Dois níveis, como no VS Code:
+  1. **Maximizar a janela** (liga/desliga): a janela com foco ocupa o painel de trabalho inteiro (as duas metades);
+     a barra lateral, a de título e a de status ficam. **Duplo clique na cabeça/aba da janela** e o atalho
+     **Ctrl+Shift+Alt+J** (o dele, da revisão dos atalhos). Desfaz voltando tudo como estava. Resolve também o
+     pedido de "esconder a metade esquerda" (ver acima).
+  2. **Modo Zen**: a janela ocupa a **tela toda**: esconde a barra lateral, a de status e enxuga a de título, e a
+     janela do app vai para tela cheia; **Esc** (ou o mesmo atalho) sai. No VS Code é Ctrl+K Z (combinação em duas
+     etapas, que o atelier não tem): sugerir **F11** ou **Ctrl+Shift+Enter**, configurável.
+
 - **Botão de atalhos na barra de título, abrindo a configuração com busca** (2026-11-02, Paulo). Ao lado do botão
   de configurações, um ícone de teclado (⌨, de "atalho"; primeiro ele pensou numa "?") que abre **Configurações →
   Atalhos** direto: lá se procura e se ajusta no mesmo lugar (melhor que uma cola só de leitura). A tela

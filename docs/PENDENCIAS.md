@@ -31,11 +31,15 @@ Como usar:
   chute. Diagnóstico: a tela publica certinho o que está aberto (`descreverTela` → `/api/tela/estado`) e a API
   devolve no campo `estado`, mas o MCP (`mcp/src/main.rs`, braço `"tela"`) devolve sempre `{ "ok": true }` e
   descarta o resto. Perde também o `pasta`/`app` do `explorador_sistema`. Correção: devolver a resposta inteira da
-  API. Junto, o que o agente pediu:
-  - o `estado` dizer de cada janela o título, o código, a metade (esquerda/direita) e a posição;
-  - o `fechar` dizer de qual metade/posição fechou;
-  - uma ação **substituir** (janela antiga + código novo): abre o novo no mesmo lugar da antiga. Hoje o `abrir` só
-    escolhe a metade (`lado`), não a posição.
+  API. O agente pediu também uma ação "substituir" (fecha a antiga e abre a nova no lugar); **o Paulo prefere
+  peças genéricas** a uma ação tão específica:
+  - o `estado` lista cada janela com um **identificador** (o id da janela, para fechar/focar por ele), o que ela
+    mostra (título, código do documento, visão, terminal...), o **painel** por **número** (0, 1; não
+    esquerda/direita, para caber mais painéis no futuro) e a **posição** dentro dele;
+  - `fechar` e `focar` aceitam esse identificador;
+  - `abrir` aceita `painel: 0|1` (e, se fizer falta, `posicao`); `lado: esquerda|direita` continua aceito como
+    sinônimo de 0/1.
+  - Com isso o agente faz a troca sozinho: lê o estado, fecha a janela pelo id e abre o próximo no mesmo painel.
 
 - **Menus suspensos não fecham clicando de novo no botão** (2026-11-02, Paulo). O seletor de bancadas lá em cima, o
   dos workspaces, o dos recursos (memória/CPU) e os outros: clicou, abriu; clicou de novo no mesmo botão, continua

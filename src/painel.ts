@@ -118,6 +118,8 @@ export function abrirNaMetade(e: EstadoPainel, r: Rota, mi: number, nova = false
 export function fecharJanelas(e: EstadoPainel, qual: string, mi = e.foco): EstadoPainel {
   const m = e.metades[mi];
   if (!m) return e;
+  // o id exato de uma janela (o "estado" da tela mostra) fecha só ela, em qualquer metade
+  if (acharJanela(e, qual)) return fechar(e, qual);
   const q = qual.toLowerCase();
   const ids = q === "atual" ? (m.ativa ? [m.ativa] : []) : q === "todas" ? m.janelas.map((j) => j.id)
     : e.metades.flatMap((x) => x.janelas).filter((j) => (j.titulo ?? "").toLowerCase().includes(q)).map((j) => j.id);

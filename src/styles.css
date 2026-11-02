@@ -646,6 +646,30 @@ tr:hover .celula .vazio, .prop-valor .vazio { opacity: 1; }
 .editor .ProseMirror { outline: none; font-size: 15.5px; line-height: 1.72; }
 .editor .ProseMirror > * + * { margin-top: 0.5em; }
 .editor .ProseMirror p { margin: 0; }
+/* tabela do markdown */
+.editor .ProseMirror table { border-collapse: collapse; width: auto; max-width: 100%; margin: 0.6em 0; font-size: 14px; display: block; overflow-x: auto; }
+.editor .ProseMirror th, .editor .ProseMirror td { border: 1px solid var(--borda); padding: 5px 10px; vertical-align: top; min-width: 2.5em; }
+.editor .ProseMirror th { background: var(--bg-fundo); font-weight: 650; text-align: left; }
+.editor .ProseMirror td p, .editor .ProseMirror th p { margin: 0; }
+.editor .ProseMirror .selectedCell { background: color-mix(in srgb, var(--acento) 14%, transparent); }
+/* imagem do markdown */
+.editor .ProseMirror img { max-width: 100%; height: auto; border-radius: 8px; display: block; margin: 0.4em 0; }
+.editor .ProseMirror img.ProseMirror-selectednode { outline: 2px solid var(--acento); }
+/* código com cores (lowlight usa as classes do highlight.js) */
+.editor .bloco-codigo { position: relative; }
+.editor .bloco-codigo .bloco-lang { position: absolute; right: 10px; top: 6px; font-size: 10.5px; color: var(--texto-3); user-select: none; }
+.editor .hljs-comment, .editor .hljs-quote { color: var(--texto-3); font-style: italic; }
+.editor .hljs-keyword, .editor .hljs-selector-tag, .editor .hljs-built_in, .editor .hljs-name { color: var(--t-purple, #a371f7); }
+.editor .hljs-string, .editor .hljs-attr, .editor .hljs-symbol, .editor .hljs-bullet, .editor .hljs-addition { color: var(--t-green, #3fb950); }
+.editor .hljs-number, .editor .hljs-literal, .editor .hljs-variable, .editor .hljs-template-variable { color: var(--t-orange, #d29922); }
+.editor .hljs-title, .editor .hljs-section, .editor .hljs-type, .editor .hljs-function { color: var(--t-blue, #58a6ff); }
+.editor .hljs-meta, .editor .hljs-deletion { color: var(--t-red, #f85149); }
+/* diagrama Mermaid */
+.editor .diagrama { border: 1px solid var(--borda); border-radius: 10px; padding: 12px; margin: 0.5em 0; background: var(--bg-fundo); }
+.editor .diagrama-svg { overflow-x: auto; text-align: center; }
+.editor .diagrama-svg svg { max-width: 100%; height: auto; }
+.editor .diagrama-erro { color: var(--texto-3); font-size: 13px; }
+.editor .diagrama-botao { margin-top: 8px; font-size: 12px; padding: 2px 8px; }
 .editor .ProseMirror h1, .editor .ProseMirror h2, .editor .ProseMirror h3 { font-family: "Fraunces Variable", Georgia, serif; font-weight: 600; letter-spacing: -0.01em; line-height: 1.25; }
 .editor .ProseMirror h1 { font-size: 27px; margin: 1.2em 0 0.25em; }
 .editor .ProseMirror h2 { font-size: 21px; margin: 1.1em 0 0.2em; }

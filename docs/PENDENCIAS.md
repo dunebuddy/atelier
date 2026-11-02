@@ -41,59 +41,6 @@ Como usar:
     **`trocar_bancada` hoje troca na hora, sem perguntar**: passar a pedir confirmação na tela ("O agente quer mudar
     para a bancada X. Aceitar?"), e o agente só segue com o sim.
 
-- **MCP `tela` joga fora a resposta: `estado` volta vazio** (2026-11-02, pedido do agente em
-  `pedidos-ao-atelier.md`, 11:57). O agente quis fechar o documento que acabou e abrir o próximo **no mesmo lugar**
-  (mesma metade, mesma posição), consultou `tela` → `estado` e recebeu só `{"ok": true}`; abriu na direita no
-  chute. Diagnóstico: a tela publica certinho o que está aberto (`descreverTela` → `/api/tela/estado`) e a API
-  devolve no campo `estado`, mas o MCP (`mcp/src/main.rs`, braço `"tela"`) devolve sempre `{ "ok": true }` e
-  descarta o resto. Perde também o `pasta`/`app` do `explorador_sistema`. Correção: devolver a resposta inteira da
-  API. O agente pediu também uma ação "substituir" (fecha a antiga e abre a nova no lugar); **o Paulo prefere
-  peças genéricas** a uma ação tão específica:
-  - o `estado` lista cada janela com um **identificador** (o id da janela, para fechar/focar por ele), o que ela
-    mostra (título, código do documento, visão, terminal...), o **painel** por **número** (0, 1; não
-    esquerda/direita, para caber mais painéis no futuro) e a **posição** dentro dele;
-  - `fechar` e `focar` aceitam esse identificador;
-  - `abrir` aceita `painel: 0|1` (e, se fizer falta, `posicao`); `lado: esquerda|direita` continua aceito como
-    sinônimo de 0/1.
-  - Com isso o agente faz a troca sozinho: lê o estado, fecha a janela pelo id e abre o próximo no mesmo painel.
-
-- **Menus suspensos não fecham clicando de novo no botão** (2026-11-02, Paulo). O seletor de bancadas lá em cima, o
-  dos workspaces, o dos recursos (memória/CPU) e os outros: clicou, abriu; clicou de novo no mesmo botão, continua
-  aberto. Só fecha clicando fora, com Esc ou escolhendo algo. Diagnóstico: todos usam o `usePopover`
-  (`src/components/Popover.tsx`). O clique fora ignora o próprio botão, de propósito, e o `abrir` do botão só
-  abre, não alterna. Correção numa linha só, valendo para todos: `abrir` fecha quando a âncora já é aquele botão
-  (`setAncora(a => a === e.currentTarget ? null : e.currentTarget)`). Conferir os que abrem por atalho (Ctrl+N) e por
-  botão direito (histórico do voltar), que passam pelo mesmo `abrir`.
-
-- **Tabela markdown sai como texto corrido no editor, e editar pode apagá-la** (2026-11-02, Paulo, num documento
-  de trabalho). Diagnóstico:
-  - o banco está certo: o agente gravou uma tabela GFM válida (`| ✓ | Passo | O que é |` + `|---|---|---|`...), a
-    mesma que mostrou; não houve "mostrou uma coisa e escreveu outra";
-  - o editor (Tiptap 2 + `tiptap-markdown`) não tem a extensão de tabela. O markdown-it lê a tabela, mas sem o nó
-    `table` o Tiptap descarta a estrutura e junta o texto das células num parágrafo só (o que apareceu na tela);
-  - **risco de perda:** o editor só grava quando a pessoa edita (`onUpdate` → `getMarkdown()`), e aí regrava o corpo a
-    partir do que tem na tela: qualquer edição nesse documento troca a tabela por texto corrido. Dá para voltar pelas
-    versões do documento, mas é perda silenciosa. Vale para todo documento com tabela (os agentes fazem muitas).
-  - Correção: instalar `@tiptap/extension-table`, `-table-row`, `-table-header` e `-table-cell` (2.x, a mesma
-    versão do resto) e ligar no `Editor.tsx`; o `tiptap-markdown` já sabe gravar tabela de volta como GFM (célula com
-    texto simples; célula com lista ou várias linhas ele grava como HTML). Mais o CSS da tabela nos temas e um teste
-    de ida e volta (abrir, editar outra linha, conferir que a tabela continua igual no banco).
-  - Enquanto não sai: não editar na tela documentos com tabela (o agente pode editar pelo MCP sem problema).
-  - Junto, revisar as extensões do editor (pedido do Paulo). Hoje: StarterKit, lista de tarefas, link, menção e
-    o prompt pendente. Avaliação (só entra o que o markdown sabe guardar, senão some ao gravar):
-    - **Imagem** (`@tiptap/extension-image`): mesmo risco da tabela, e pior: `![](caminho)` some inteiro da tela e
-      de uma regravação. Entra junto com a tabela.
-    - **Bloco de código com cores** (`@tiptap/extension-code-block-lowlight` + `lowlight`): os agentes escrevem
-      muito código; só muda a aparência, o markdown continua igual. Vale.
-    - **Diagrama Mermaid** (bloco ```mermaid desenhado): não é extensão pronta, é um node view nosso com a lib
-      `mermaid` carregada só quando aparecer. Os agentes usam bastante. Talvez depois.
-    - Fora: sublinhado, marca-texto, alinhamento, cor (não têm markdown; viram HTML, e o editor está com
-      `html: false`, então se perderiam ao reabrir) e "tipografia" (troca aspas e traços no texto dos agentes).
-    - Cuidado com `html: false`: o `tiptap-markdown` grava como HTML a célula de tabela que tem lista ou várias
-      linhas; ao reabrir, esse HTML não é lido. Testar e, se preciso, manter a célula simples.
-
-### Melhorias pedidas
-
 - **Maximizar a janela e modo Zen** (2026-11-02, Paulo: "só dar uma olhada" numa janela com mais espaço, como o
   duplo clique no VS Code). Hoje **não existe**: o mais perto é a largura 1/1 da fita (`painel.ts`, `LARGURAS`), que
   só enche a metade. Dois níveis, como no VS Code:
@@ -371,6 +318,17 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.4** (2026-11-02, editor sem perda e MCP que enxerga a tela):
+  - **editor:** tabela, imagem, código com cores e diagrama Mermaid aparecem e voltam para o markdown como
+    entraram (teste de ida e volta: a barra `\|` da célula, a imagem em bloco próprio e a lista de tarefas
+    compacta); "/tabela" e "/diagrama" no menu do editor; imagem com caminho relativo é lida da pasta do
+    documento. A célula da tabela guarda uma linha só (com lista dentro, viraria HTML e se perderia);
+  - **MCP `editar_trecho`:** troca um pedaço do texto (`de` → `para`, várias de uma vez, ou todas ou nenhuma) e a
+    linha do tempo diz o que mudou ("Texto: ⬜ → ✅"), com a versão de antes guardada;
+  - **MCP `em_lote`:** várias chamadas de escrever documentos numa só, para na primeira que falhar;
+  - **MCP `tela`:** devolve a resposta (o `estado` vinha vazio); o estado numera os painéis (0, 1) e dá o id, a
+    posição e o código de cada janela; `fechar`/`focar` pelo id; `painel: 0|1` em abrir, terminal, focar;
+  - menus suspensos fecham no segundo clique no mesmo botão (todos usam o `usePopover`).
 - **0.2.3** (2026-11-02, correção crítica, versão sozinha a pedido do Paulo):
   - a lista aberta ao lado (Filhos e outras relações, lista do tipo) não desfaz mais o filtro e a ordem ao clicar
     em outra janela: "Mostrar concluídos" e a ordem ficam valendo (`Visao.tsx` comparava a visão pelo objeto, que o

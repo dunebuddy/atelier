@@ -136,14 +136,14 @@ Versão sozinha, a pedido do Paulo, antes de fechar a segunda rodada.
   clique em outra janela.
 - Ctrl+Alt+setas da fita com o cursor num terminal (já estava no master).
 
-## Segunda rodada (proposta de 2026-11-02, a aprovar)
+## Segunda rodada (proposta de 2026-11-02; o Paulo liberou executar em sequência)
 
 Fase de polimento: o Paulo usa o app no dia a dia e nada grave está quebrado. A régua é a mesma de cima, com um
 ajuste dele: **a prioridade é mais de UX do que de funcionalidade**, a não ser o que mexe com dado (risco de perder
 texto) ou com o trabalho dos agentes. Tudo vem de [`PENDENCIAS.md`](PENDENCIAS.md) (o detalhe está lá) e dos
 pedidos dos agentes de 01 e 02/11, revisados criticamente (ver "Pedidos do agente" em PENDENCIAS).
 
-## 0.2.4 · Editor sem perda e MCP que enxerga a tela
+## 0.2.4 · Editor sem perda e MCP que enxerga a tela · **saiu em 2026-11-02**
 
 O que pode perder dado ou faz o agente errar. Curto.
 

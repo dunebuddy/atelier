@@ -1585,6 +1585,67 @@ fn valor_legivel(v: &Value) -> String {
     }
 }
 
+/// Troca trechos do corpo sem reenviar o texto inteiro (`editar_trecho` do MCP). Cada troca é (de, para, todas):
+/// `de` tem de existir; aparecendo mais de uma vez, só com `todas`. Se uma troca falha, nada é gravado. A linha do
+/// tempo diz o que mudou (o pedaço diferente de cada troca), em vez de "Texto editado.".
+pub fn editar_trecho(conn: &Connection, id: i64, trocas: &[(String, String, bool)], autor: &str) -> Res<String> {
+    if trocas.is_empty() {
+        return Err(Erro::Invalido("nenhuma troca: mande de e para (ou trocas: [{de, para}])".into()));
+    }
+    let mut corpo: String = conn.query_row("SELECT corpo FROM itens WHERE id = ? AND apagado_em IS NULL", [id], |r| r.get(0))
+        .optional()?
+        .ok_or_else(|| Erro::NaoEncontrado("documento".into()))?;
+    let mut resumo = vec![];
+    for (i, (de, para, todas)) in trocas.iter().enumerate() {
+        let n = if de.is_empty() { 0 } else { corpo.matches(de.as_str()).count() };
+        let qual = if trocas.len() > 1 { format!("troca {}: ", i + 1) } else { String::new() };
+        if n == 0 {
+            return Err(Erro::Invalido(format!("{qual}o trecho `de` não está no texto (ele pode ter mudado: leia o documento de novo)")));
+        }
+        if n > 1 && !todas {
+            return Err(Erro::Invalido(format!("{qual}o trecho `de` aparece {n} vezes: mande um pedaço maior, que seja único, ou todas: true")));
+        }
+        corpo = if *todas { corpo.replace(de.as_str(), para) } else { corpo.replacen(de.as_str(), para, 1) };
+        resumo.push(diferenca_curta(de, para));
+    }
+    let nota = format!("Texto: {}", resumo.join(" · "));
+    atualizar_item(conn, id, &json!({ "corpo": corpo, "autor": autor, "nota_texto": nota }))?;
+    Ok(nota)
+}
+
+/// "antes → depois" só com o pedaço que mudou (tira o começo e o fim iguais), numa linha e curto.
+fn diferenca_curta(de: &str, para: &str) -> String {
+    let a: Vec<char> = de.chars().collect();
+    let b: Vec<char> = para.chars().collect();
+    let mut ini = 0;
+    while ini < a.len() && ini < b.len() && a[ini] == b[ini] {
+        ini += 1;
+    }
+    let mut fim = 0;
+    while fim < a.len() - ini && fim < b.len() - ini && a[a.len() - 1 - fim] == b[b.len() - 1 - fim] {
+        fim += 1;
+    }
+    // um pouco de contexto antes, até o começo da palavra
+    let mut c = ini;
+    while c > 0 && ini - c < 24 && !a[c - 1].is_whitespace() {
+        c -= 1;
+    }
+    // palavra inteira que entrou ou saiu: leva a palavra de antes junto ("Texto antes" → "Texto de antes", não "∅ → de")
+    if c == ini && c > 0 && (ini == a.len() - fim || ini == b.len() - fim) {
+        while c > 0 && a[c - 1].is_whitespace() {
+            c -= 1;
+        }
+        while c > 0 && ini - c < 24 && !a[c - 1].is_whitespace() {
+            c -= 1;
+        }
+    }
+    let curto = |v: &[char]| -> String {
+        let t: String = v.iter().collect::<String>().split_whitespace().collect::<Vec<_>>().join(" ");
+        if t.chars().count() > 70 { format!("{}…", t.chars().take(70).collect::<String>()) } else if t.is_empty() { "∅".into() } else { t }
+    };
+    format!("{} → {}", curto(&a[c..a.len() - fim]), curto(&b[c..b.len() - fim]))
+}
+
 /// "Texto editado." de quem já está editando há pouco vira uma entrada só (a hora vai para a última edição).
 const TEXTO_EDITADO: &str = "Texto editado.";
 
@@ -1682,7 +1743,12 @@ pub fn atualizar_item(conn: &Connection, id: i64, dados: &Value) -> Res<()> {
     for e in eventos {
         anotar(&tx, id, &e, &quem)?;
     }
-    if editou_texto {
+    // quem diz o que mudou (o `editar_trecho`) ganha uma linha própria, com a versão de antes guardada
+    let nota_texto = dados.get("nota_texto").and_then(|v| v.as_str()).filter(|t| !t.trim().is_empty());
+    if let (true, Some(t)) = (editou_texto, nota_texto) {
+        guardar_versao(&tx, "item", id, &corpo_atual, &quem)?;
+        anotar(&tx, id, t, &quem)?;
+    } else if editou_texto {
         // edições seguidas (até 30 min) da mesma pessoa viram uma entrada só, com a hora da última
         let ultima: Option<(i64, String, String)> = tx
             .query_row("SELECT id, texto, criado_em FROM notas WHERE item_id = ? AND autor = ? ORDER BY criado_em DESC, id DESC LIMIT 1", params![id, quem], |r| {
@@ -2266,5 +2332,31 @@ mod testes {
         let it = ler_item(&c, id).unwrap();
         assert!(it.props.get("6").is_none());
         assert_eq!(it.props["2"], "Alta");
+    }
+
+    /// Trocar um pedaço do texto: só onde o trecho é único (ou com `todas`), nada gravado se uma troca falha, e a
+    /// linha do tempo diz o que mudou.
+    #[test]
+    fn editar_trecho_troca_so_o_pedaco() {
+        let c = Connection::open_in_memory().unwrap();
+        migrar(&c).unwrap();
+        let id = criar_item(&c, &json!({"titulo": "Etapas", "corpo": "- ⬜ **3.7** aplicar
+- ⬜ **3.8** conexão
+- ⬜ fim"})).unwrap();
+        let nota = editar_trecho(&c, id, &[("- ⬜ **3.8**".into(), "- ✅ **3.8**".into(), false)], "Claude").unwrap();
+        assert_eq!(nota, "Texto: ⬜ → ✅");
+        assert!(ler_item(&c, id).unwrap().corpo.unwrap_or_default().contains("- ✅ **3.8** conexão"));
+        // repetido sem `todas`: recusa; e uma troca ruim no meio não grava a boa
+        assert!(editar_trecho(&c, id, &[("- ⬜".into(), "x".into(), false)], "Claude").is_err());
+        assert!(editar_trecho(&c, id, &[("**3.7**".into(), "**3.7b**".into(), false), ("não existe".into(), "y".into(), false)], "Claude").is_err());
+        assert!(!ler_item(&c, id).unwrap().corpo.unwrap_or_default().contains("3.7b"));
+        editar_trecho(&c, id, &[("- ⬜".into(), "- ✅".into(), true)], "Claude").unwrap();
+        assert!(!ler_item(&c, id).unwrap().corpo.unwrap_or_default().contains('⬜'));
+        let notas: Vec<String> = c.prepare("SELECT texto FROM notas WHERE item_id = ? ORDER BY id").unwrap()
+            .query_map([id], |r| r.get(0)).unwrap().map(|r| r.unwrap()).collect();
+        assert!(notas.iter().any(|n| n == "Texto: ⬜ → ✅"));
+        assert!(!notas.iter().any(|n| n == TEXTO_EDITADO));
+        // palavra que entra vem com a vizinha, para dar para ler
+        assert_eq!(diferenca_curta("Texto antes.", "Texto de antes."), "Texto → Texto de");
     }
 }

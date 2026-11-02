@@ -11,6 +11,7 @@ import Link from "@tiptap/extension-link";
 import { Markdown } from "tiptap-markdown";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { CaixaPrompt, cancelarPrompt, ContextoPrompt, PromptPendente } from "./PromptAgente";
+import { blocosDeTabela, BlocoCodigo, Imagem, TarefasCompactas } from "./EditorBlocos";
 
 /** Abre no navegador do sistema (no app) ou numa aba nova (no navegador de teste). */
 export function abrirLink(url: string) {
@@ -72,6 +73,8 @@ const COMANDOS: Cmd[] = [
   { id: "citacao", nome: "Citação", dica: ">", faz: (e) => e.chain().focus().toggleBlockquote().run() },
   { id: "codigo", nome: "Bloco de código", dica: "```", faz: (e) => e.chain().focus().toggleCodeBlock().run() },
   { id: "divisor", nome: "Divisor", dica: "---", faz: (e) => e.chain().focus().setHorizontalRule().run() },
+  { id: "tabela", nome: "Tabela", dica: "| |", faz: (e) => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
+  { id: "diagrama", nome: "Diagrama (Mermaid)", dica: "```mermaid", faz: (e) => e.chain().focus().insertContent({ type: "codeBlock", attrs: { language: "mermaid" }, content: [{ type: "text", text: "flowchart LR\n  A --> B" }] }).run() },
   {
     id: "agora", nome: "Data e hora de agora", dica: "30/10 18:55",
     faz: (e) => e.chain().focus().insertContent(new Date().toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).replace(",", "") + " ").run(),
@@ -88,8 +91,10 @@ function sem_acento(s: string) {
 
 /** Markdown com edição ao vivo: digita `## `, `- [ ] `, `**negrito**` e vira formatação na hora. */
 export function Editor({
-  valor, aoMudar, placeholder, aoMencao, aoColarArquivo, prompt,
+  valor, aoMudar, placeholder, aoMencao, aoColarArquivo, prompt, pasta,
 }: {
+  /** pasta do documento: imagens com caminho relativo (`![](artefatos/x.png)`) são lidas a partir dela */
+  pasta?: string;
   /** liga o /prompt: o item em edição vai como contexto para o agente */
   prompt?: ContextoPrompt;
   valor: string;
@@ -118,11 +123,18 @@ export function Editor({
   const timer = useRef<number | undefined>(undefined);
   const aoMudarRef = useRef(aoMudar);
   aoMudarRef.current = aoMudar;
+  const pastaRef = useRef(pasta);
+  pastaRef.current = pasta;
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      // o bloco de código do StarterKit dá lugar ao com cores (e ao diagrama Mermaid)
+      StarterKit.configure({ codeBlock: false }),
+      BlocoCodigo,
+      ...blocosDeTabela,
+      Imagem.configure({ pasta: () => pastaRef.current }),
       TaskList,
+      TarefasCompactas,
       TaskItem.configure({ nested: true }),
       // clique simples continua editando; Ctrl+clique (ou Cmd) abre o link
       Mencao.configure({ aoAbrir: (c) => aoMencaoRef.current?.(c) }),

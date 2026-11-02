@@ -52,12 +52,16 @@ export function Popover({
   );
 }
 
-/** Estado de popover pronto: `abrir(e)` no clique, `<Popover>` quando `ancora` existir. */
+/** Estado de popover pronto: `abrir(e)` no clique, `<Popover>` quando `ancora` existir. Clicar de novo no mesmo
+ *  botão fecha (o clique fora ignora o próprio botão, então quem fecha é o `abrir`). */
 export function usePopover() {
   const [ancora, setAncora] = useState<HTMLElement | null>(null);
   return {
     ancora,
-    abrir: (e: { currentTarget: HTMLElement }) => setAncora(e.currentTarget),
+    abrir: (e: { currentTarget: HTMLElement }) => {
+      const alvo = e.currentTarget;
+      setAncora((a) => (a === alvo ? null : alvo));
+    },
     fechar: () => setAncora(null),
   };
 }

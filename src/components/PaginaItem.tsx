@@ -350,6 +350,7 @@ export function PaginaItem({
               key={item.id}
               valor={item.corpo ?? ""}
               aoMudar={(corpo) => salvar({ corpo })}
+              pasta={item.pasta ?? undefined}
               aoMencao={(c) => abrirCodigo(c, ir)}
               prompt={{ itemId: item.id, codigo: item.codigo, titulo: item.titulo }}
               aoColarArquivo={async (f) => {

@@ -442,3 +442,14 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 
 ### Ponto de parada
 - Fechar com o Paulo a ordem da segunda rodada (ROADMAP.md) e começar pela 0.2.4.
+
+## 2026-11-02 (tarde) — segunda rodada liberada; 0.2.4
+
+- O Paulo liberou executar a segunda rodada como ontem (versão por versão, CI verde antes da próxima), sem
+  atrapalhar o app dele (tudo no teste sem janela).
+- 0.2.4: editor com tabela/imagem/código/Mermaid e ida e volta conferida (achou e corrigiu três perdas: a barra da
+  célula, a imagem grudada e a lista de tarefas solta); `editar_trecho` e `em_lote` no MCP; `tela` com estado
+  numerado e ids (testado: ler estado → fechar pelo id → abrir no painel 0); menus com segundo clique.
+- Dica do teste sem janela: com o painel do navegador escondido, a página demora a carregar e o teclado não
+  funciona; usar `javascript_tool` (ex.: `import('/src/ui.ts')` para abrir) e `cargo test --lib` (o
+  `servidor.exe` do teste fica travado enquanto roda).

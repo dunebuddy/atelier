@@ -166,6 +166,29 @@ fn ferramentas() -> Value {
             }, "required": ["id"] }
         },
         {
+            "name": "editar_trecho",
+            "description": "Troca só um pedaço do corpo (markdown) de um documento, sem reenviar o texto inteiro: `de` é o trecho exato que existe hoje, `para` o texto novo. Falha se `de` não estiver no texto (ele pode ter mudado: leia de novo) ou se aparecer mais de uma vez (mande um pedaço maior, ou todas: true). Para várias trocas de uma vez, `trocas: [{de, para, todas?}]`: ou entram todas, ou nenhuma. A linha do tempo registra o que mudou. Prefira esta a atualizar_documento com corpo para mudanças pequenas (marcar um passo, corrigir uma linha).",
+            "inputSchema": { "type": "object", "properties": {
+                "id": ID,
+                "de": { "type": "string" },
+                "para": { "type": "string" },
+                "todas": { "type": "boolean" },
+                "trocas": { "type": "array", "items": { "type": "object", "properties": {
+                    "de": { "type": "string" }, "para": { "type": "string" }, "todas": { "type": "boolean" }
+                }, "required": ["de", "para"] } }
+            }, "required": ["id"] }
+        },
+        {
+            "name": "em_lote",
+            "description": "Várias chamadas numa só (criar vários documentos, marcar vários passos...): `operacoes: [{ferramenta, argumentos}]`, com as ferramentas de escrever documentos (criar_documento, atualizar_documento, editar_trecho, anotar, relacionar). Roda em ordem e para na primeira que falhar; a resposta diz o resultado de cada uma e onde parou (as anteriores ficam feitas).",
+            "inputSchema": { "type": "object", "properties": {
+                "operacoes": { "type": "array", "items": { "type": "object", "properties": {
+                    "ferramenta": { "type": "string", "enum": ["criar_documento", "atualizar_documento", "editar_trecho", "anotar", "relacionar"] },
+                    "argumentos": { "type": "object" }
+                }, "required": ["ferramenta", "argumentos"] } }
+            }, "required": ["operacoes"] }
+        },
+        {
             "name": "anotar",
             "description": "Acrescenta uma nota datada na linha do tempo do documento (acompanhamento, decisão, o que foi feito).",
             "inputSchema": { "type": "object", "properties": {
@@ -183,7 +206,7 @@ fn ferramentas() -> Value {
         },
         {
             "name": "tela",
-            "description": "Mexe na tela do app atelier (precisa estar aberto). O painel de trabalho tem uma ou duas metades (esquerda/direita), cada uma com janelas em abas, tile ou fita; cada documento tem um workspace (um painel só dele) e a bancada tem o seu. Ações: abrir (codigo = documento; visao = nome; tipo = configuração do tipo; pasta = código do documento, abre a árvore da pasta dele; arquivo = caminho absoluto; lixeira: true) · workspace (codigo = do documento; sem codigo = o da bancada) · fechar_workspace · visao_geral (mostra todos os workspaces) · dividir · juntar · modo (modo: abas|tile|fita) · fechar (janela: atual|todas|parte do título) · focar (lado) · terminal (codigo = na pasta do documento; bancada: true = na raiz; programa = id do agente, ex.: claude-code; shell = pwsh|cmd|wsl...) · explorador_sistema (abre a pasta no Explorer: codigo ou a bancada; app = claude|codex|deepseek abre esse agente com janela própria na pasta, em vez do Explorer) · barra_lateral (mostrar) · tema (tema) · zoom (80-160) · configuracoes (secao: aparencia, bancadas, integracoes, editor, atalhos, automacao, bancada, tipos) · busca (texto: abre a busca rápida) · recarregar (depois de mudar coisas) · filtrar (texto, na visão aberta) · destacar (codigo) · estado (o que está aberto agora). Em abrir e terminal, lado: esquerda|direita escolhe a metade (a direita nasce se preciso) e ao_lado: true abre numa janela nova.",
+            "description": "Mexe na tela do app atelier (precisa estar aberto). O painel de trabalho tem uma ou duas metades (esquerda/direita), cada uma com janelas em abas, tile ou fita; cada documento tem um workspace (um painel só dele) e a bancada tem o seu. Ações: abrir (codigo = documento; visao = nome; tipo = configuração do tipo; pasta = código do documento, abre a árvore da pasta dele; arquivo = caminho absoluto; lixeira: true) · workspace (codigo = do documento; sem codigo = o da bancada) · fechar_workspace · visao_geral (mostra todos os workspaces) · dividir · juntar · modo (modo: abas|tile|fita) · fechar (janela: id do estado|atual|todas|parte do título) · focar (janela: id do estado, ou painel) · terminal (codigo = na pasta do documento; bancada: true = na raiz; programa = id do agente, ex.: claude-code; shell = pwsh|cmd|wsl...) · explorador_sistema (abre a pasta no Explorer: codigo ou a bancada; app = claude|codex|deepseek abre esse agente com janela própria na pasta, em vez do Explorer) · barra_lateral (mostrar) · tema (tema) · zoom (80-160) · configuracoes (secao: aparencia, bancadas, integracoes, editor, atalhos, automacao, bancada, tipos) · busca (texto: abre a busca rápida) · recarregar (depois de mudar coisas) · filtrar (texto, na visão aberta) · destacar (codigo) · estado (o que está aberto agora: os painéis numerados 0 e 1 e cada janela com id, posição e o que mostra). Em abrir e terminal, painel: 0|1 (ou lado: esquerda|direita) escolhe o painel (o 1 nasce se preciso) e ao_lado: true abre numa janela nova. Para trocar uma janela por outra no mesmo lugar: leia o estado, feche pelo id e abra no mesmo painel.",
             "inputSchema": { "type": "object", "properties": {
                 "acao": { "type": "string", "enum": ["abrir", "workspace", "fechar_workspace", "visao_geral", "dividir", "juntar", "modo", "fechar", "focar", "terminal", "explorador_sistema", "barra_lateral", "tema", "zoom", "configuracoes", "busca", "recarregar", "filtrar", "destacar", "estado"] },
                 "codigo": { "type": "string", "description": "código do documento" },
@@ -193,10 +216,11 @@ fn ferramentas() -> Value {
                 "arquivo": { "type": "string", "description": "abrir: caminho absoluto de um arquivo" },
                 "lixeira": { "type": "boolean" },
                 "lado": { "type": "string", "enum": ["esquerda", "direita"] },
+                "painel": { "type": "integer", "description": "abrir, terminal, focar, fechar, modo: o painel pelo número que o estado mostra (0 = esquerda, 1 = direita); vale mais que lado" },
                 "app": { "type": "string", "enum": ["claude", "codex", "deepseek"] },
                 "ao_lado": { "type": "boolean" },
                 "modo": { "type": "string", "enum": ["abas", "tile", "fita"] },
-                "janela": { "type": "string", "description": "fechar: atual, todas ou parte do título" },
+                "janela": { "type": "string", "description": "fechar: o id da janela (do estado), atual, todas ou parte do título; focar: o id da janela" },
                 "bancada": { "type": "boolean", "description": "terminal: na raiz da bancada" },
                 "programa": { "type": "string", "description": "terminal: id do agente (claude-code, codex...)" },
                 "shell": { "type": "string" },
@@ -887,6 +911,33 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
             db::atualizar_item(&conn, id, &dados).map_err(e)?;
             Ok(mapa.humano(&db::ler_item(&conn, id).map_err(e)?))
         }
+        "editar_trecho" => {
+            let id = id_de(&conn, a)?;
+            let uma = |v: &Value| -> Option<(String, String, bool)> {
+                Some((v.get("de")?.as_str()?.to_string(), v.get("para")?.as_str()?.to_string(), v.get("todas").and_then(|t| t.as_bool()).unwrap_or(false)))
+            };
+            let trocas: Vec<(String, String, bool)> = match a.get("trocas").and_then(|t| t.as_array()) {
+                Some(l) => l.iter().map(|t| uma(t).ok_or("cada troca precisa de de e para")).collect::<Result<_, _>>()?,
+                None => uma(a).into_iter().collect(),
+            };
+            let nota = db::editar_trecho(&conn, id, &trocas, autor).map_err(e)?;
+            Ok(json!({ "ok": true, "trocas": trocas.len(), "linha_do_tempo": nota }))
+        }
+        "em_lote" => {
+            let ops = a.get("operacoes").and_then(|o| o.as_array()).ok_or("mande operacoes: [{ferramenta, argumentos}]")?;
+            let mut feitos = vec![];
+            for (i, op) in ops.iter().enumerate() {
+                let f = op.get("ferramenta").and_then(|f| f.as_str()).unwrap_or("");
+                if !["criar_documento", "atualizar_documento", "editar_trecho", "anotar", "relacionar"].contains(&f) {
+                    return Ok(json!({ "ok": false, "feitas": feitos, "parou_em": i, "erro": format!("ferramenta \"{f}\" não vale em lote") }));
+                }
+                match chamar(f, op.get("argumentos").unwrap_or(&Value::Null), autor) {
+                    Ok(r) => feitos.push(json!({ "ferramenta": f, "resultado": r })),
+                    Err(erro) => return Ok(json!({ "ok": false, "feitas": feitos, "parou_em": i, "erro": erro })),
+                }
+            }
+            Ok(json!({ "ok": true, "feitas": feitos }))
+        }
         "anotar" => {
             let id = id_de(&conn, a)?;
             let t = s(a, "texto").filter(|t| !t.trim().is_empty()).ok_or("nota vazia")?;
@@ -929,7 +980,8 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
         "tela" => {
             let r = post_api("/api/tela", a)?;
             if r["ok"] == true {
-                Ok(json!({ "ok": true }))
+                // a resposta inteira: o estado da tela, a pasta aberta...
+                Ok(r)
             } else if let Some(e) = r["erro"].as_str() {
                 Err(e.to_string())
             } else {

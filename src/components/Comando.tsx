@@ -53,10 +53,12 @@ export function descreverTela(ws: W.Workspaces, bancadas: Bancadas | null, visoe
   const e = ws.estados[ws.ativo];
   if (e) {
     const ativa = janelaAtiva(e);
-    l.push(`Painel: ${e.metades.length === 1 ? "uma metade só" : "dividido em esquerda e direita"}; foco na ${LADOS[e.foco] ?? "esquerda"}.`);
+    // painéis numerados (0 = esquerda, 1 = direita) e cada janela com o id dela: o agente fecha/foca pelo id e abre
+    // no painel certo (tela: fechar/focar com janela, abrir com painel)
+    l.push(`Painéis: ${e.metades.length} (0 = esquerda${e.metades.length > 1 ? ", 1 = direita" : ""}); foco no painel ${e.foco}.`);
     e.metades.forEach((m, i) => {
-      const js = m.janelas.map((j) => `${j.id === ativa?.id ? "[em foco] " : ""}"${j.titulo ?? "…"}" — ${descreverRota(rotaDe(j))}`);
-      l.push(`Metade ${e.metades.length === 1 ? "única" : LADOS[i]} (modo ${m.modo}): ${js.length ? js.join(" · ") : "vazia"}.`);
+      const js = m.janelas.map((j, pos) => `posição ${pos + 1}, janela "${j.id}"${j.id === ativa?.id ? " [em foco]" : ""}: "${j.titulo ?? "…"}" — ${descreverRota(rotaDe(j))}`);
+      l.push(`Painel ${i}${e.metades.length > 1 ? ` (${LADOS[i]})` : ""}, modo ${m.modo}: ${js.length ? js.join(" · ") : "vazio"}.`);
     });
   }
   return l.join("\n");

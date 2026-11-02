@@ -772,6 +772,13 @@ async fn tela(State(b): State<Banco>, Json(d): Json<Value>) -> R {
         Some(outro) => return Err(Erro::Invalido(format!("lado: esquerda ou direita (veio {outro})"))),
         None => {}
     }
+    // painel: 0, 1... (o mesmo número que o "estado" mostra); vale mais que o lado
+    if let Some(n) = d.get("painel").and_then(|v| v.as_u64()) {
+        if n > 1 {
+            return Err(Erro::Invalido(format!("painel: 0 ou 1 (veio {n}); por enquanto o painel se divide em dois")));
+        }
+        ev["metade"] = json!(n);
+    }
     let banc = || b.bancada_ativa().ok_or(Erro::Invalido("nenhuma bancada aberta".into()));
     // pasta do item (criada no padrão, se ainda não tem), com o título dele
     let pasta_do = |codigo: &str| -> Result<(String, String), Erro> {
@@ -836,9 +843,12 @@ async fn tela(State(b): State<Banco>, Json(d): Json<Value>) -> R {
         }
         // fechar: "atual" (padrão), "todas" ou parte do título da janela
         "fechar" => ev["janela"] = json!(txt("janela").unwrap_or("atual".into())),
+        // focar: a janela pelo id (do "estado") ou o painel/lado
         "focar" => {
-            if ev.get("metade").is_none() {
-                return Err(Erro::Invalido("focar: informe lado (esquerda ou direita)".into()));
+            if let Some(j) = txt("janela") {
+                ev["janela"] = json!(j);
+            } else if ev.get("metade").is_none() {
+                return Err(Erro::Invalido("focar: informe janela (id do estado), painel (0, 1) ou lado".into()));
             }
         }
         // terminal ou agente: na pasta do item (codigo), na raiz da bancada (bancada: true) ou na pasta do workspace aberto
@@ -886,13 +896,44 @@ async fn tela(State(b): State<Banco>, Json(d): Json<Value>) -> R {
         // o que está na tela agora (a tela manda a cada mudança)
         "estado" => {
             let e = b.tela_estado.lock().unwrap_or_else(|e| e.into_inner()).clone();
-            return Ok(Json(json!({ "ok": !e.is_empty(), "estado": if e.is_empty() { "o app não informou a tela (está aberto?)".to_string() } else { e } })));
+            if e.is_empty() {
+                return Ok(Json(json!({ "ok": false, "estado": "o app não informou a tela (está aberto?)" })));
+            }
+            // a tela só conhece o id do documento; o agente usa o código
+            let e = com(&b, |c| Ok(codigos_no_estado(c, &e))).unwrap_or(e);
+            return Ok(Json(json!({ "ok": true, "estado": e })));
         }
         "recarregar" | "dividir" | "juntar" | "visao_geral" => {}
         outro => return Err(Erro::Invalido(format!("ação desconhecida: {outro} (ações: {ACOES_TELA}). Se for algo que a tela devia saber fazer, registre com nao_consigo."))),
     }
     let telas = b.tela.send(ev.to_string()).unwrap_or(0);
     Ok(Json(json!({ "ok": telas > 0, "telas": telas })))
+}
+
+/// "documento (id 54)" vira "documento #a3f9c21" no estado da tela.
+fn codigos_no_estado(c: &rusqlite::Connection, e: &str) -> String {
+    let mut saida = String::with_capacity(e.len());
+    let mut resto = e;
+    while let Some(i) = resto.find("documento (id ") {
+        saida.push_str(&resto[..i]);
+        let depois = &resto[i + "documento (id ".len()..];
+        let fim = depois.find(')').unwrap_or(0);
+        let codigo: Option<String> = depois[..fim].parse::<i64>().ok().and_then(|id| {
+            c.query_row("SELECT codigo FROM itens WHERE id = ?", [id], |r| r.get::<_, Option<String>>(0)).ok().flatten()
+        });
+        match codigo {
+            Some(cod) => {
+                saida.push_str(&format!("documento #{cod}"));
+                resto = &depois[fim + 1..];
+            }
+            None => {
+                saida.push_str("documento (id ");
+                resto = depois;
+            }
+        }
+    }
+    saida.push_str(resto);
+    saida
 }
 
 /// A tela conta o que está mostrando (bancada, workspace, janelas de cada metade), para o agente saber onde está.

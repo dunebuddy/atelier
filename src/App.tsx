@@ -307,7 +307,12 @@ export default function App() {
       case "juntar": setPainel(P.juntar); return;
       case "modo": naMetade((s) => P.mudarModo(s, s.foco, d.modo as P.Modo)); return;
       case "fechar": naMetade((s) => P.fecharJanelas(s, d.janela ?? "atual")); return;
-      case "focar": naMetade((s) => s); return;
+      case "focar": {
+        const id = d.janela;
+        if (id) setPainel((s) => { const achada = P.acharJanela(s, id); return achada ? P.ativar(s, achada.mi, id) : s; });
+        else naMetade((s) => s);
+        return;
+      }
       case "terminal":
         naMetade((s) => s);
         // espera o foco mudar de metade antes de abrir

@@ -24,6 +24,16 @@ Como usar:
 
 ### Melhorias pedidas
 
+- **Abrir agentes de interface (desktop) na pasta do workspace** (2026-11-02, Paulo). Além dos terminais com agente de
+  linha de comando, um botão para abrir na pasta os apps com janela que já têm o MCP do atelier. Pesquisa do dia:
+  - **Claude Desktop** (aba Code): link `claude://code/new?folder=<pasta>`; sempre pede confirmação da pasta, e no
+    Windows, com o app já aberto, pode juntar a pasta à sessão aberta em vez de abrir uma nova (bug relatado);
+  - **Codex / ChatGPT** (o app do ChatGPT e o do Codex viraram um só em jul/2026; instalado aqui pela Store):
+    `Codex.exe --open-project <pasta>`, o mesmo do menu do Explorer, com bug relatado no Windows em mai/2026;
+  - **DeepSeek Harness (dsh)**: tem app desktop oficial (set-out/2026) com MCP; falta ver se abre numa pasta;
+  - outros com janela que abrem pasta: Cursor (`cursor <pasta>`), Goose, OpenCode desktop (beta).
+  - Proposta: um menu "Abrir em…" ao lado do Explorador, mostrando só os apps encontrados na máquina.
+
 ### Pedidos do agente (de `pedidos-ao-atelier.md`, triados com o Paulo em 2026-11-01)
 
 ### Recursos (mudam comportamento: precisam do ok do Paulo antes)

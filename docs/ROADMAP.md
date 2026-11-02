@@ -150,9 +150,12 @@ O que pode perder dado ou faz o agente errar. Curto.
 - **Editor:** tabela e imagem do markdown aparecem e sobrevivem a uma edição (hoje somem ao gravar); bloco de código
   com cores. Teste de ida e volta (abrir, editar outra linha, conferir o banco igual); conferir a lista de tarefas
   `- [x]`.
+- **Diagrama Mermaid desenhado** no editor (bloco ```` ```mermaid ````; a biblioteca só carrega quando aparece um).
 - **MCP `editar_trecho`** (pedido do agente, aprovado): troca um pedaço do corpo (`de` → `para`, falha se não achar
   ou se achar mais de um), várias trocas numa chamada, e a linha do tempo registra o que mudou em vez de "Texto
   editado". Não atropela a edição que o Paulo fez na tela.
+- **MCP em lote:** criar e atualizar vários documentos numa chamada só (atômico), com uma linha só na linha do tempo
+  do pai ("+3 ligados").
 - **MCP `tela`:** devolver a resposta (hoje o `estado` volta vazio); o estado lista as janelas com id, o que
   mostram, **painel numerado** (0, 1) e posição; `fechar`/`focar` pelo id; `abrir` com `painel`.
 - Menus suspensos fecham no segundo clique (o mesmo `usePopover` para todos).
@@ -189,6 +192,8 @@ Tudo mexe na ficha, nas propriedades de relação e nas listas ao vivo; vai junt
   **"este"** (o documento aberto), em vez de "filhos" fixo.
 - **MCP:** `ler_documento` devolve as listas dinâmicas, as listas do texto e o "apontado por" resumidos (código,
   tipo, status, ordem), sem a linha do tempo de cada um; criar e mudar essas propriedades pelo MCP.
+- **Índices no banco** para as relações: elas ficam em JSON nas propriedades e as listas dinâmicas e as listas no
+  texto vão consultar isso muito mais; medir com muitos documentos e indexar o que pesar.
 
 ## 0.2.7 · Notificações e status dos agentes
 
@@ -214,6 +219,9 @@ Grande, e o bug que ele evita é raro (trocar de bancada com agente rodando).
 - **Várias janelas, uma por bancada**, no mesmo app; botão "abrir em nova janela" no seletor; abrir a que já está
   aberta só traz a janela para a frente.
 - Terminais e workspaces de cada bancada continuam vivos.
+- **Abrir o atelier por link** (`atelier://`): um link para um documento, uma visão ou uma bancada abre a janela
+  certa (o atelier, se fechado; a bancada certa, se houver várias janelas). Serve para colar em outros apps e para
+  os agentes mandarem links clicáveis.
 
 ## 0.2.9 · Consultas e fórmulas
 
@@ -227,12 +235,6 @@ Recursos novos e maiores; precisam de conversa antes (a linguagem da consulta, a
 
 - Abrir com: Cursor, Goose, OpenCode desktop (só se fizer falta).
 - Cor própria por bancada, para reconhecer a janela pela miniatura (ele achou que talvez não precise).
-- Diagrama Mermaid desenhado no editor.
-- MCP: criar e atualizar documentos em lote numa chamada só (pedido do agente; o `editar_trecho` resolve o caso
-  principal).
-- Desempenho com muito documento: as relações ficam em JSON dentro das propriedades, sem índice. Hoje não pesa;
-  olhar se ficar lento.
-- Abrir o atelier por link (`atelier://`).
 - Migrar o posto `daily-work` para dentro do atelier (é trabalho no outro repositório, não aqui).
 
 ## Para conferir no uso

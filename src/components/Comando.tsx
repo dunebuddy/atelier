@@ -26,6 +26,10 @@ export interface PedidoTela {
   tema?: string;
   zoom?: number;
   secao?: string;
+  /** agente: a sessão do terminal e o estado que o hook mandou; falta: quem pediu */
+  sessao?: number;
+  estado?: string;
+  agente?: string;
 }
 
 const LADOS = ["esquerda", "direita"];

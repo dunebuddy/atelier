@@ -119,6 +119,10 @@ async fn sessao(socket: WebSocket, num: Option<u64>, agente: Option<std::path::P
         cmd.cwd(c);
     }
     cmd.env("TERM", "xterm-256color");
+    // o hook do agente (atelier-mcp hook ...) diz à tela de qual terminal veio o aviso
+    if let Some(n) = num {
+        cmd.env("ATELIER_SESSAO", n.to_string());
+    }
     cmd.env("COLORTERM", "truecolor");
     let mut filho = match par.slave.spawn_command(cmd) {
         Ok(f) => f,

@@ -8,6 +8,8 @@ import { api, BASE } from "../api";
 import { GERAL, itemDa, sessoesDe, Workspaces } from "../workspaces";
 import { Popover, usePopover } from "./Popover";
 import { Marca } from "./Marca";
+import { CarinhaAgente } from "./Avisos";
+import { estadoDe } from "../agentes";
 
 /** Pede para abrir o workspace de um item (ou o "Geral", sem id). */
 /** O ícone do workspace: o da bancada (fixo, nunca some) é a marca do atelier; o de um documento, o ícone dele. */
@@ -31,12 +33,28 @@ export function SeletorWorkspace({ ws, trocar, fechar, esquecer }: {
 }) {
   const pop = usePopover();
   const info = ws.info[ws.ativo] ?? { titulo: "?" };
+  // status dos agentes: redesenha quando um hook avisa
+  const [, setN] = useState(0);
+  useEffect(() => {
+    const f = () => setN((n) => n + 1);
+    window.addEventListener("atelier:agentes", f);
+    return () => window.removeEventListener("atelier:agentes", f);
+  }, []);
+  const agentesDe = (k: string) => {
+    const e = ws.estados[k];
+    const ss = e ? sessoesDe(e) : [];
+    return { estado: estadoDe(ss.map((s) => s.sessao)), temAgente: ss.some((s) => !!s.programa) };
+  };
+  // no botão: o mais importante entre todos os workspaces abertos
+  const todos = ws.abertos.flatMap((k) => (ws.estados[k] ? sessoesDe(ws.estados[k]) : []));
+  const geral = { estado: estadoDe(todos.map((s) => s.sessao)), temAgente: todos.some((s) => !!s.programa) };
   const chaves = Object.keys(ws.estados).sort((a, b) => (a === GERAL ? -1 : b === GERAL ? 1 : (ws.info[a]?.titulo ?? "").localeCompare(ws.info[b]?.titulo ?? "")));
   return (
     <>
       <button className="bt-btn seletor-ws" title="Workspace (Ctrl+Alt+PgUp / PgDn troca entre os abertos)" onClick={pop.abrir}>
         <LayoutDashboard size={14} />
         <span className="ws-nome"><IconeWs k={ws.ativo} icone={info.icone} />{info.titulo}</span>
+        {(geral.temAgente || geral.estado) && <CarinhaAgente {...geral} />}
         {ws.abertos.length > 1 && <span className="ws-conta">{ws.abertos.length}</span>}
         <ChevronDown size={12} />
       </button>
@@ -51,6 +69,7 @@ export function SeletorWorkspace({ ws, trocar, fechar, esquecer }: {
               <div key={k} className={`menu-item ws-linha${k === ws.ativo ? " atual" : ""}`} onClick={() => { trocar(k); pop.fechar(); }}>
                 <span className={`ws-ponto${aberto ? " vivo" : ""}`} title={aberto ? "Aberto (terminais rodando)" : "Fechado (as janelas voltam ao abrir)"} />
                 <span className="ws-titulo"><IconeWs k={k} icone={i.icone} />{i.titulo}</span>
+                {aberto && <CarinhaAgente {...agentesDe(k)} />}
                 <span className="dir" style={{ fontSize: 11 }}>{janelas} {janelas === 1 ? "janela" : "janelas"}</span>
                 {aberto && k !== ws.ativo && (
                   <button className="btn-icone mini" title="Fechar (para os terminais; as janelas ficam guardadas)" onClick={(e) => { e.stopPropagation(); fechar(k); }}><Power size={12} /></button>

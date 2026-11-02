@@ -108,8 +108,8 @@ export function vizinho(w: Workspaces, passo: number): Workspaces {
 }
 
 /** Sessões de terminal de cada workspace (para a barra de status somar a memória). */
-export function sessoesDe(e: EstadoPainel): { sessao: number; titulo: string }[] {
+export function sessoesDe(e: EstadoPainel): { sessao: number; titulo: string; programa?: string }[] {
   return e.metades.flatMap((m) => m.janelas).map((j) => ({ r: P.rotaDe(j), j }))
     .filter((x) => x.r.v === "terminal")
-    .map((x) => ({ sessao: (x.r as { sessao: number }).sessao, titulo: x.j.titulo ?? "terminal" }));
+    .map((x) => ({ sessao: (x.r as { sessao: number }).sessao, titulo: x.j.titulo ?? "terminal", programa: (x.r as { programa?: string }).programa }));
 }

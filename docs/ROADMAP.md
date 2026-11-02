@@ -195,7 +195,7 @@ Tudo mexe na ficha, nas propriedades de relação e nas listas ao vivo; vai junt
 - **Índices no banco** para as relações: elas ficam em JSON nas propriedades e as listas dinâmicas e as listas no
   texto vão consultar isso muito mais; medir com muitos documentos e indexar o que pesar.
 
-## 0.2.7 · Notificações e status dos agentes
+## 0.2.7 · Notificações e status dos agentes · **saiu em 2026-11-02**
 
 Para trabalhar com vários agentes ao mesmo tempo sem ficar procurando quem parou.
 

@@ -123,6 +123,9 @@ pub fn rotas(banco: Banco) -> Router {
         .route("/api/lixeira/itens/{id}", axum::routing::delete(apagar_de_vez))
         .route("/api/abrir-pasta", post(abrir_pasta))
         .route("/api/lista", post(lista_no_texto))
+        .route("/api/agente/evento", post(evento_do_agente))
+        .route("/api/hooks", get(|| async { Json(tokio::task::spawn_blocking(crate::hooks::listar).await.unwrap_or_default()) }))
+        .route("/api/hooks/{id}", post(instalar_hooks).delete(remover_hooks))
         .route("/api/apps", get(|| async { Json(json!(tokio::task::spawn_blocking(crate::apps::listar).await.unwrap_or_default())) }))
         .route("/api/bancadas", get(bancadas).post(criar_bancada).patch(renomear_bancada).delete(remover_bancada))
         .route("/api/bancadas/ativar", post(ativar_bancada))
@@ -591,6 +594,25 @@ async fn salvar_relatorio(State(b): State<Banco>, Json(d): Json<Value>) -> R {
     Ok(Json(json!({ "caminho": alvo })))
 }
 
+/// O hook de um agente avisou (`atelier-mcp hook <evento>`): a tela acende o status do workspace daquele terminal.
+async fn evento_do_agente(State(b): State<Banco>, Json(d): Json<Value>) -> R {
+    let sessao = d.get("sessao").and_then(|v| v.as_u64()).ok_or(Erro::Invalido("falta a sessao".into()))?;
+    let estado = d.get("estado").and_then(|v| v.as_str()).unwrap_or("");
+    if !["trabalhando", "esperando", "terminou"].contains(&estado) {
+        return Err(Erro::Invalido("estado: trabalhando, esperando ou terminou".into()));
+    }
+    let _ = b.tela.send(json!({ "acao": "agente", "sessao": sessao, "estado": estado }).to_string());
+    Ok(Json(json!({ "ok": true })))
+}
+
+async fn instalar_hooks(Path(id): Path<String>) -> R {
+    Ok(Json(tokio::task::spawn_blocking(move || crate::hooks::aplicar(&id, true)).await.map_err(|e| Erro::Invalido(e.to_string()))??))
+}
+
+async fn remover_hooks(Path(id): Path<String>) -> R {
+    Ok(Json(tokio::task::spawn_blocking(move || crate::hooks::aplicar(&id, false)).await.map_err(|e| Erro::Invalido(e.to_string()))??))
+}
+
 /// A lista ao vivo de dentro do texto (bloco `atelier-lista`): `codigo` é o documento onde ela está ("este") e
 /// `config` vem com nomes (tipos, relacao, ordenar), como o bloco escreve. O mesmo motor da lista dinâmica.
 async fn lista_no_texto(State(b): State<Banco>, Json(d): Json<Value>) -> R {
@@ -968,7 +990,7 @@ async fn falta(State(b): State<Banco>, Json(d): Json<Value>) -> R {
     let motivo = d.get("motivo").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
     let agente = d.get("agente").and_then(|v| v.as_str()).unwrap_or("Agente").to_string();
     let arquivo = bancada::anotar_pedido(&pedido, &motivo, &agente)?;
-    let _ = b.tela.send(json!({ "acao": "falta", "texto": pedido, "motivo": motivo, "arquivo": arquivo }).to_string());
+    let _ = b.tela.send(json!({ "acao": "falta", "texto": pedido, "motivo": motivo, "arquivo": arquivo, "agente": agente }).to_string());
     Ok(Json(json!({ "ok": true, "arquivo": arquivo })))
 }
 

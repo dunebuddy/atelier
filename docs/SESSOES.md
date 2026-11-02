@@ -461,3 +461,8 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   `config_de_lista` traduz nomes), bloco `atelier-lista` no texto (`POST /api/lista`), MCP com listas; migrações 14
   (`ligacoes`, gatilhos) e 15 (`mencoes`, `indexar_mencoes` em todo lugar que grava texto ou nota). Medido com
   `cargo test --release --lib volume -- --ignored --nocapture` (o rtk engole o println: usar `rtk proxy`).
+- 0.2.7: notificações (`notificacoes.ts`, `components/Avisos.tsx`: pilha, sininho, seção, hooks, carinha),
+  status dos agentes (`agentes.ts`, `core/src/hooks.rs`, `POST /api/agente/evento`, `atelier-mcp hook`). Testado
+  com o hook de verdade (`ATELIER_SESSAO=<sessão> atelier-mcp hook esperando`) contra o teste sem janela: carinha,
+  toast e sininho. Os hooks não foram instalados no Claude Code do Paulo (mexeria no settings.json real): conferir
+  no uso, em Integrações. O Codex dele já tem um `notify`; o atelier não troca.

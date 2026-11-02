@@ -4,6 +4,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { BASE } from "../api";
 import { bate, doPainel } from "../atalhos";
+import { estadoDaSessao, marcarAgente } from "../agentes";
 
 // O terminal em si (xterm ligado ao processo pelo WebSocket). Fica num arquivo à parte para ser carregado só quando
 // o primeiro terminal abre (ver TerminalJanela em Terminal.tsx).
@@ -63,6 +64,9 @@ export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; ao
     const dados = term.onData((d) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify({ t: "i", d })));
 
     // Ctrl+V cola, Ctrl+C copia quando há seleção (senão manda o Ctrl+C para o programa)
+    // o sino do terminal (vários agentes tocam quando esperam você) acende o workspace; digitar responde
+    term.onBell(() => marcarAgente(aba.id, "esperando"));
+    term.onData(() => { if (estadoDaSessao(aba.id) === "esperando") marcarAgente(aba.id, "trabalhando"); });
     term.attachCustomKeyEventHandler((e) => {
       if (e.type !== "keydown") return true;
       if (e.ctrlKey && e.key === "c" && term.hasSelection()) { navigator.clipboard.writeText(term.getSelection()); return false; }

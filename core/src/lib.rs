@@ -8,6 +8,7 @@ pub mod db;
 pub mod disco;
 pub mod explorador;
 pub mod exportar;
+pub mod hooks;
 pub mod integracoes;
 pub mod manutencao;
 pub mod pastas;

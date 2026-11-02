@@ -9,6 +9,7 @@ import { Popover, usePopover } from "./Popover";
 import { acharAtalhos, bate, combinacao, dispararAtalho } from "../atalhos";
 import type { Navegacao } from "./Sidebar";
 import { Marca } from "./Marca";
+import { Sino } from "./Avisos";
 
 /** Janela do Tauri, se estivermos no app (no navegador de teste não há). */
 async function janela() {
@@ -117,6 +118,7 @@ export function BarraTitulo({
           </button>
         )}
         <button className="bt-btn" title={`Comando para o agente (${combinacao("comando")})`} onClick={() => window.dispatchEvent(new Event("atelier:comando"))}><Sparkles size={16} /></button>
+        <Sino />
         <button className="bt-btn" title={`Atalhos: ver, procurar e mudar (${combinacao("atalhos")})`} onClick={abrirAtalhos}><Keyboard size={16} /></button>
         <button className="bt-btn" title={`Configurações do app (${combinacao("config")})`} onClick={abrirConfig}><Settings size={16} /></button>
         <div className="bt-janela">

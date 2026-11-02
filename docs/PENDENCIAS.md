@@ -89,44 +89,6 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 
 ### Recursos (mudam comportamento: precisam do ok do Paulo antes)
 
-- **Status dos agentes: saber quando terminou ou está esperando** (2026-11-02, Paulo). Com vários agentes rodando em
-  workspaces (e bancadas) diferentes, saber sem procurar quando um parou.
-  - **Estados, do mais importante para o menos** (o indicador de um grupo mostra o mais importante dos agentes dele):
-    1. **esperando ação** (pediu permissão ou fez pergunta): **vermelho**;
-    2. **trabalhando**: uma **animação** (degradê que vai mudando; ele não gosta de amarelo);
-    3. **terminou** (concluiu e não pediu nada): **verde**;
-    4. **parado** (sem nada a fazer, já visto): **branco/claro**;
-    5. **sem agente** no workspace: **cinza**.
-  - **Onde aparece:** um ícone de agente (carinha) em cada workspace da lista lá em cima, à esquerda, ao lado da
-    bolinha verde de "ativo"; o mesmo no botão que abre os workspaces (o resumo de todos); bolinha no **sininho**;
-    e um **toast** configurável ("o agente de #código terminou" / "está esperando você"), que vai para o histórico.
-    Abrir o workspace marca o "terminou" como visto (vira parado).
-  - **Como detectar** (análise): (a) atividade do terminal: saindo texto = trabalhando; quieto por alguns segundos
-    = parou; (b) o **sino** do terminal (BEL) e as notificações por escape (OSC 9/777), que o Claude Code e outros
-    mandam quando precisam de atenção (o Claude Code tem a opção de canal de notificação "terminal_bell"/"iterm2");
-    (c) o **título** que o agente põe no terminal (o Claude Code muda o título enquanto trabalha); (d) para o Claude
-    Code, os **hooks** `Stop` e `Notification` podendo chamar a API do atelier, que dão "terminou" e "esperando"
-    exatos (o atelier pode oferecer instalar esses hooks em Integrações). Codex tem o `notify` da configuração. O
-    genérico (a, b, c) vale para todos; o exato (d) para quem tiver.
-  - A frase cortada no fim do pedido era só "a mesma regra em outro lugar" (o Paulo não lembrou qual): coberto pelo
-    botão que abre os workspaces.
-  - **Decidido (Paulo, 2026-11-02): ir pelos hooks.** Em Configurações → Integrações, ao lado de "instalar MCP",
-    um **"instalar hooks"** por agente. Desenho:
-    - o hook chama o próprio `atelier-mcp` (ex.: `atelier-mcp hook esperando`), nada de script solto: é o binário
-      que já está instalado, e ele avisa a API do atelier;
-    - o terminal do atelier passa ao processo um `ATELIER_SESSAO=<id do terminal>`; o hook manda junto, e assim o
-      atelier sabe **qual** workspace acender. Agente rodando fora do atelier não tem a variável: o hook não faz nada
-      (ou, se valer a pena, avisa como "fora do atelier");
-    - Claude Code: `UserPromptSubmit` (começou a trabalhar), `Notification` (esperando você), `Stop` (terminou);
-      Codex: o `notify` da configuração (fim de turno). Os outros (Gemini, Copilot, Kiro...): conferir se têm hook;
-      se não tiverem, ficam na detecção genérica (atividade, sino, título);
-    - instalar mexe na configuração do agente do usuário (ex.: `~/.claude/settings.json`): mostrar o que vai entrar,
-      juntar com os hooks que ele já tem (não apagar) e ter "remover hooks".
-    - Desempenho e segurança (conferido, nada contra): o hook roda a cada evento, e o binário em Rust abre em
-      milissegundos. Regras: **nunca travar o agente** (aviso em segundo plano, prazo curto, sai sempre com sucesso,
-      mesmo com o atelier fechado ou desinstalado); mandar **só o evento e a sessão**, nunca o texto do prompt nem a
-      conversa que o agente passa ao hook; a API continua aceitando só da própria máquina.
-
 - **Trabalhar em duas bancadas ao mesmo tempo** (2026-11-02, Paulo; análise feita, decidir no roadmap).
   - Hoje: uma instância só (`tauri-plugin-single-instance`: abrir de novo traz a janela para a frente), uma API na
     porta 7487, uma bancada "ativa" na configuração, e o MCP de cada agente abre o banco da ativa a cada chamada.
@@ -154,35 +116,6 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
     reconhecer a janela de longe e pela miniatura da barra de tarefas, como ele faz no VS Code com um add-on que muda
     a cor por projeto. Mudar a cor da moldura do Windows não serve (não vale no Linux); a cor teria de ser dentro do
     app.
-
-- **Notificações: sininho com histórico e configuração** (2026-11-02, Paulo). O aviso (toast) do `nao_consigo`
-  apareceu e sumiu rápido demais (aviso comum fica 4 s; erro e "desfazer", 8 s) e não há onde rever. Pedido:
-  - **sininho na barra de título**, perto das configurações, com contador; abre o **histórico**: cada notificação
-    guardada, dá para apagar uma, **agir** sobre ela (abrir o documento, o arquivo, "desfazer" se ainda vale) e
-    **limpar todas**;
-  - fechar o toast não apaga do histórico;
-  - **Configurações → Notificações**: onde o toast aparece (as posições comuns: cantos de cima e de baixo, direita e
-    esquerda; ele quer garantir que fique sempre no mesmo lugar), quanto tempo fica, não mostrar toast (só guardar),
-    **nível** (só erros / erros e avisos / tudo) e por **assunto** (ex.: não avisar de atualização; avisos de
-    agentes; salvamentos...);
-  - os avisos dos agentes (`falta`, e o que vier pelo MCP) entram no histórico com quem mandou.
-  - O `nao_consigo` era uma "funcionalidade fantasma" para o Paulo (2026-11-02): o agente registra e só aparece um
-    toast. Dar um lugar visível aos **pedidos dos agentes** (`~/atelier/pedidos-ao-atelier.md`): no histórico do
-    sininho e numa lista própria (em Configurações ou na ajuda), com marcar como visto/triado.
-  - **Um sistema só para todo aviso** (Paulo, 2026-11-02: "tudo que é toast, tudo que é notificação tem que estar
-    integrado"). Hoje são dois lugares: os avisos rápidos (`avisar`/`falhou`, inclusive o do `nao_consigo`) saem
-    **no meio, embaixo** (`.cartao-aviso.toast`), e os cartões de versão nova/atualizado saem **embaixo à
-    direita** (`.cartao-aviso`). Passar todos (avisos, erros, desfazer, `nao_consigo`, versão, atualizado, ditado,
-    status dos agentes) por um serviço único de notificações: mesma pilha, no canto configurado (padrão: embaixo à
-    direita), um embaixo do outro quando vierem vários, todos no histórico e sujeitos às mesmas regras de nível,
-    assunto e tempo.
-  - A decidir: guardar no banco da bancada ou só enquanto o app está aberto (sugestão: no app, os últimos ~200).
-  - Tempo e fechar (Paulo, 2026-11-02). Hoje: aviso comum some em 4 s; erro e "desfazer", em 8 s; o de versão
-    nova fica até fechar; o de "atualizado" some em 12 s; todos já têm o X. Proposta: **toast com ação** (instalar,
-    desfazer, abrir...) **fica até a pessoa interagir** (padrão; configurável para sumir também); toast sem ação
-    some no tempo configurado; **X** em todos e **clicar no corpo** também fecha (ou faz a ação principal, quando
-    for "abrir"); passar o mouse por cima segura o toast. O que sumiu sem interação fica no histórico do sininho,
-    marcado como não lido.
 
 - **Consultas: perguntar ao banco sem criar visão** (2026-11-02, Paulo). Na barra lateral, acima de Visões, um item
   "Consultas" (nome a decidir: query, consultas). Fazer uma consulta rápida no banco da bancada, ver o resultado e,
@@ -232,6 +165,19 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.7** (2026-11-02, notificações e status dos agentes):
+  - **um sistema só de avisos:** todo aviso (avisar/falhou, desfazer, `nao_consigo`, versão nova, atualizado, agentes)
+    passa por `src/notificacoes.ts` e aparece na mesma pilha, no canto escolhido (padrão embaixo à direita);
+    toast com ação fica até mexer; X e clique fecham; mouse em cima segura;
+  - **sininho** na barra de título com o contador e o histórico (até 200): apagar, desfazer, abrir, limpar tudo;
+    os pedidos dos agentes (`nao_consigo`) aparecem lá com o nome de quem pediu;
+  - **Configurações → Notificações:** posição, tempo, ação fica até mexer, só guardar, nível (tudo / erros e
+    avisos / só erros) e assunto (app, agentes, atualização);
+  - **status dos agentes:** "instalar hooks" em Integrações (Claude Code: começou, esperando, terminou; Codex:
+    terminou, sem trocar um `notify` que já exista). O hook é o `atelier-mcp hook <evento>`, que só age com
+    `ATELIER_SESSAO` (posto pelo terminal do atelier), manda só o evento e sai sempre limpo. O sino do terminal (BEL)
+    também conta como "esperando". Carinha no seletor de workspaces: vermelho esperando, animação trabalhando,
+    verde terminou (vira parado ao abrir o workspace), claro parado, cinza sem agente.
 - **0.2.6** (2026-11-02, página do documento e listas dinâmicas):
   - **ficha em cima do texto**, recolhível numa linha ("Ficha ▸", vale para todos os documentos); com a janela larga,
     as propriedades em duas colunas; listas da ficha com os 8 primeiros e "ver mais";

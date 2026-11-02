@@ -14,7 +14,31 @@ use std::io::{BufRead, Write};
 
 const VERSAO_PROTOCOLO: &str = "2025-06-18";
 
+/// `atelier-mcp hook <trabalhando|esperando|terminou>`: o hook dos agentes (instalado em Integrações). Só age dentro
+/// de um terminal do atelier (`ATELIER_SESSAO`); avisa a API e sai sempre com sucesso, rápido, para nunca travar o
+/// agente (com o app fechado, não faz nada). O que o agente manda pela entrada (a conversa) não é lido nem enviado.
+fn hook(evento: &str) {
+    let Some(sessao) = std::env::var("ATELIER_SESSAO").ok().and_then(|s| s.parse::<u64>().ok()) else { return };
+    let estado = match evento {
+        "trabalhando" | "esperando" | "terminou" => evento,
+        _ => return,
+    };
+    let corpo = json!({ "sessao": sessao, "estado": estado }).to_string();
+    let Ok(mut s) = std::net::TcpStream::connect_timeout(&std::net::SocketAddr::from(([127, 0, 0, 1], atelier_core::api::porta())), std::time::Duration::from_millis(500)) else { return };
+    s.set_write_timeout(Some(std::time::Duration::from_millis(500))).ok();
+    s.set_read_timeout(Some(std::time::Duration::from_millis(1000))).ok();
+    let req = format!("POST /api/agente/evento HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{corpo}", corpo.len());
+    let _ = s.write_all(req.as_bytes());
+    let mut lixo = [0u8; 256];
+    let _ = std::io::Read::read(&mut s, &mut lixo);
+}
+
 fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    if args.get(1).map(String::as_str) == Some("hook") {
+        hook(args.get(2).map(String::as_str).unwrap_or(""));
+        return;
+    }
     let mut autor = String::from("Agente");
     let stdin = std::io::stdin();
     let mut out = std::io::stdout().lock();

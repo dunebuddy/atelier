@@ -1,3 +1,5 @@
+import { createPortal } from "react-dom";
+import { configuracao, notificar } from "../notificacoes";
 import { useCallback, useEffect, useState } from "react";
 import { CircleCheck, Download, Sparkles, X } from "lucide-react";
 import { Preferencias } from "../api";
@@ -55,7 +57,10 @@ export function AvisoAtualizacao({ prefs }: { prefs: Preferencias | null }) {
     try {
       const a = await procurar();
       setAchada(a);
-      setFechado(false);
+      // vai para o sininho; o cartão só aparece se as notificações de atualização estão ligadas
+      const c = configuracao();
+      if (a) notificar({ msg: `Tem versão nova do atelier: ${a.versao}. Para instalar: Configurações → Sobre.`, nivel: "info", assunto: "atualizacao" }, true);
+      setFechado(!!a && !manual && (c.soGuardar || !c.assuntos.atualizacao));
       if (!a && manual) avisar("Você já está na versão mais nova.");
     } catch (e) {
       if (manual) falhou(e);
@@ -90,8 +95,10 @@ export function AvisoAtualizacao({ prefs }: { prefs: Preferencias | null }) {
     });
   };
 
+  // os cartões ficam na pilha de avisos (o mesmo canto dos outros), não soltos na tela
+  const pilha = document.getElementById("pilha-avisos");
   if (atualizado) {
-    return (
+    return pilha && createPortal(
       <div className="cartao-aviso" role="status">
         <div className="ca-cabeca">
           <CircleCheck size={16} className="ca-icone" />
@@ -102,12 +109,14 @@ export function AvisoAtualizacao({ prefs }: { prefs: Preferencias | null }) {
         <div className="ca-acoes">
           <button className="btn" onClick={() => { abrirNotas(); setAtualizado(null); }}>O que mudou</button>
         </div>
-      </div>
+      </div>,
+      pilha,
     );
   }
   if (!achada || fechado) return null;
   const baixando = progresso !== null;
-  return (
+  if (!pilha) return null;
+  return createPortal(
     <div className="cartao-aviso" role="dialog" aria-label="Versão nova">
       <div className="ca-cabeca">
         <Sparkles size={16} className="ca-icone" />
@@ -128,7 +137,8 @@ export function AvisoAtualizacao({ prefs }: { prefs: Preferencias | null }) {
           <button className="btn primario" onClick={instalar}><Download size={14} /> Instalar</button>
         </div>
       )}
-    </div>
+    </div>,
+    pilha,
   );
 }
 

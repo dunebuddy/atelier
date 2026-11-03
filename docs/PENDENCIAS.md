@@ -22,6 +22,20 @@ Como usar:
 
 ### Bugs
 ### Melhorias pedidas
+- **Favoritos, e visão com mais de uma consulta (seções)** (2026-11-03). Vai ter muito projeto e demanda; o Paulo
+  quer achar rápido os que importam. Duas ideias, que se completam:
+  1. **Favoritar** um documento (estrela) e uma visão que mostra só os favoritos.
+  2. **Visão com várias seções**, uma embaixo da outra, cada uma com o seu filtro/ordem: na visão "Demanda", em cima
+     **as favoritas**, embaixo **as ativas** (ou as recentes).
+  Pré-análise:
+  - Favorito: uma marca própria do documento (coluna `favorito` em `itens`, migração; estrela no cabeçalho da página,
+    na linha da tabela e no MCP `atualizar_documento`), não uma propriedade comum (vale para todo tipo sem configurar).
+    Alternativa sem migração: uma propriedade `checkbox` "Favorito" — mas teria de ser ligada tipo a tipo. Filtro
+    novo `favoritos: true` no `FiltroVisao`; a barra lateral pode ganhar uma seção "Favoritos" (como Consultas).
+  - Seções: `config.secoes: [{ titulo, filtro, ordenar?, limite? }]` na visão; a tela desenha um bloco por seção
+    (tabela/lista), cada um recolhível e com "ver mais" no limite; sem seções, fica como hoje. Um documento pode
+    aparecer em duas seções (favorito e ativo): decidir se repete ou se a de baixo esconde os de cima ("o resto").
+    MCP: `criar_visao`/`atualizar_visao` com `secoes`. Dá para combinar com as consultas SQL (uma seção = um SQL).
 ### Pedidos do agente (de `pedidos-ao-atelier.md`)
 
 Revisão crítica de 2026-11-02 (o Paulo pediu: dizer o que não faz sentido, o que já existe e o que engessa o app).

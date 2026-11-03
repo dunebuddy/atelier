@@ -50,6 +50,20 @@ Como usar:
   deixar a célula ocupar a coluna inteira; sem larguras guardadas, o teto continua valendo para o automático.
 
 ### Melhorias pedidas
+- **Renomear workspace, e o nome acompanhar o documento** (2026-11-03). Hoje não dá para renomear workspace; e
+  quando o projeto é renomeado, o workspace dele continua com o nome velho. Pré-análise: o nome fica gravado em
+  `ws.info[chave].titulo` na hora em que o workspace abre (`workspaces.ts`, `abrir`, ~linha 82) e nunca mais muda.
+  Proposta:
+  - **acompanhar sozinho:** o workspace de documento mostra o título atual do documento (atualizar `info` quando o
+    documento muda de título: o evento "mudou" do banco já chega ao App; ou guardar só a chave e ler o título na
+    hora);
+  - **renomear à mão:** duplo clique / "Renomear" na lista de workspaces e na visão geral (Ctrl+Shift+O). Nome dado à
+    mão vale mais que o do documento (guardar `nome_proprio` e mostrar ele se existir; "voltar ao nome do documento"
+    apaga). O da bancada pode ganhar nome também (hoje é sempre "Bancada");
+  - **MCP:** `tela` com `acao: "renomear_workspace"` (`codigo` do documento ou sem codigo = o da bancada, `nome`;
+    `nome` vazio = volta ao do documento).
+  - Bancada: renomear já existe na API (`PATCH /api/bancadas`, `bancada.rs` `renomear`); conferir se a tela de
+    Configurações → Bancadas oferece, e se o MCP tem (não tem: dá para pôr junto).
 - **Filtro no sininho por assunto** (2026-11-03; "o próprio Unity tem"). No topo da lista do sininho, botõezinhos
   de alternar: **Todas · Sistema · Agentes · Atualização**; desligar "Agentes" esconde as de agente da lista (e do
   número do sininho), para ver só as que importam. Pré-análise: as notificações já têm `assunto` (`app`, `agente`,

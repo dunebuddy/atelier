@@ -50,7 +50,12 @@ Como usar:
   deixar a célula ocupar a coluna inteira; sem larguras guardadas, o teto continua valendo para o automático.
 
 ### Melhorias pedidas
-- **Arquivos no fim da página do documento: árvore de pastas e recarregar** (2026-11-03). O agente pôs vários arquivos
+- **Explorador de arquivos interno: Backspace volta** (2026-11-03). Pré-análise: `Explorador.tsx` (~linha 104) não
+  trata tecla nenhuma; voltar hoje é o ".." ou a trilha. Backspace: com um arquivo aberto na prévia, fecha a prévia
+  (volta à lista, o mesmo `aoVoltar`); na lista, sobe para a pasta de cima (`pai(dir)`, sem passar da raiz). Só
+  quando o foco está no explorador e **não** num campo de texto (a prévia edita arquivo de texto: lá o Backspace é
+  apagar). Talvez Alt+← também, como no Explorer do Windows.
+- **Arquivos da ficha do documento: árvore de pastas e recarregar** (2026-11-03; é a seção Arquivos na ficha). O agente pôs vários arquivos
   na pasta e a seção continuou mostrando um só. Pré-análise, duas causas:
   - **não é automático:** `Arquivos.tsx` só lê a lista ao abrir a página (ou quando a própria página traz arquivo);
     nada avisa quando outro processo grava na pasta;

@@ -29,7 +29,9 @@ Como usar:
   - **muitos mais** (uns 250–300), em **grupos**: trabalho e tarefas · documentos e escrita · tempo e agenda ·
     dinheiro · tecnologia e infra · ciência e ideias · pessoas e conversa · lugares e viagem · natureza · comida ·
     objetos · símbolos e status (✅ ⏳ ⚠️ 🔴 🟢...) · bandeiras/setas;
-  - **busca por nome em português** (cada emoji com umas palavras: "passo escada degrau" → 🪜);
+  - **busca obrigatória, em todo lugar que escolhe ícone** (tipo, visão, e onde mais aparecer): um seletor só,
+    reaproveitado, com o campo de busca em cima e o foco já nele; busca por nome em português (cada emoji com umas
+    palavras: "passo escada degrau" → 🪜). O Paulo confirmou: pode ter muito ícone, desde que dê para buscar;
   - o ícone atual do tipo sempre aparece (mesmo fora da lista) e um campo "colar outro emoji" para qualquer um;
   - os ícones já usados pelos tipos da bancada em cima, como "em uso". O mesmo seletor nas visões.
 - **Sininho: filtro com ícones e limpar do jeito certo** (2026-11-03, depois da 0.2.11).

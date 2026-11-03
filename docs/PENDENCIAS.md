@@ -22,6 +22,16 @@ Como usar:
 
 ### Bugs
 ### Melhorias pedidas
+- **Mais ícones para tipos e visões, separados por assunto** (2026-11-03). Ao escolher o ícone de um tipo, nem todos
+  os que já são usados aparecem (o do Passo, 🪜, não está). Pré-análise: a lista é `EMOJIS` em `src/ui.ts` (~linha
+  77), só 32 emojis, usada em `ConfigTipo.tsx` e no ícone da visão (`Visao.tsx`, que soma uns 6 na frente). O agente
+  pode pôr qualquer emoji pelo MCP, por isso o tipo tem ícone que a tela não oferece. Proposta:
+  - **muitos mais** (uns 250–300), em **grupos**: trabalho e tarefas · documentos e escrita · tempo e agenda ·
+    dinheiro · tecnologia e infra · ciência e ideias · pessoas e conversa · lugares e viagem · natureza · comida ·
+    objetos · símbolos e status (✅ ⏳ ⚠️ 🔴 🟢...) · bandeiras/setas;
+  - **busca por nome em português** (cada emoji com umas palavras: "passo escada degrau" → 🪜);
+  - o ícone atual do tipo sempre aparece (mesmo fora da lista) e um campo "colar outro emoji" para qualquer um;
+  - os ícones já usados pelos tipos da bancada em cima, como "em uso". O mesmo seletor nas visões.
 - **Sininho: filtro com ícones e limpar do jeito certo** (2026-11-03, depois da 0.2.11).
   - **Ícones no lugar dos nomes** no filtro ("nome é feio"): Todas = `Bell`, Sistema = `Monitor` (ou `Info`), Agentes
     = `Bot`, Atualização = `Sparkles` (os mesmos do `Icone` de cada notificação), com o nome no tooltip e a contagem

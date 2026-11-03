@@ -23,6 +23,18 @@ Como usar:
 ### Bugs
 
 ### Melhorias pedidas
+- **Carinha do agente: a cor vai no robô, não no fundo** (pedido de 2026-11-03, com print). Hoje (`.carinha` em
+  `styles.css`, `CarinhaAgente` em `Avisos.tsx`) o estado pinta o fundo do quadradinho, e o "trabalhando" é um degradê
+  correndo no fundo; além disso o robô não fica centralizado na aba do workspace. O Paulo quer:
+  - sem fundo colorido: a **cor da fonte do robô** muda: vermelho esperando você, verde terminou, cinza parado/sem
+    agente (como hoje, só que no traço);
+  - **trabalhando**: uma cor própria (ele sugeriu laranja) e uma **animação de movimento** no robô, que mostre que
+    tem coisa acontecendo (ele balançando, pulando de leve), no lugar do degradê;
+  - centralizar o robô na aba.
+  - Pré-análise: é só CSS. Tirar `background` dos estados e usar `color` (o ícone `Bot` do lucide herda
+    `currentColor`); laranja = `var(--t-orange)`; animação por `transform` no svg (ex.: `rotate(-12deg)` ↔
+    `rotate(12deg)` com `translateY(-1px)`, ~0,8 s, `transform-origin` embaixo), mantendo o `prefers-reduced-motion`
+    (aí fica só a cor). Centralizar: conferir o `margin-left: 4px` e o `align-items` da aba do workspace.
 - **Ditado: motor de streaming, e o Nemotron 3.5 ASR Streaming (NVIDIA) no catálogo** (pedido de 2026-11-02; o
   Paulo decide onde entra no roadmap). Decisão dele: **cada tipo de modelo no seu motor**. Modelo de streaming roda num
   motor de streaming (transcreve enquanto fala); modelo de lote (Parakeet TDT, Whisper) continua no motor de hoje,

@@ -488,3 +488,9 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   do app com Bun + onnxruntime-web e um .wav), `components/Quebrou.tsx` (error boundaries + `/api/log`),
   `RamoPasta` exportado do Explorador (árvore da ficha), `W.renomear`/`W.seguirDocumento` em `workspaces.ts`.
   `explorador::sem_prefixo` tira o `\\?\` dos caminhos canônicos.
+- 0.2.12 (2026-11-03, noite): favorito (migração 17; `components/Estrela.tsx`), seções na visão (`SecaoVisao` /
+  `SECOES_PADRAO` em `api.ts`, `passaRecorte` e `SecaoDaVisao` em `Visao.tsx`; `criar_tipo` já cria com elas),
+  `src/emojis.ts` + `components/SeletorIcone.tsx`, sininho com ícones e limpar por assunto.
+
+### Ponto de parada (2026-11-03)
+- Pendências zeradas. A conferir no uso: o Nemotron no microfone de verdade; favoritos e seções no dia a dia.

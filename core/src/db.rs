@@ -359,6 +359,11 @@ const MIGRACOES: &[&str] = &[
     r#"
     CREATE TABLE consultas (id INTEGER PRIMARY KEY, nome TEXT NOT NULL UNIQUE, sql TEXT NOT NULL, criado_em TEXT NOT NULL, atualizado_em TEXT NOT NULL);
     "#,
+    // 17 — favorito: campo fixo de todo documento (como o título), não uma propriedade
+    r#"
+    ALTER TABLE itens ADD COLUMN favorito INTEGER NOT NULL DEFAULT 0;
+    CREATE INDEX itens_favorito ON itens (favorito) WHERE favorito = 1;
+    "#,
 ];
 
 // ---------- relações ----------
@@ -1058,7 +1063,14 @@ pub fn criar_tipo(conn: &Connection, dados: &Value) -> Res<i64> {
         )?;
     }
     // e já aparece no menu como uma visão em tabela
-    criar_visao(conn, &json!({ "nome": nome, "icone": icone, "layout": "tabela", "filtro": { "tipos": [id] } }))?;
+    // a visão do tipo já nasce com as seções padrão (as mesmas de SECOES_PADRAO, em src/api.ts)
+    let secoes = json!([
+        { "titulo": "Favoritas", "favoritos": true, "limite": 0 },
+        { "titulo": "Recentes (15 dias)", "recentes_dias": 15 },
+        { "titulo": "Abertas", "abertos": true },
+        { "titulo": "Todas" },
+    ]);
+    criar_visao(conn, &json!({ "nome": nome, "icone": icone, "layout": "tabela", "filtro": { "tipos": [id] }, "config": { "secoes": secoes } }))?;
     Ok(id)
 }
 
@@ -1311,6 +1323,8 @@ pub struct Item {
     pub props: Value,
     pub criado_em: String,
     pub atualizado_em: String,
+    /// favorito (a estrela): campo fixo, todo documento tem
+    pub favorito: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub corpo: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1342,6 +1356,7 @@ fn item_da_linha(r: &rusqlite::Row) -> rusqlite::Result<Item> {
         props: json_col(r.get("props")?),
         criado_em: r.get("criado_em")?,
         atualizado_em: r.get("atualizado_em")?,
+        favorito: r.get::<_, i64>("favorito")? != 0,
         corpo: None,
         notas: None,
         apagado_em: r.get("apagado_em")?,
@@ -1373,6 +1388,8 @@ pub struct Filtro {
     pub concluidos: Vec<(i64, i64, Vec<String>)>,
     /// visão feita de uma consulta: só os documentos que o SQL devolve (coluna `codigo`), na ordem dele
     pub sql: Option<String>,
+    /// só os favoritos (a estrela)
+    pub favoritos: bool,
 }
 
 /// Onde está o "concluído" de cada tipo: as opções de histórico de cada propriedade de status (a do tipo, se ele
@@ -1401,6 +1418,9 @@ fn concluidos(conn: &Connection) -> Res<Vec<(i64, i64, Vec<String>)>> {
 
 fn sql_filtro(f: &Filtro, sql: &mut String, args: &mut Vec<Box<dyn rusqlite::ToSql>>) {
     sql.push_str(" AND itens.apagado_em IS NULL");
+    if f.favoritos {
+        sql.push_str(" AND itens.favorito = 1");
+    }
     if let Some(t) = f.tipo_id {
         sql.push_str(" AND itens.tipo_id = ?");
         args.push(Box::new(t));
@@ -1567,6 +1587,7 @@ fn clone_filtro(f: &Filtro) -> Filtro {
         livres: f.livres.clone(),
         concluidos: f.concluidos.clone(),
         sql: f.sql.clone(),
+        favoritos: f.favoritos,
     }
 }
 
@@ -1915,6 +1936,13 @@ pub fn atualizar_item(conn: &Connection, id: i64, dados: &Value) -> Res<()> {
         .optional()?
         .ok_or(Erro::NaoEncontrado(format!("documento {id}")))?;
     let quem = autor(dados);
+    // favorito: marca e pronto (não é mudança do documento: não mexe no "atualizado" nem na linha do tempo)
+    if let Some(f) = dados.get("favorito").and_then(|v| v.as_bool()) {
+        conn.execute("UPDATE itens SET favorito = ? WHERE id = ?", params![f as i64, id])?;
+        if dados.as_object().is_some_and(|o| o.keys().all(|k| k == "favorito" || k == "autor")) {
+            return Ok(());
+        }
+    }
     let tx = conn.unchecked_transaction()?;
     let mut eventos: Vec<String> = vec![];
     let mut editou_texto = false;

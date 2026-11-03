@@ -455,6 +455,7 @@ fn filtro_de(q: &[(String, String)]) -> Filtro {
         tipo_id: um("tipo").and_then(|s| s.parse().ok()),
         tipos: um("tipos").map(|s| s.split(',').filter_map(|x| x.trim().parse().ok()).collect()).unwrap_or_default(),
         sem_tipo: um("sem_tipo").is_some_and(|s| s == "1" || s == "true"),
+        favoritos: um("favoritos").is_some_and(|s| s == "1" || s == "true"),
         texto: um("q"),
         props,
         periodo: um("de").zip(um("ate")),

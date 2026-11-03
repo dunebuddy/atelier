@@ -1188,10 +1188,13 @@ body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grab
 .sino-topo { display: flex; align-items: center; justify-content: space-between; }
 .sino-topo .btn { font-size: 11.5px; padding: 1px 8px; text-transform: none; letter-spacing: 0; }
 .sino-lista { max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
-.sino-filtro { display: flex; gap: 4px; flex-wrap: wrap; padding: 2px 8px 8px; }
-.sino-filtro button { font-size: 11.5px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--borda); color: var(--texto-3); }
-.sino-filtro button.ativo { color: var(--texto); background: var(--acento-suave); border-color: transparent; }
-.sino-filtro button span { opacity: .7; margin-left: 3px; font-variant-numeric: tabular-nums; }
+.sino-filtro { display: inline-flex; gap: 2px; margin-left: auto; margin-right: 6px; }
+.sino-filtro button { position: relative; display: grid; place-items: center; width: 26px; height: 24px; border-radius: 7px; color: var(--texto-3); opacity: .5; }
+.sino-filtro button:hover { background: var(--hover); opacity: .85; }
+.sino-filtro button.ativo { color: var(--acento); opacity: 1; }
+.sino-filtro-conta { position: absolute; top: -3px; right: -3px; min-width: 13px; height: 13px; padding: 0 3px; border-radius: 999px; font-size: 8.5px; font-weight: 700; line-height: 13px; text-align: center; background: var(--borda-forte); color: var(--texto); }
+.sino-limpar { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 8px 8px; }
+.sino-limpar .btn { font-size: 11.5px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 4px; }
 .sino-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-radius: 8px; font-size: 13px; }
 .sino-item:hover { background: var(--hover); }
 .sino-item.nova { background: color-mix(in srgb, var(--acento) 9%, transparent); }
@@ -1260,3 +1263,28 @@ body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grab
 /* arquivos na ficha, em árvore */
 .arquivos-arvore { max-height: 360px; overflow-y: auto; margin: 0 -6px; }
 .arquivos-arvore .ex-entrada { font-size: 12.5px; padding-top: 3px; padding-bottom: 3px; }
+
+/* seletor de ícone: busca em cima, grupos rolando */
+.seletor-icone { display: flex; flex-direction: column; gap: 6px; padding: 4px; }
+.seletor-icone-rolagem { max-height: 340px; overflow-y: auto; }
+.seletor-icone-grupo { font-size: 11px; font-weight: 650; color: var(--texto-3); text-transform: uppercase; letter-spacing: .04em; padding: 8px 4px 2px; }
+.seletor-icone .seletor-emoji { grid-template-columns: repeat(10, 32px); }
+.seletor-emoji button.atual { background: var(--acento-suave); }
+
+/* em toda lista de documentos: ícone do tipo à esquerda, depois o código */
+.doc-icone { flex-shrink: 0; }
+.arv-codigo { font-size: 10.5px; flex-shrink: 0; opacity: .75; }
+.kb-titulo .id-item { font-size: 11px; }
+
+/* favorito (a estrela) */
+.estrela { display: inline-grid; place-items: center; color: var(--texto-3); border-radius: 6px; flex-shrink: 0; }
+.estrela:hover { color: var(--t-yellow, #e5a50a); background: var(--hover); }
+.estrela.marcada { color: var(--t-yellow, #e5a50a); }
+.estrela-linha { width: 22px; height: 22px; opacity: 0; }
+.estrela-linha.marcada, tr:hover .estrela-linha { opacity: 1; }
+.estrela-pagina { width: 34px; height: 34px; order: 3; margin-top: 10px; }
+/* seções da visão */
+.secoes-visao { display: flex; flex-direction: column; gap: 18px; }
+.secao-visao-titulo { display: flex; align-items: center; gap: 6px; font-weight: 650; font-size: 13.5px; color: var(--texto); padding: 4px 2px; margin-bottom: 6px; }
+.secao-visao-conta { font-size: 11px; color: var(--texto-3); background: var(--hover); border-radius: 999px; padding: 0 7px; }
+.secao-visao-vazia { color: var(--texto-3); font-size: 13px; padding: 6px 4px 2px 22px; }

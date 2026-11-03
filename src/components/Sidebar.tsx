@@ -192,7 +192,15 @@ export function Sidebar({
         </div>
       ) : (
       <div className="sb-rolagem">
-        <div className="sb-secao" style={{ marginTop: 6 }}>
+        <button
+          className={`sb-item sb-favoritos${rota.v === "consulta" && rota.filtro?.favoritos ? " ativo" : ""}`}
+          style={{ marginTop: 6 }}
+          title="Os documentos com estrela, de todos os tipos"
+          onClick={() => ir({ v: "consulta", titulo: "Favoritos", icone: "⭐", filtro: { favoritos: true } })}
+        >
+          <span className="sb-icone">⭐</span> <span className="sb-rotulo">Favoritos</span>
+        </button>
+        <div className="sb-secao">
           <div className="sb-titulo-secao">
             <span>Consultas</span>
             <button title="Nova consulta (SQL só de leitura)" onClick={() => ir({ v: "sql" })}><Plus size={14} /></button>

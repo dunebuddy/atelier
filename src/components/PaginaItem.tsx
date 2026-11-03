@@ -1,3 +1,4 @@
+import { Estrela } from "./Estrela";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Bot, Check, ChevronDown, ChevronRight, Copy, FileDown, LayoutDashboard, PanelRight, FolderOpen, FolderPlus, History, Layers, Pencil, RotateCcw, Send, Trash2, X } from "lucide-react";
 import { abrirWorkspace } from "./Workspaces";
@@ -280,6 +281,7 @@ export function PaginaItem({
         </div>
         <div className="pagina-titulo-linha">
           <div className="pagina-icone">{tipo?.icone ?? "·"}</div>
+          <Estrela item={item} tam={20} classe="estrela-pagina" aoMudar={(favorito) => setItem({ ...item, favorito })} />
           <textarea
             ref={tituloRef}
             className="titulo-grande"

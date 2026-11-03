@@ -1,10 +1,11 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Activity, ArrowUpDown, FileDown, ChevronLeft, ChevronRight, Columns3, Eye, EyeOff, Filter, Layers, List, MoreHorizontal, Search,
+  Activity, ArrowUpDown, FileDown, ChevronDown, ChevronLeft, ChevronRight, Columns3, Eye, EyeOff, Filter, Layers, List, MoreHorizontal, Search,
   SlidersHorizontal, Table2, Trash2,
 } from "lucide-react";
-import { api, Esquema, FiltroData, FiltroVisao, Item, Layout, opcoesDe, Propriedade, propsDoTipo, Visao } from "../api";
-import { EMOJIS, falhou, Rota } from "../ui";
+import { api, Esquema, FiltroData, FiltroVisao, Item, Layout, opcoesDe, Propriedade, propsDoTipo, SecaoVisao, SECOES_PADRAO, Visao } from "../api";
+import { falhou, Rota } from "../ui";
+import { SeletorIcone } from "./SeletorIcone";
 import { ordenarItens } from "../ordem";
 import { datasDo, PERIODOS, rotuloIntervalo } from "../visao";
 import { Kanban, ListaCompacta, Tabela } from "./Layouts";
@@ -57,7 +58,16 @@ function nomeDaColuna(e: Esquema, col: number | string) {
   return e.propriedades.find((p) => p.id === col)?.nome ?? "?";
 }
 
+/** O recorte de favoritos / recentes / abertos (do filtro da visão ou de uma seção). */
+export function passaRecorte(e: Esquema, r: { favoritos?: boolean; recentes_dias?: number; abertos?: boolean }, it: Item) {
+  if (r.favoritos && !it.favorito) return false;
+  if (r.recentes_dias && Date.now() - new Date(it.atualizado_em).getTime() > r.recentes_dias * 86_400_000) return false;
+  if (r.abertos && ehHistorico(e, it)) return false;
+  return true;
+}
+
 export function visivelNaVisao(e: Esquema, f: FiltroVisao, it: Item) {
+  if (!passaRecorte(e, f, it)) return false;
   if (!f.esconder_historico || !ehHistorico(e, it)) return true;
   // só filtro de status conta como "pediu de propósito" (filtro de relação, ex. "Pai contém #x", não)
   return Object.entries(f.props ?? {}).some(([pid, valores]) =>
@@ -142,7 +152,8 @@ export function VisaoTela({
     if (!ordenar) return l;
     // ordem fixa da visão (ex.: por prazo); sem valor vai para o fim
     return ordenarItens(esquema, l, ordenar.prop, ordenar.asc);
-  }, [itens, f.esconder_historico, JSON.stringify(f.props), esquema, ordenar?.prop, ordenar?.asc]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [itens, f.esconder_historico, f.favoritos, f.recentes_dias, f.abertos, JSON.stringify(f.props), esquema, ordenar?.prop, ordenar?.asc]); // eslint-disable-line react-hooks/exhaustive-deps
+  const secoes = (v.layout === "tabela" || v.layout === "lista") ? v.config?.secoes ?? [] : [];
   const escondidos = (itens?.length ?? 0) - visiveis.length;
 
   const props = propsDaVisao(esquema, f);
@@ -153,6 +164,28 @@ export function VisaoTela({
   const agruparPor = esquema.propriedades.find((p) => p.id === v.config?.agrupar_por) ?? agrupaveis.find((p) => p.especie === "status") ?? agrupaveis[0];
 
   const unicoTipo = f.tipos?.length === 1 ? f.tipos[0] : null;
+
+  const desenhar = (l: Item[]) => itens && (
+    <>
+      {v.layout === "tabela" && (
+        <Tabela esquema={esquema} itens={l} colunas={colunas} mostrarTipo={unicoTipo == null} ir={ir} aoMudarEsquema={aoMudarEsquema} aoMudarItens={(n) => setItens(n)} todos={itens}
+          larguras={v.config?.larguras}
+          aoReordenar={(ids) => mudar({ config: { ...v.config, colunas: ids } })}
+          ordem={ordenar ? { col: String(ordenar.prop), asc: ordenar.asc } : null}
+          aoOrdenar={(o) => {
+            // o clique no cabeçalho grava na visão, a mesma ordem do botão "Ordem"
+            const { ordenar: _o, ...resto } = v.config ?? {};
+            const fixa = o && ["titulo", "tipo", "atualizado"].includes(o.col);
+            mudar({ config: o ? { ...resto, ordenar: { prop: fixa ? (o.col as "titulo" | "tipo" | "atualizado") : Number(o.col), asc: o.asc } } : resto });
+          }}
+          aoMudarLarguras={(lg) => {
+            const { larguras: _l, ...resto } = v.config ?? {};
+            mudar({ config: Object.keys(lg).length ? { ...resto, larguras: lg } : resto });
+          }} />
+      )}
+      {v.layout === "lista" && <ListaCompacta esquema={esquema} itens={l} colunas={colunas} ir={ir} />}
+    </>
+  );
 
   const filtrosAtivos = (f.tipos?.length ?? 0) + (f.sem_tipo ? 1 : 0) + Object.values(f.props ?? {}).filter((l) => l.length).length + (f.periodo ? 1 : 0) + Object.keys(f.datas ?? {}).length + (f.livres?.length ?? 0);
 
@@ -244,25 +277,14 @@ export function VisaoTela({
       {v.layout === "linha" && datas && (
         <LinhaDoTempo esquema={esquema} filtro={f} de={datas.de} ate={datas.ate} ir={ir} recarga={recarga} capturar={desloca === 0 && (periodo === "hoje")} />
       )}
-      {v.layout === "tabela" && itens && (
-        <Tabela esquema={esquema} itens={visiveis} colunas={colunas} mostrarTipo={unicoTipo == null} ir={ir} aoMudarEsquema={aoMudarEsquema} aoMudarItens={(l) => setItens(l)} todos={itens}
-          larguras={v.config?.larguras}
-          aoReordenar={(ids) => mudar({ config: { ...v.config, colunas: ids } })}
-          ordem={ordenar ? { col: String(ordenar.prop), asc: ordenar.asc } : null}
-          aoOrdenar={(o) => {
-            // o clique no cabeçalho grava na visão, a mesma ordem do botão "Ordem"
-            const { ordenar: _o, ...resto } = v.config ?? {};
-            const fixa = o && ["titulo", "tipo", "atualizado"].includes(o.col);
-            mudar({ config: o ? { ...resto, ordenar: { prop: fixa ? (o.col as "titulo" | "tipo" | "atualizado") : Number(o.col), asc: o.asc } } : resto });
-          }}
-          aoMudarLarguras={(l) => {
-            const { larguras: _l, ...resto } = v.config ?? {};
-            mudar({ config: Object.keys(l).length ? { ...resto, larguras: l } : resto });
-          }} />
+      {secoes.length > 0 && itens && (
+        <div className="secoes-visao">
+          {secoes.map((s, i) => (
+            <SecaoDaVisao key={i + s.titulo} secao={s} itens={visiveis.filter((it) => passaRecorte(esquema, s, it))} desenhar={(l) => desenhar(l)} />
+          ))}
+        </div>
       )}
-      {v.layout === "lista" && itens && (
-        <ListaCompacta esquema={esquema} itens={visiveis} colunas={colunas} ir={ir} />
-      )}
+      {secoes.length === 0 && desenhar(visiveis)}
       {v.layout === "kanban" && itens && (
         agruparPor ? (
           <Kanban esquema={esquema} itens={visiveis} agruparPor={agruparPor} tipoUnico={unicoTipo} tiposDaVisao={tiposDaVisao(esquema, f).map((t) => t.id)} mostrarHistorico={!f.esconder_historico} ir={ir} aoMudarItens={(l) => setItens(l)} todos={itens} />
@@ -344,6 +366,14 @@ export function VisaoTela({
 
       {pMenu.ancora && aoApagar && (
         <Popover ancora={pMenu.ancora} aoFechar={pMenu.fechar} largura={250}>
+          <div className="menu-rotulo">Seções (tabela e lista)</div>
+          <button className="menu-item" title="Favoritas · Recentes (15 dias) · Abertas · Todas" onClick={() => { mudar({ config: { ...v.config, secoes: SECOES_PADRAO } }); pMenu.fechar(); }}>
+            Seções padrão{(v.config?.secoes?.length ?? 0) > 0 && JSON.stringify(v.config?.secoes) === JSON.stringify(SECOES_PADRAO) && <span className="dir">✓</span>}
+          </button>
+          {(v.config?.secoes?.length ?? 0) > 0 && (
+            <button className="menu-item" onClick={() => { const { secoes: _s, ...resto } = v.config ?? {}; mudar({ config: resto }); pMenu.fechar(); }}>Sem seções (uma lista só)</button>
+          )}
+          <div className="menu-sep" />
           <div className="menu-rotulo">Grupo no menu</div>
           <input
             className="campo"
@@ -363,13 +393,13 @@ export function VisaoTela({
       )}
 
       {pIcone.ancora && (
-        <Popover ancora={pIcone.ancora} aoFechar={pIcone.fechar}>
-          <div className="seletor-emoji">
-            {["☀️", "📥", "🗂️", "🧱", "⭐", "🔥", ...EMOJIS].map((e, i) => (
-              <button key={e + i} onClick={() => { mudar({ icone: e }); pIcone.fechar(); }}>{e}</button>
-            ))}
-          </div>
-        </Popover>
+        <SeletorIcone
+          ancora={pIcone.ancora}
+          aoFechar={pIcone.fechar}
+          atual={v.icone}
+          emUso={esquema.tipos.map((t) => t.icone).filter((x): x is string => !!x)}
+          aoEscolher={(icone) => mudar({ icone })}
+        />
       )}
     </div>
   );
@@ -503,5 +533,30 @@ function EditorFiltro({ esquema, filtro, aoMudar, ancora, aoFechar }: { esquema:
       <div className="menu-sep" />
       <button className="menu-item" onClick={() => aoMudar({ esconder_historico: f.esconder_historico })}>Limpar filtros</button>
     </Popover>
+  );
+}
+
+/** Uma seção da visão: título (recolhível), quantos são, e os primeiros N com "ver mais". */
+function SecaoDaVisao({ secao, itens, desenhar }: { secao: SecaoVisao; itens: Item[]; desenhar: (l: Item[]) => React.ReactNode }) {
+  const [aberta, setAberta] = useState(true);
+  const [todos, setTodos] = useState(false);
+  const limite = secao.limite ?? 10;
+  const vistos = !todos && limite > 0 ? itens.slice(0, limite) : itens;
+  return (
+    <section className="secao-visao">
+      <button className="secao-visao-titulo" onClick={() => setAberta((a) => !a)}>
+        {aberta ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        <span>{secao.titulo}</span>
+        <span className="secao-visao-conta">{itens.length}</span>
+      </button>
+      {aberta && (itens.length ? (
+        <>
+          {desenhar(vistos)}
+          {limite > 0 && itens.length > limite && (
+            <button className="rel-mais" onClick={() => setTodos((t) => !t)}>{todos ? "ver menos" : `ver mais ${itens.length - limite}`}</button>
+          )}
+        </>
+      ) : <div className="secao-visao-vazia">Nenhum.</div>)}
+    </section>
   );
 }

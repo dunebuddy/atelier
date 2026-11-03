@@ -22,55 +22,6 @@ Como usar:
 
 ### Bugs
 ### Melhorias pedidas
-- **Mais ícones para tipos e visões, separados por assunto** (2026-11-03). Ao escolher o ícone de um tipo, nem todos
-  os que já são usados aparecem (o do Passo, 🪜, não está). Pré-análise: a lista é `EMOJIS` em `src/ui.ts` (~linha
-  77), só 32 emojis, usada em `ConfigTipo.tsx` e no ícone da visão (`Visao.tsx`, que soma uns 6 na frente). O agente
-  pode pôr qualquer emoji pelo MCP, por isso o tipo tem ícone que a tela não oferece. Proposta:
-  - **muitos mais** (uns 250–300), em **grupos**: trabalho e tarefas · documentos e escrita · tempo e agenda ·
-    dinheiro · tecnologia e infra · ciência e ideias · pessoas e conversa · lugares e viagem · natureza · comida ·
-    objetos · símbolos e status (✅ ⏳ ⚠️ 🔴 🟢...) · bandeiras/setas;
-  - **busca obrigatória, em todo lugar que escolhe ícone** (tipo, visão, e onde mais aparecer): um seletor só,
-    reaproveitado, com o campo de busca em cima e o foco já nele; busca por nome em português (cada emoji com umas
-    palavras: "passo escada degrau" → 🪜). O Paulo confirmou: pode ter muito ícone, desde que dê para buscar;
-  - o ícone atual do tipo sempre aparece (mesmo fora da lista) e um campo "colar outro emoji" para qualquer um;
-  - os ícones já usados pelos tipos da bancada em cima, como "em uso". O mesmo seletor nas visões.
-- **Sininho: filtro com ícones e limpar do jeito certo** (2026-11-03, depois da 0.2.11).
-  - **Ícones no lugar dos nomes** no filtro ("nome é feio"): Todas = `Bell`, Sistema = `Monitor` (ou `Info`), Agentes
-    = `Bot`, Atualização = `Sparkles` (os mesmos do `Icone` de cada notificação), com o nome no tooltip e a contagem
-    como bolinha. Desligado = apagado/riscado.
-  - **"Limpar tudo" limpa tudo**, mostrando ou não (hoje, na 0.2.11, ele limpa só o que o filtro deixa ver: o Paulo
-    não quer isso). Em `Avisos.tsx`, `limparNotificacoes(visivel)` → `limparNotificacoes()`.
-  - **Limpar só um assunto** (só agente, só sistema): o botão Limpar vira um menu pequeno (Limpar tudo · Limpar
-    agentes · Limpar sistema · Limpar atualização), ou uma lixeirinha que aparece ao passar o mouse em cada ícone do
-    filtro. `limparNotificacoes((n) => n.assunto === a)` já serve. Continua fechando o sininho depois.
-- **Toda lista de documentos: ícone do tipo à esquerda e o código no título** (2026-11-03). Para saber de que tipo é
-  e qual é sem abrir. Pré-análise: padronizar um componente só de "linha de documento" (`ícone do tipo · #código ·
-  título`) e usar em todo lugar que lista documento: tabela (o Título já mostra o código em algumas; conferir o
-  ícone), layout lista, cartões do quadro (kanban), linha do tempo, listas da ficha (`ListaCurta`/`ListaDaFicha`,
-  relações, "apontado por", "mencionado em"), a lista ao vivo dentro do texto (`ListaNoTexto`), a busca rápida
-  (Ctrl+P), a árvore da barra lateral e os resultados das consultas SQL com `codigo`. Hoje cada um monta o seu
-  jeito; o ícone vem de `esquema.tipos.find(t => t.id === tipo_id)?.icone`.
-- **Favoritos, e visão com mais de uma consulta (seções)** (2026-11-03). Vai ter muito projeto e demanda; o Paulo
-  quer achar rápido os que importam. Duas ideias, que se completam:
-  1. **Favoritar** um documento (estrela) e uma visão que mostra só os favoritos.
-  2. **Visão com várias seções**, uma embaixo da outra, cada uma com o seu filtro/ordem: na visão "Demanda", em cima
-     **as favoritas**, embaixo **as ativas** (ou as recentes).
-  Pré-análise:
-  - Favorito: **decidido pelo Paulo: campo fixo do documento**, como o título e o corpo (todo documento tem, em
-    toda bancada, sem configurar tipo nenhum): coluna `favorito` em `itens` (migração), estrela no cabeçalho da
-    página e na linha da tabela, `favorito` em `ler_documento`/`atualizar_documento` no MCP e coluna em `documentos`
-    das consultas SQL. Nada de propriedade `checkbox`. Filtro novo `favoritos: true` no `FiltroVisao`; a barra lateral
-    pode ganhar uma seção "Favoritos" (como Consultas).
-  - Seções: `config.secoes: [{ titulo, filtro, ordenar?, limite? }]` na visão; a tela desenha um bloco por seção
-    (tabela/lista), cada um recolhível e com "ver mais" no limite; sem seções, fica como hoje. Um documento pode
-    aparecer em duas seções (favorito e ativo): decidir se repete ou se a de baixo esconde os de cima ("o resto").
-    MCP: `criar_visao`/`atualizar_visao` com `secoes`. Dá para combinar com as consultas SQL (uma seção = um SQL).
-  - **Quem monta as seções é o Paulo** (esclarecido no mesmo dia): ele diz quais quer, em cada visão. Mas **todo
-    tipo novo já nasce com seções padrão** na visão dele (hoje `criar_tipo` já cria a visão do tipo, `db.rs` ~linha
-    1061): **Favoritas** · **Recentes** (atualizadas nos últimos 15 dias) · **Abertas** (status não concluído) ·
-    **Todas**. Precisa de filtro por data relativa ("últimos N dias" em `atualizado_em`) e de "abertas" (o status
-    fora do histórico, como o "esconder concluídos" de hoje). Os tipos que já existem: oferecer "pôr as seções
-    padrão" na visão do tipo (um botão), sem mudar sozinho as visões que ele já arrumou.
 ### Pedidos do agente (de `pedidos-ao-atelier.md`)
 
 Revisão crítica de 2026-11-02 (o Paulo pediu: dizer o que não faz sentido, o que já existe e o que engessa o app).
@@ -143,6 +94,21 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.12** (2026-11-03, à noite, sozinho: o Paulo encerrou o dia e pediu para fazer tudo):
+  - **favorito**: campo fixo de todo documento (migração 17, coluna `favorito` em `itens`), estrela na página e
+    na linha da tabela; marcar não mexe no "atualizado" nem na linha do tempo; `favorito` no MCP
+    (`ler_documento`/`atualizar_documento`) e nas consultas SQL; **⭐ Favoritos** no topo da barra lateral (todos
+    os tipos; filtro `favoritos` também no servidor);
+  - **visão com seções** (tabela e lista): blocos um embaixo do outro, recolhíveis, com contagem e "ver mais"
+    (padrão 10). **Tipo novo já nasce com Favoritas · Recentes (15 dias) · Abertas · Todas**; nos tipos que já
+    existem, menu ⋯ da visão → "Seções padrão" (ou "Sem seções"). Um documento pode aparecer em mais de uma seção.
+    MCP: `secoes` em `criar_visao`/`atualizar_visao` (o Paulo diz quais quer e o agente monta);
+  - **seletor de ícone** único (tipos e visões): ~440 emojis em grupos, cada um com várias palavras em português,
+    busca com o foco já nela (Enter escolhe), "em uso" em cima, e colar qualquer emoji;
+  - **ícone do tipo e código** em toda lista: tabela (o ícone à esquerda de tudo), quadro, árvore da barra lateral
+    e a lista dentro do texto (as outras já tinham);
+  - **sininho**: filtro com ícones (contagem em bolinha); "Limpar" abre Limpar tudo (tudo mesmo, mostrando ou não)
+    ou só um assunto.
 - **0.2.11** (2026-11-03, todas as pendências de uma vez, a pedido do Paulo):
   - **sininho:** espaço entre as notificações; filtro por assunto no topo (Todas · Sistema · Agentes · Atualização,
     com contagem; esconder um assunto tira da lista e do número); "Limpar tudo" limpa o que está à vista e fecha;

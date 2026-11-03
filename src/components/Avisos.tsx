@@ -1,6 +1,7 @@
 // Pilha de toasts (no canto configurado), sininho com o histórico, Configurações → Notificações e os hooks dos agentes.
 import { useEffect, useRef, useState } from "react";
 import { Bell, Bot, CircleAlert, Info, Sparkles, Trash2, X } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { BASE } from "../api";
 import { abrir, falhou } from "../ui";
 import { Popover, usePopover } from "./Popover";
@@ -26,6 +27,9 @@ function useNotificacoes() {
     return () => window.removeEventListener("atelier:notificacoes", f);
   }, []);
 }
+
+/** o ícone de cada assunto (o mesmo no filtro do sininho e em cada notificação) */
+const ICONE_ASSUNTO: Record<Assunto, LucideIcon> = { app: Info, agente: Bot, atualizacao: Sparkles };
 
 function Icone({ n }: { n: Notificacao }) {
   if (n.nivel === "erro") return <CircleAlert size={16} className="ca-icone" />;
@@ -127,6 +131,9 @@ export function Sino() {
   const lista = todas.filter(visivel);
   const naoLidas = lista.filter((n) => !n.lida).length;
   const alternar = (a: Assunto) => esconderAssuntos(escondidos.includes(a) ? escondidos.filter((x) => x !== a) : [...escondidos, a]);
+  // Limpar abre as opções: tudo (mostrando ou não) ou um assunto só
+  const [limpando, setLimpando] = useState(false);
+  const limpar = (a?: Assunto) => { limparNotificacoes(a ? (n) => n.assunto === a : undefined); setLimpando(false); pop.fechar(); };
   return (
     <>
       <button className="bt-btn sino" title={naoLidas ? `${naoLidas} notificações novas` : "Notificações"} onClick={(e) => { if (pop.ancora) marcarTodasLidas(); pop.abrir(e); }}>
@@ -134,19 +141,38 @@ export function Sino() {
         {naoLidas > 0 && <span className="sino-conta">{naoLidas > 99 ? "99+" : naoLidas}</span>}
       </button>
       {pop.ancora && (
-        <Popover ancora={pop.ancora} aoFechar={() => { marcarTodasLidas(); pop.fechar(); }} largura={380}>
+        <Popover ancora={pop.ancora} aoFechar={() => { marcarTodasLidas(); setLimpando(false); pop.fechar(); }} largura={380}>
           <div className="menu-rotulo sino-topo">
             <span>Notificações</span>
-            {lista.length > 0 && <button className="btn" onClick={() => { limparNotificacoes(visivel); pop.fechar(); }}>Limpar tudo</button>}
-          </div>
-          <div className="sino-filtro">
-            <button className={escondidos.length === 0 ? "ativo" : ""} onClick={() => esconderAssuntos([])}>Todas <span>{todas.length}</span></button>
-            {ASSUNTOS.map((a) => (
-              <button key={a.id} className={escondidos.includes(a.id) ? "" : "ativo"} title={escondidos.includes(a.id) ? "Mostrar estas" : "Esconder estas"} onClick={() => alternar(a.id)}>
-                {a.nome} <span>{todas.filter((n) => n.assunto === a.id).length}</span>
+            <span className="sino-filtro">
+              <button className={escondidos.length === 0 ? "ativo" : ""} title={`Todas (${todas.length})`} onClick={() => esconderAssuntos([])}>
+                <Bell size={14} />
+                {todas.length > 0 && <span className="sino-filtro-conta">{todas.length}</span>}
               </button>
-            ))}
+              {ASSUNTOS.map((a) => {
+                const Ic = ICONE_ASSUNTO[a.id];
+                const n = todas.filter((x) => x.assunto === a.id).length;
+                const fora = escondidos.includes(a.id);
+                return (
+                  <button key={a.id} className={fora ? "" : "ativo"} title={`${a.nome} (${n}): clique para ${fora ? "mostrar" : "esconder"}`} onClick={() => alternar(a.id)}>
+                    <Ic size={14} />
+                    {n > 0 && <span className="sino-filtro-conta">{n}</span>}
+                  </button>
+                );
+              })}
+            </span>
+            {todas.length > 0 && <button className="btn" onClick={() => setLimpando((l) => !l)}>Limpar</button>}
           </div>
+          {limpando && (
+            <div className="sino-limpar">
+              <button className="btn" onClick={() => limpar()}>Limpar tudo ({todas.length})</button>
+              {ASSUNTOS.map((a) => {
+                const n = todas.filter((x) => x.assunto === a.id).length;
+                const Ic = ICONE_ASSUNTO[a.id];
+                return n > 0 && <button key={a.id} className="btn" onClick={() => limpar(a.id)}><Ic size={13} /> {a.nome} ({n})</button>;
+              })}
+            </div>
+          )}
           <div className="sino-lista">
             {lista.length === 0 && <div className="sino-vazio">{todas.length ? "Nada com este filtro." : "Nada por aqui."}</div>}
             {lista.map((n) => (

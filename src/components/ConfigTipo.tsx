@@ -1,7 +1,8 @@
 import { lazy, Suspense, useState } from "react";
 import { ArrowDown, ArrowUp, Plus, Star, Trash2 } from "lucide-react";
 import { api, CORES, Cor, ESPECIES, Esquema, Modelo, Opcao, opcoesDe, Propriedade, propsDoTipo, Tipo } from "../api";
-import { EMOJIS, falhou, Rota } from "../ui";
+import { falhou, Rota } from "../ui";
+import { SeletorIcone } from "./SeletorIcone";
 import { Popover, usePopover } from "./Popover";
 import { AdicionarProp, BotaoAdicionarProp, MenuProp } from "./Propriedades";
 import { Etiqueta, IconeEspecie, ValorProp } from "./Valor";
@@ -129,21 +130,13 @@ export function ConfigTipo({
       </button>
 
       {emoji.ancora && (
-        <Popover ancora={emoji.ancora} aoFechar={emoji.fechar}>
-          <div className="seletor-emoji">
-            {EMOJIS.map((e) => (
-              <button key={e} onClick={() => { atualizar({ icone: e }); emoji.fechar(); }}>{e}</button>
-            ))}
-          </div>
-          <input
-            className="campo"
-            placeholder="ou cole um emoji (Win + .)"
-            onKeyDown={(e) => {
-              const v = (e.target as HTMLInputElement).value.trim();
-              if (e.key === "Enter" && v) { atualizar({ icone: v }); emoji.fechar(); }
-            }}
-          />
-        </Popover>
+        <SeletorIcone
+          ancora={emoji.ancora}
+          aoFechar={emoji.fechar}
+          atual={tipo.icone}
+          emUso={esquema.tipos.map((t) => t.icone).filter((x): x is string => !!x)}
+          aoEscolher={(icone) => atualizar({ icone })}
+        />
       )}
       {addProp.ancora && (
         <AdicionarProp ancora={addProp.ancora} aoFechar={addProp.fechar} esquema={esquema} tipo={tipo} aoMudarEsquema={aoMudarEsquema} />

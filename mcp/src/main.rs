@@ -179,14 +179,15 @@ fn ferramentas() -> Value {
         },
         {
             "name": "atualizar_documento",
-            "description": "Atualiza só o que vier: título, tipo (o documento pode mudar de tipo sem perder valores), corpo (substitui o markdown inteiro), propriedades, pasta. Mudança de status ou tipo vai sozinha para a linha do tempo.",
+            "description": "Atualiza só o que vier: título, tipo (o documento pode mudar de tipo sem perder valores), corpo (substitui o markdown inteiro), propriedades, pasta, favorito (a estrela: campo fixo de todo documento; marcar não conta como mudança). Mudança de status ou tipo vai sozinha para a linha do tempo.",
             "inputSchema": { "type": "object", "properties": {
                 "id": ID,
                 "titulo": { "type": "string" },
                 "tipo": { "type": "string" },
                 "corpo": { "type": "string" },
                 "propriedades": props,
-                "pasta": { "type": ["string", "null"] }
+                "pasta": { "type": ["string", "null"] },
+                "favorito": { "type": "boolean" }
             }, "required": ["id"] }
         },
         {
@@ -288,7 +289,7 @@ fn ferramentas() -> Value {
         },
         {
             "name": "criar_visao",
-            "description": "Cria uma visão: uma lista SALVA, que fica para sempre no menu da esquerda. Só crie quando o usuário pedir uma visão nova; para mostrar uma lista a ele (filhos, passos, uma busca), use tela abrir com lista, que é temporária. Campos: nome, layout (tabela, lista, kanban, linha), tipos (nomes), filtros (propriedade → valores aceitos; numa relação, o código do documento: {\"Pai\": [\"#abc1234\"]} = filhos dele), livres (relações em que tudo o que está ligado já foi concluído, ou não há nada: livres [\"Bloqueado por\"] = pode andar agora), sem_tipo (só documentos sem tipo), texto, agrupar_por (kanban: nome da propriedade), grupo (pasta no menu), icone (emoji), ordenar ({propriedade, crescente}; null volta à ordem padrão), colunas (nomes das propriedades na ordem em que aparecem na tabela; [] volta ao padrão), larguras (coluna → px; Título, Tipo e Atualizado também; {} volta ao automático).",
+            "description": "Cria uma visão: uma lista SALVA, que fica para sempre no menu da esquerda. Só crie quando o usuário pedir uma visão nova; para mostrar uma lista a ele (filhos, passos, uma busca), use tela abrir com lista, que é temporária. Campos: nome, layout (tabela, lista, kanban, linha), tipos (nomes), filtros (propriedade → valores aceitos; numa relação, o código do documento: {\"Pai\": [\"#abc1234\"]} = filhos dele), livres (relações em que tudo o que está ligado já foi concluído, ou não há nada: livres [\"Bloqueado por\"] = pode andar agora), sem_tipo (só documentos sem tipo), texto, agrupar_por (kanban: nome da propriedade), grupo (pasta no menu), icone (emoji), ordenar ({propriedade, crescente}; null volta à ordem padrão), colunas (nomes das propriedades na ordem em que aparecem na tabela; [] volta ao padrão), secoes (blocos um embaixo do outro na tabela/lista, cada um {titulo, favoritos?: true, recentes_dias?: N, abertos?: true, limite?: N (padrão 10, 0 = todos)}; o padrão de tipo novo é Favoritas · Recentes (15 dias) · Abertas · Todas; [] volta a uma lista só), larguras (coluna → px; Título, Tipo e Atualizado também; {} volta ao automático).",
             "inputSchema": { "type": "object", "properties": {
                 "nome": { "type": "string" },
                 "layout": { "type": "string", "enum": ["tabela", "lista", "kanban", "linha"] },
@@ -297,7 +298,7 @@ fn ferramentas() -> Value {
                 "livres": { "type": "array", "items": { "type": "string" } },
                 "sem_tipo": { "type": "boolean" },
                 "texto": { "type": "string" },
-                "agrupar_por": { "type": "string" },
+                "agrupar_por": { "type": "string" }, "secoes": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
                 "grupo": { "type": "string" },
                 "icone": { "type": "string" },
                 "ordenar": { "type": ["object", "null"], "properties": { "propriedade": { "type": "string" }, "crescente": { "type": "boolean" } } },
@@ -315,7 +316,7 @@ fn ferramentas() -> Value {
                 "filtros": { "type": "object", "additionalProperties": true },
                 "livres": { "type": "array", "items": { "type": "string" } },
                 "sem_tipo": { "type": "boolean" }, "texto": { "type": "string" },
-                "agrupar_por": { "type": "string" }, "grupo": { "type": "string" }, "icone": { "type": "string" },
+                "agrupar_por": { "type": "string" }, "secoes": { "type": "array", "items": { "type": "object", "additionalProperties": true } }, "grupo": { "type": "string" }, "icone": { "type": "string" },
                 "ordenar": { "type": ["object", "null"], "properties": { "propriedade": { "type": "string" }, "crescente": { "type": "boolean" } } },
                 "colunas": { "type": "array", "items": { "type": "string" } },
                 "larguras": { "type": "object", "additionalProperties": { "type": "number" } }
@@ -592,6 +593,14 @@ impl Mapa {
             }
             None => {}
         }
+        // seções: blocos um embaixo do outro, cada um com o seu recorte ([] volta a uma lista só)
+        if let Some(l) = a.get("secoes").and_then(|v| v.as_array()) {
+            let ok = l.iter().all(|x| x.get("titulo").and_then(|t| t.as_str()).is_some());
+            if !ok {
+                return Err("secoes: cada uma precisa de titulo".into());
+            }
+            cfg.insert("secoes".into(), if l.is_empty() { Value::Null } else { json!(l) });
+        }
         if let Some(l) = a.get("colunas").and_then(|v| v.as_array()) {
             let ids = l.iter().filter_map(|c| c.as_str()).map(|c| Ok(self.prop(c)?["id"].clone())).collect::<Result<Vec<_>, String>>()?;
             cfg.insert("colunas".into(), if ids.is_empty() { Value::Null } else { json!(ids) });
@@ -706,6 +715,7 @@ impl Mapa {
             "pasta": it.pasta,
             "criado_em": it.criado_em,
             "atualizado_em": it.atualizado_em,
+            "favorito": it.favorito,
         });
         if let Some(c) = &it.corpo {
             v["corpo"] = json!(c);
@@ -1027,6 +1037,9 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
             }
             if let Some(p) = a.get("pasta") {
                 dados["pasta"] = p.clone();
+            }
+            if let Some(f) = a.get("favorito").and_then(|v| v.as_bool()) {
+                dados["favorito"] = json!(f);
             }
             if let Some(p) = a.get("propriedades") {
                 dados["props"] = mapa.props_por_id(&conn, tipo_id, p)?;

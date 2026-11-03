@@ -170,6 +170,8 @@ export interface Item {
   props: Props;
   criado_em: string;
   atualizado_em: string;
+  /** a estrela: campo fixo de todo documento */
+  favorito?: boolean;
   corpo?: string;
   notas?: Nota[];
   /** na lixeira desde quando */
@@ -250,7 +252,7 @@ export const api = {
   item: (id: number) => req<Item>("GET", `/itens/${id}`),
   criarItem: (d: { titulo?: string; tipo_id?: number | null; modelo_id?: number | null; props?: Props; corpo?: string }) =>
     req<Item>("POST", "/itens", d),
-  atualizarItem: (id: number, d: Partial<Pick<Item, "titulo" | "tipo_id" | "corpo" | "pasta">> & { props?: Props }) =>
+  atualizarItem: (id: number, d: Partial<Pick<Item, "titulo" | "tipo_id" | "corpo" | "pasta" | "favorito">> & { props?: Props }) =>
     req<Item>("PATCH", `/itens/${id}`, d),
   apagarItem: (id: number) => req("DELETE", `/itens/${id}`),
   anotar: (id: number, texto: string, autor = "Paulo") => req("POST", `/itens/${id}/notas`, { texto, autor }),
@@ -367,7 +369,31 @@ export interface FiltroVisao {
   livres?: number[];
   /** visão feita de uma consulta: só os documentos que o SQL devolve (coluna codigo) */
   sql?: string;
+  /** só os favoritos (a estrela) */
+  favoritos?: boolean;
+  /** só os atualizados nos últimos N dias */
+  recentes_dias?: number;
+  /** só os abertos: sem status de histórico (feito, descartado...) */
+  abertos?: boolean;
 }
+
+/** Uma seção da visão: um bloco com o seu recorte (sobre os documentos da visão), um embaixo do outro. */
+export interface SecaoVisao {
+  titulo: string;
+  favoritos?: boolean;
+  recentes_dias?: number;
+  abertos?: boolean;
+  /** quantos mostra antes do "ver mais" (padrão 10; 0 = todos) */
+  limite?: number;
+}
+
+/** As seções que todo tipo novo ganha na visão dele (e o botão "seções padrão" põe nas que já existem). */
+export const SECOES_PADRAO: SecaoVisao[] = [
+  { titulo: "Favoritas", favoritos: true, limite: 0 },
+  { titulo: "Recentes (15 dias)", recentes_dias: 15 },
+  { titulo: "Abertas", abertos: true },
+  { titulo: "Todas" },
+];
 
 export type Sentido = "aponta" | "apontado";
 
@@ -401,6 +427,8 @@ export interface Visao {
     ordenar?: { prop: number | "titulo" | "tipo" | "atualizado"; asc: boolean };
     /** árvore na barra lateral: a propriedade de relação que leva ao nível de baixo */
     arvore?: { prop: number; sentido: Sentido; so_raizes?: boolean } | null;
+    /** seções, uma embaixo da outra (tabela e lista); sem elas, a visão é uma lista só */
+    secoes?: SecaoVisao[];
   };
 }
 
@@ -438,6 +466,7 @@ function queryFiltro(f: FiltroVisao, periodo: { de: string; ate: string } | null
   const p = new URLSearchParams();
   if (f.tipos?.length) p.set("tipos", f.tipos.join(","));
   if (f.sem_tipo) p.set("sem_tipo", "1");
+  if (f.favoritos) p.set("favoritos", "1");
   for (const [pid, vals] of Object.entries(f.props ?? {})) for (const v of vals) p.append(`p.${pid}`, v);
   if (f.livres?.length) p.set("livre", f.livres.join(","));
   if (f.sql) p.set("sql", f.sql);

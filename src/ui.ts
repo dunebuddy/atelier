@@ -74,8 +74,4 @@ export function quando(iso: string) {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }) + " " + hh;
 }
 
-export const EMOJIS = [
-  "📄", "✅", "🧾", "⏳", "✨", "📝", "📥", "🎯", "🐛", "🔧", "🚀", "📌", "💡", "📚", "🗂️", "🧪",
-  "🔥", "⭐", "🧭", "🏗️", "💬", "📅", "💰", "🔒", "☁️", "🗄️", "🤝", "🎨", "🧱", "📊", "🛠️", "❓",
-];
 

@@ -237,7 +237,7 @@ function ListaNoTexto({ texto, codigo, aoClicar, aberto }: { texto: string; codi
               <tr key={it.id}>
                 <td>
                   <button className="lista-abrir" title="Abrir (Ctrl+clique: ao lado)" onClick={(e) => abrir({ v: "item", id: it.id }, e.ctrlKey || e.metaKey)}>
-                    {esquema?.tipos.find((t) => t.id === it.tipo_id)?.icone} {it.titulo || "Sem título"}
+                    <span className="doc-icone">{esquema?.tipos.find((t) => t.id === it.tipo_id)?.icone ?? "·"}</span> <span className="id-item">#{it.codigo}</span> {it.titulo || "Sem título"}
                   </button>
                 </td>
                 {colunas.map((p) => (

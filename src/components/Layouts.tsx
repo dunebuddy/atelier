@@ -4,6 +4,7 @@ import { api, ConfigProp, Esquema, Item, Opcao, opcoesDe, Propriedade, Valor } f
 import { avisar, falhou, Rota } from "../ui";
 import { dataHora } from "../visao";
 import { BotaoWorkspace } from "./BotaoWorkspace";
+import { Estrela } from "./Estrela";
 import { MenuPasta } from "./MenuPasta";
 import { Etiqueta, IconeEspecie, textoSimples, urgencia, valorDe, ValorProp } from "./Valor";
 
@@ -205,11 +206,12 @@ export function Tabela({
               <tr key={it.id} data-codigo={it.codigo}>
                 <td>
                   <div className="celula titulo" onClick={() => ir({ v: "item", id: it.id })} onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); ir({ v: "item", id: it.id }); } }}>
+                    <span className="doc-icone">{t?.icone ?? "·"}</span>
                     <span className="id-item">#{it.codigo}</span>
-                    {mostrarTipo && <span>{t?.icone ?? "·"}</span>}
                     <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {it.titulo || <span className="vazio" style={{ opacity: 1 }}>Sem título</span>}
                     </span>
+                    <Estrela item={it} tam={13} classe="estrela-linha" aoMudar={(fav) => aoMudarItens((todos ?? itens).map((x) => (x.id === it.id ? { ...x, favorito: fav } : x)))} />
                     <span className="acoes-linha">
                       <BotaoWorkspace esquema={esquema} item={it} />
                       <BotaoPasta pasta={it.pasta} />
@@ -346,7 +348,7 @@ export function Kanban({
                 onDragStart={(e) => { e.dataTransfer.setData("text/atelier-item", String(it.id)); e.dataTransfer.effectAllowed = "move"; }}
                 onClick={() => ir({ v: "item", id: it.id })} onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); ir({ v: "item", id: it.id }); } }}
               >
-                <div className="kb-titulo">{tipoUnico == null && <span>{t?.icone} </span>}{it.titulo || "Sem título"}</div>
+                <div className="kb-titulo"><span className="doc-icone">{t?.icone ?? "·"}</span> <span className="id-item">#{it.codigo}</span> {it.titulo || "Sem título"}</div>
                 <div className="kb-props">
                   {outros.filter((p) => t?.propriedades.some((x) => x.propriedade_id === p.id)).map((p) => <Resumo key={p.id} esquema={esquema} prop={p} item={it} />)}
                 </div>

@@ -25,8 +25,9 @@ fn cte_documentos(conn: &Connection) -> Res<String> {
         "i.corpo AS corpo".to_string(),
         "i.criado_em AS criado_em".to_string(),
         "i.atualizado_em AS atualizado_em".to_string(),
+        "i.favorito AS favorito".to_string(),
     ];
-    let fixas = ["codigo", "titulo", "tipo", "corpo", "criado_em", "atualizado_em"];
+    let fixas = ["codigo", "titulo", "tipo", "corpo", "criado_em", "atualizado_em", "favorito"];
     for (id, nome) in props {
         if fixas.contains(&nome.to_lowercase().as_str()) {
             continue;

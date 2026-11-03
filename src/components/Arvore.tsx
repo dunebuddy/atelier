@@ -153,6 +153,7 @@ function No({ item, esquema, rota, ir, prop, sentido, nivel, caminho, esconder }
           {aberto ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
         </button>
         <span className="arv-icone">{t?.icone ?? "·"}</span>
+        <span className="id-item arv-codigo">#{item.codigo}</span>
         <span className="rotulo">{item.titulo || "Sem título"}</span>
         <BotaoWorkspace esquema={esquema} item={item} />
       </div>

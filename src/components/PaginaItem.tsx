@@ -263,7 +263,6 @@ export function PaginaItem({
         <Historico alvo={historico.alvo} id={historico.id} atual={historico.atual} aoFechar={() => setHistorico(null)} aoRestaurar={carregar} />
       )}
       <div className="pagina-cabeca">
-        <div className="pagina-icone">{tipo?.icone ?? "·"}</div>
         <div className="pagina-meta">
           <button
             className="id-item copiar"
@@ -278,7 +277,26 @@ export function PaginaItem({
           <span title="Criado em">criado {dataHora(item.criado_em)}</span>
           <span className="ponto">·</span>
           <span title="Última mudança">atualizado {dataHora(item.atualizado_em)}</span>
-          <span className="meta-acoes">
+        </div>
+        <div className="pagina-titulo-linha">
+          <div className="pagina-icone">{tipo?.icone ?? "·"}</div>
+          <textarea
+            ref={tituloRef}
+            className="titulo-grande"
+            rows={1}
+            placeholder="Sem título"
+            value={item.titulo}
+            onChange={(e) => setItem({ ...item, titulo: e.target.value })}
+            onBlur={(e) => salvar({ titulo: e.target.value })}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                (e.target as HTMLTextAreaElement).blur();
+              }
+            }}
+          />
+        </div>
+        <div className="meta-acoes">
             {item.pasta && (
               <MenuPasta pasta={item.pasta} classe="btn">
                 <FolderOpen size={14} /> Abrir pasta
@@ -306,7 +324,7 @@ export function PaginaItem({
                 try {
                   const pasta = item.pasta ?? (await api.criarPasta(item.id)).pasta;
                   if (!item.pasta) carregar();
-                  abrirExplorador(pasta, undefined, `#${item.codigo}`);
+                  abrirExplorador(pasta, undefined, `#${item.codigo} ${item.titulo || "Sem título"}`);
                 } catch (e) {
                   falhou(e);
                 }
@@ -335,23 +353,7 @@ export function PaginaItem({
                 <Exportar esquema={esquema} ids={[item.id]} nome={item.titulo || item.codigo} aoFechar={() => setExportando(false)} />
               </Suspense>
             )}
-          </span>
         </div>
-        <textarea
-          ref={tituloRef}
-          className="titulo-grande"
-          rows={1}
-          placeholder="Sem título"
-          value={item.titulo}
-          onChange={(e) => setItem({ ...item, titulo: e.target.value })}
-          onBlur={(e) => salvar({ titulo: e.target.value })}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              (e.target as HTMLTextAreaElement).blur();
-            }
-          }}
-        />
       </div>
 
       <div className="pagina-grade">

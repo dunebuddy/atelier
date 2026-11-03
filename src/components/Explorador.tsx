@@ -53,25 +53,36 @@ export function ArvoreArquivos({ raiz, titulo }: { raiz: string; titulo?: string
     <div className="explorador">
       <div className="ex-cabeca">
         <FolderOpen size={15} />
-        <div className="ex-trilha"><strong title={raiz}>{titulo ?? nomeDe(raiz)}</strong></div>
+        <div className="ex-trilha"><strong title={raiz}>{titulo ?? nomeDe(raiz)}</strong><span className="ex-trilha-caminho" title={raiz}>{raiz}</span></div>
         <button className="btn-icone" title="Reler" onClick={() => setRecarga((n) => n + 1)}><RefreshCw size={14} /></button>
         <MenuPasta pasta={raiz} classe="btn-icone"><FolderOpen size={14} /></MenuPasta>
       </div>
       <div className="ex-lista ex-arvore">
-        <RamoPasta raiz={raiz} dir={raiz} nivel={0} recarga={recarga} />
+        <RamoPasta raiz={raiz} dir={raiz} nivel={0} recarga={recarga} titulo={titulo} />
       </div>
     </div>
   );
 }
 
-function RamoPasta({ raiz, dir, nivel, recarga }: { raiz: string; dir: string; nivel: number; recarga: number }) {
+/** Uma pasta da árvore (e as de dentro, abertas sob demanda). `titulo` vai para a trilha do explorador que abre o
+ *  arquivo; `abertasAntes` já começam abertas; `esconder` tira nomes do primeiro nível (o CLAUDE.md da pasta). */
+export function RamoPasta({ raiz, dir, nivel, recarga, titulo, abertasAntes, esconder, vazio }: {
+  raiz: string; dir: string; nivel: number; recarga: number; titulo?: string; abertasAntes?: string[]; esconder?: string[]; vazio?: React.ReactNode;
+}) {
   const [entradas, setEntradas] = useState<Entrada[] | null>(null);
   const [abertas, setAbertas] = useState<Set<string>>(new Set());
+  const primeira = useRef(true);
   useEffect(() => {
-    api.explorar(dir).then((r) => setEntradas(r.entradas)).catch(() => setEntradas([]));
-  }, [dir, recarga]);
+    api.explorar(dir).then((r) => {
+      const l = r.entradas.filter((e) => !esconder?.includes(e.nome));
+      setEntradas(l);
+      // na primeira leitura, as pastas pedidas já abrem (pelo nome: o caminho volta normalizado do servidor)
+      if (primeira.current && abertasAntes?.length) setAbertas(new Set(l.filter((e) => e.pasta && abertasAntes.includes(e.nome)).map((e) => e.caminho)));
+      primeira.current = false;
+    }).catch(() => setEntradas([]));
+  }, [dir, recarga]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!entradas) return null;
-  if (!entradas.length && nivel === 0) return <div className="vazio-grande">Pasta vazia.</div>;
+  if (!entradas.length && nivel === 0) return <>{vazio ?? <div className="vazio-grande">Pasta vazia.</div>}</>;
   const alternar = (c: string) => setAbertas((s) => { const n = new Set(s); if (n.has(c)) n.delete(c); else n.add(c); return n; });
   return (
     <>
@@ -80,14 +91,15 @@ function RamoPasta({ raiz, dir, nivel, recarga }: { raiz: string; dir: string; n
           <button
             className="ex-entrada"
             style={{ paddingLeft: 8 + nivel * 16 }}
-            onClick={() => (e.pasta ? alternar(e.caminho) : abrirExplorador(raiz, e.caminho, nomeDe(e.caminho)))}
-            title={e.caminho}
+            onClick={() => (e.pasta ? alternar(e.caminho) : abrirExplorador(raiz, e.caminho, titulo ?? nomeDe(raiz)))}
+            title={`${e.caminho}${e.modificado ? `\nmodificado ${dataHora(e.modificado)}` : ""}`}
           >
             {e.pasta ? (abertas.has(e.caminho) ? <ChevronDown size={13} /> : <ChevronRight size={13} />) : <span style={{ width: 13 }} />}
             <Icone especie={e.especie} />
             <span className="ex-nome">{e.nome}</span>
+            {!e.pasta && <span className="ex-meta">{tamanho(e.tamanho)}</span>}
           </button>
-          {e.pasta && abertas.has(e.caminho) && <RamoPasta raiz={raiz} dir={e.caminho} nivel={nivel + 1} recarga={recarga} />}
+          {e.pasta && abertas.has(e.caminho) && <RamoPasta raiz={raiz} dir={e.caminho} nivel={nivel + 1} recarga={recarga} titulo={titulo} />}
         </div>
       ))}
     </>
@@ -130,11 +142,28 @@ export function Explorador({ raiz, arquivo, titulo }: { raiz: string; arquivo?: 
   const sep = separador(estado.raiz);
   const relativo = estado.dir.startsWith(estado.raiz) ? estado.dir.slice(estado.raiz.length).split(/[\\/]/).filter(Boolean) : [];
 
+  // a trilha mostra sempre o fim (a pasta onde você está); o começo é que some quando não cabe
+  const trilha = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (trilha.current) trilha.current.scrollLeft = trilha.current.scrollWidth;
+  }, [estado.dir, estado.arquivo]);
+
+  // Backspace (ou Alt+←) volta: fecha o arquivo aberto, ou sobe uma pasta (sem passar da raiz). Num campo de texto
+  // (a prévia edita arquivo) o Backspace é apagar.
+  const tecla = (e: React.KeyboardEvent) => {
+    const voltar = (e.key === "Backspace" && !e.ctrlKey && !e.altKey) || (e.altKey && e.key === "ArrowLeft");
+    if (!voltar) return;
+    const alvo = e.target as HTMLElement;
+    if (alvo.closest("input, textarea, select, [contenteditable='true'], .cm-editor")) return;
+    if (estado.arquivo) { e.preventDefault(); setEstado({ ...estado, arquivo: null }); }
+    else if (estado.dir !== estado.raiz && estado.dir.startsWith(estado.raiz)) { e.preventDefault(); setEstado({ ...estado, dir: pai(estado.dir) }); }
+  };
+
   return (
-    <div className="explorador">
+    <div className="explorador" tabIndex={-1} onKeyDown={tecla}>
       <div className="ex-cabeca">
         <FolderOpen size={15} />
-        <div className="ex-trilha">
+        <div className="ex-trilha rolavel" ref={trilha}>
           <button onClick={() => setEstado({ ...estado, dir: estado.raiz, arquivo: null })} title={estado.raiz}>{estado.titulo ?? nomeDe(estado.raiz)}</button>
           {relativo.map((p, i) => (
             <span key={i}>

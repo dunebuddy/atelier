@@ -1,6 +1,6 @@
 {
   "versao": 1,
-  "nota": "Catálogo dos modelos de ditado. O app lê este arquivo do GitHub ao procurar versão nova e avisa quando aparece modelo novo. Para acrescentar um modelo, acrescente aqui (motor: parakeet ou whisper) e suba no master.",
+  "nota": "Catálogo dos modelos de ditado. O app lê este arquivo do GitHub ao procurar versão nova e avisa quando aparece modelo novo. Para acrescentar um modelo, acrescente aqui (motor: parakeet, whisper ou streaming) e suba no master. Versões do app que não conhecem o motor não mostram o modelo (desde a 0.2.11).",
   "modelos": [
     {
       "id": "parakeet-v3",
@@ -11,6 +11,15 @@
       "idiomas": "25 línguas europeias, inclusive português (detecta sozinho)",
       "nota": "Da NVIDIA. Rápido e preciso; o recomendado para português.",
       "recomendado": true
+    },
+    {
+      "id": "nemotron-3.5-streaming",
+      "nome": "Nemotron 3.5 Streaming",
+      "motor": "streaming",
+      "repo": "onnx-community/nemotron-3.5-asr-streaming-0.6b-onnx-int4",
+      "tamanho_mb": 790,
+      "idiomas": "40 idiomas, inclusive português (detecta sozinho)",
+      "nota": "Da NVIDIA (jun/2026). Escreve enquanto você fala, com pontuação e maiúsculas. Roda na placa de vídeo (WebGPU); sem ela, no processador, fica lento."
     },
     {
       "id": "whisper-tiny",

@@ -11,7 +11,12 @@ export const chaveItem = (id: number) => `item:${id}`;
 export const itemDa = (chave: string) => (chave.startsWith("item:") ? Number(chave.slice(5)) : null);
 
 export interface InfoWorkspace {
+  /** o nome que aparece: o dado à mão (`nome`) ou, sem ele, o título do documento (`doc`) */
   titulo: string;
+  /** nome dado à mão (renomear); vale mais que o título do documento */
+  nome?: string;
+  /** o título atual do documento (o workspace acompanha quando o documento muda de nome) */
+  doc?: string;
   icone?: string;
   /** quando foi aberto pela última vez (para a poda do que fica guardado) */
   usado?: number;
@@ -58,7 +63,7 @@ export function carregar(bancada: string): Workspaces {
   const estados: Record<string, EstadoPainel> = {};
   for (const [k, e] of Object.entries(g.estados)) estados[k] = P.restaurar(e, k === GERAL ? { v: "inicio" } : { v: "item", id: itemDa(k) ?? 0 });
   const ativo = estados[g.ativo] ? g.ativo : GERAL;
-  return { ativo, estados, info: { ...g.info, [GERAL]: { titulo: "Bancada" } }, abertos: [ativo] };
+  return { ativo, estados, info: { ...g.info, [GERAL]: { ...g.info?.[GERAL], titulo: g.info?.[GERAL]?.nome || "Bancada" } }, abertos: [ativo] };
 }
 
 export function salvar(bancada: string, w: Workspaces) {
@@ -79,9 +84,35 @@ export function abrir(w: Workspaces, chave: string, info?: InfoWorkspace): Works
     ...w,
     ativo: chave,
     estados,
-    info: { ...w.info, [chave]: { ...(w.info[chave] ?? { titulo: chave }), ...info, usado: Date.now() } },
+    info: { ...w.info, [chave]: { ...juntarInfo(w.info[chave] ?? { titulo: chave }, info), usado: Date.now() } },
     abertos: w.abertos.includes(chave) ? w.abertos : [...w.abertos, chave],
   };
+}
+
+/** O título que vem do documento entra em `doc`; o que aparece só muda se não houver nome dado à mão. */
+function juntarInfo(antes: InfoWorkspace, novo?: Partial<InfoWorkspace>): InfoWorkspace {
+  if (!novo) return antes;
+  const doc = novo.titulo ?? antes.doc;
+  return { ...antes, ...novo, doc, titulo: antes.nome || novo.titulo || antes.titulo };
+}
+
+/** Renomeia à mão; nome vazio volta ao título do documento (ou "Bancada"). */
+export function renomear(w: Workspaces, chave: string, nome: string): Workspaces {
+  const i = w.info[chave];
+  if (!i && !w.estados[chave]) return w;
+  const n = nome.trim();
+  const base = i ?? { titulo: chave };
+  const titulo = n || base.doc || (chave === GERAL ? "Bancada" : base.titulo);
+  const { nome: _n, ...resto } = base;
+  return { ...w, info: { ...w.info, [chave]: n ? { ...resto, nome: n, titulo } : { ...resto, titulo } } };
+}
+
+/** O documento mudou de título (ou de ícone): o workspace dele acompanha. */
+export function seguirDocumento(w: Workspaces, id: number, titulo: string, icone?: string): Workspaces {
+  const k = chaveItem(id);
+  const i = w.info[k];
+  if (!i || (i.doc === titulo && (icone == null || i.icone === icone))) return w;
+  return { ...w, info: { ...w.info, [k]: { ...i, doc: titulo, titulo: i.nome || titulo, ...(icone != null ? { icone } : {}) } } };
 }
 
 /** Fecha (suspende): os terminais dele param, as janelas ficam guardadas. */

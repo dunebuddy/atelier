@@ -8,7 +8,8 @@ import { avisar, guardar, ler } from "./ui";
 export interface ModeloDitado {
   id: string;
   nome: string;
-  motor: "parakeet" | "whisper";
+  /** parakeet e whisper transcrevem ao parar; streaming escreve enquanto você fala */
+  motor: "parakeet" | "whisper" | "streaming";
   repo: string;
   tamanho_mb: number;
   idiomas: string;
@@ -19,10 +20,13 @@ export interface ModeloDitado {
 const URL_CATALOGO = "https://raw.githubusercontent.com/dunebuddy/atelier/master/modelos-ditado.json";
 
 /** Os modelos conhecidos: os que vieram com o app mais os que apareceram depois no GitHub. */
+const MOTORES = ["parakeet", "whisper", "streaming"];
+
 export function catalogo(): ModeloDitado[] {
   const daqui = catalogoLocal.modelos as ModeloDitado[];
   const de_la = ler<ModeloDitado[]>("ditado.catalogo", []);
-  return [...daqui, ...de_la.filter((m) => !daqui.some((x) => x.id === m.id))];
+  // modelo de um motor que esta versão não conhece (vindo do GitHub, para versões mais novas) não aparece
+  return [...daqui, ...de_la.filter((m) => !daqui.some((x) => x.id === m.id))].filter((m) => MOTORES.includes(m.motor));
 }
 
 /** Onde o modelo roda: processador (RAM) ou placa de vídeo (VRAM, pelo WebGPU). */
@@ -58,6 +62,7 @@ type Resposta =
   | { t: "progresso"; arquivo: string; feito: number; total: number }
   | { t: "pronto"; id: string; dispositivo: Dispositivo }
   | { t: "texto"; texto: string; dispositivo: Dispositivo }
+  | { t: "parcial"; texto: string; dispositivo: Dispositivo }
   | { t: "apagado"; id: string }
   | { t: "caiu"; erro: string }
   | { t: "erro"; erro: string };
@@ -199,16 +204,46 @@ export async function transcrever(audio: Float32Array): Promise<string> {
   return r.texto;
 }
 
+// ---------- streaming: o texto sai enquanto você fala ----------
+
+/** Começa um ditado de streaming (zera o que o modelo lembrava do anterior; carrega o modelo, se preciso). */
+export async function comecarStreaming() {
+  const m = modeloAtual();
+  if (!m) throw new Error("Nenhum modelo de ditado escolhido (Configurações → Ditado).");
+  const r = await pedir<{ dispositivo: Dispositivo }>({ t: "stream_inicio", modelo: m });
+  usado(m, r.dispositivo);
+}
+/** Manda mais áudio; volta o texto novo que saiu dele. */
+export async function enviarStreaming(audio: Float32Array): Promise<string> {
+  const m = modeloAtual();
+  if (!m) return "";
+  const r = await pedir<{ texto: string }>({ t: "stream_audio", modelo: m, audio }, [audio.buffer]);
+  return r.texto;
+}
+/** Fim: volta o texto inteiro do ditado. */
+export async function terminarStreaming(): Promise<string> {
+  const m = modeloAtual();
+  if (!m) return "";
+  const r = await pedir<{ texto: string; dispositivo: Dispositivo }>({ t: "stream_fim", modelo: m });
+  usado(m, r.dispositivo);
+  return r.texto;
+}
+
 // ---------- microfone ----------
 
-/** Começa a gravar do microfone (mono, 16 kHz, que é o que os modelos esperam). `parar()` devolve o áudio. */
-export async function gravar(): Promise<{ parar: () => Promise<Float32Array>; cancelar: () => void }> {
+/** Começa a gravar do microfone (mono, 16 kHz, que é o que os modelos esperam). `parar()` devolve o áudio.
+ *  Com `aoPedaco`, cada pedaço também sai na hora (o ditado de streaming). */
+export async function gravar(aoPedaco?: (p: Float32Array) => void): Promise<{ parar: () => Promise<Float32Array>; cancelar: () => void }> {
   const fluxo = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
   const ctx = new AudioContext({ sampleRate: 16000 });
   const fonte = ctx.createMediaStreamSource(fluxo);
   const proc = ctx.createScriptProcessor(4096, 1, 1);
   const pedacos: Float32Array[] = [];
-  proc.onaudioprocess = (e) => pedacos.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+  proc.onaudioprocess = (e) => {
+    const p = new Float32Array(e.inputBuffer.getChannelData(0));
+    pedacos.push(p);
+    aoPedaco?.(p.slice());
+  };
   fonte.connect(proc);
   proc.connect(ctx.destination);
   const fechar = () => {
@@ -240,7 +275,7 @@ export async function procurarModelosNovos() {
     const remoto = ((await r.json()) as { modelos?: ModeloDitado[] }).modelos ?? [];
     guardar("ditado.catalogo", remoto);
     const vistos = ler<string[] | null>("ditado.vistos", null) ?? catalogo().map((m) => m.id);
-    const novos = remoto.filter((m) => !vistos.includes(m.id));
+    const novos = remoto.filter((m) => !vistos.includes(m.id) && MOTORES.includes(m.motor));
     guardar("ditado.vistos", [...new Set([...vistos, ...remoto.map((m) => m.id)])]);
     if (novos.length) {
       avisar(`Tem modelo de ditado novo: ${novos.map((m) => m.nome).join(", ")}. Veja em Configurações → Ditado.`);

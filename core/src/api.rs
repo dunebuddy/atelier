@@ -221,6 +221,7 @@ pub fn rotas(banco: Banco) -> Router {
         .route("/api/integracoes", get(|| async { Json(crate::integracoes::listar()) }))
         .route("/api/agentes", get(agentes))
         .route("/api/tela", post(tela))
+        .route("/api/log", post(gravar_log))
         .route("/api/sistema", get(|| async { Json(tokio::task::spawn_blocking(crate::sistema::medir).await.unwrap_or_default()) }))
         .route("/api/sistema/placas", get(|| async { Json(json!(tokio::task::spawn_blocking(crate::sistema::placas_de_video).await.unwrap_or_default())) }))
         .route("/api/exportar", post(exportar))
@@ -913,13 +914,34 @@ async fn exportar(State(b): State<Banco>, Json(d): Json<Value>) -> R {
 }
 
 /// Ações que a tela entende (o MCP `tela` e o Comando do app usam esta lista).
-pub const ACOES_TELA: &str = "abrir (codigo | visao | pasta | arquivo | lixeira | tipo), workspace, fechar_workspace, \
+pub const ACOES_TELA: &str = "abrir (codigo | visao | pasta | arquivo | lixeira | tipo | lista), workspace, fechar_workspace, renomear_workspace, \
 visao_geral, dividir, juntar, modo, fechar, focar, terminal, explorador_sistema, barra_lateral, tema, zoom, configuracoes, \
 busca, recarregar, filtrar, destacar, estado";
 
 /// Pedido para a tela do app. `lado: "esquerda" | "direita"` escolhe a metade do painel (a direita nasce se o painel
 /// não está dividido); `ao_lado: true` abre numa janela nova em vez de trocar a atual. A tela faz; aqui só se confere
 /// e se traduz (código → id, nome → id, item → pasta).
+/// Erros da interface (a tela que quebrou), em `~/atelier/erros.log`: para achar a causa depois. Passando de 1 MB, o
+/// arquivo recomeça (o antigo vira `erros.log.1`).
+async fn gravar_log(Json(d): Json<Value>) -> R {
+    use std::io::Write;
+    let caminho = crate::bancada::pasta_atelier().join("erros.log");
+    if std::fs::metadata(&caminho).map(|m| m.len() > 1_048_576).unwrap_or(false) {
+        let _ = std::fs::rename(&caminho, caminho.with_extension("log.1"));
+    }
+    let agora = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
+    let txt = |k: &str| d.get(k).and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let linha = format!("[{agora}] {} ({})
+{}
+{}
+
+", txt("erro"), txt("onde"), txt("pilha"), txt("componentes"));
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&caminho) {
+        let _ = f.write_all(linha.as_bytes());
+    }
+    Ok(Json(json!({ "ok": true, "arquivo": caminho })))
+}
+
 async fn tela(State(b): State<Banco>, Json(d): Json<Value>) -> R {
     let acao = d.get("acao").and_then(|v| v.as_str()).unwrap_or("");
     let txt = |k: &str| d.get(k).and_then(|v| v.as_str()).map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
@@ -992,10 +1014,14 @@ async fn tela(State(b): State<Banco>, Json(d): Json<Value>) -> R {
             }
         }
         // workspace do item (codigo) ou o da bancada (sem codigo); fechar_workspace suspende (os terminais param)
-        "workspace" | "fechar_workspace" => {
+        "workspace" | "fechar_workspace" | "renomear_workspace" => {
             if let Some(c) = txt("codigo") {
                 let it = com(&b, |c2| db::id_por_codigo(c2, &c).and_then(|id| db::ler_item(c2, id)))?;
                 ev["item"] = json!({ "id": it.id, "titulo": it.titulo });
+            }
+            // renomear: nome vazio volta ao título do documento
+            if acao == "renomear_workspace" {
+                ev["nome"] = json!(d.get("nome").and_then(|v| v.as_str()).unwrap_or("").trim());
             }
         }
         "modo" => {

@@ -1,11 +1,11 @@
 import { IndicadorDitado } from "./Ditado";
 import { useEffect, useRef, useState } from "react";
 import {
-  ChevronDown, Cpu, GalleryHorizontalEnd, HardDrive, LayoutDashboard, LayoutPanelLeft, MemoryStick, PanelTop, Power, Trash2,
+  ChevronDown, Cpu, GalleryHorizontalEnd, HardDrive, LayoutDashboard, LayoutPanelLeft, MemoryStick, PanelTop, Pencil, Power, Trash2,
 } from "lucide-react";
 import { rotaDe } from "../painel";
 import { api, BASE } from "../api";
-import { GERAL, itemDa, sessoesDe, Workspaces } from "../workspaces";
+import { GERAL, InfoWorkspace, itemDa, sessoesDe, Workspaces } from "../workspaces";
 import { Popover, usePopover } from "./Popover";
 import { Marca } from "./Marca";
 import { CarinhaAgente } from "./Avisos";
@@ -18,6 +18,39 @@ function IconeWs({ k, icone }: { k: string; icone?: string }) {
   return icone ? <span className="ws-icone">{icone}</span> : null;
 }
 
+/** O nome do workspace, que vira campo ao renomear (Enter grava, Esc desiste; vazio volta ao título do documento). */
+function NomeWs({ info, editando, aoGravar, aoSair, classe, children }: {
+  info: InfoWorkspace;
+  editando: boolean;
+  aoGravar: (nome: string) => void;
+  aoSair: () => void;
+  classe: string;
+  children?: React.ReactNode;
+}) {
+  if (!editando) {
+    const dica = info.nome && info.doc && info.nome !== info.doc ? `${info.titulo}\n(documento: ${info.doc})` : info.titulo;
+    return <span className={classe} title={dica}>{children}{info.titulo}</span>;
+  }
+  return (
+    <input
+      autoFocus
+      className="campo ws-renomear"
+      defaultValue={info.nome ?? info.titulo}
+      placeholder={info.doc ?? "Nome do workspace"}
+      title="Enter grava · Esc desiste · vazio volta ao nome do documento"
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onFocus={(e) => e.target.select()}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === "Enter") { aoGravar(e.currentTarget.value); aoSair(); }
+        if (e.key === "Escape") aoSair();
+      }}
+      onBlur={(e) => { aoGravar(e.target.value); aoSair(); }}
+    />
+  );
+}
+
 export function abrirWorkspace(item?: { id: number; titulo: string; icone?: string }) {
   window.dispatchEvent(new CustomEvent("atelier:workspace", { detail: item ?? null }));
 }
@@ -25,13 +58,15 @@ export function abrirWorkspace(item?: { id: number; titulo: string; icone?: stri
 const mb = (b: number) => (b >= 1024 ** 3 ? `${(b / 1024 ** 3).toFixed(1)} GB` : `${Math.round(b / 1024 ** 2)} MB`);
 
 /** Na barra de título: o workspace atual; o menu troca, fecha (para os terminais) ou esquece. */
-export function SeletorWorkspace({ ws, trocar, fechar, esquecer }: {
+export function SeletorWorkspace({ ws, trocar, fechar, esquecer, renomear }: {
   ws: Workspaces;
   trocar: (chave: string) => void;
   fechar: (chave: string) => void;
   esquecer: (chave: string) => void;
+  renomear: (chave: string, nome: string) => void;
 }) {
   const pop = usePopover();
+  const [editando, setEditando] = useState<string | null>(null);
   const info = ws.info[ws.ativo] ?? { titulo: "?" };
   // status dos agentes: redesenha quando um hook avisa
   const [, setN] = useState(0);
@@ -53,22 +88,25 @@ export function SeletorWorkspace({ ws, trocar, fechar, esquecer }: {
     <>
       <button className="bt-btn seletor-ws" title="Workspace (Ctrl+Alt+PgUp / PgDn troca entre os abertos)" onClick={pop.abrir}>
         <LayoutDashboard size={14} />
-        <span className="ws-nome"><IconeWs k={ws.ativo} icone={info.icone} />{info.titulo}</span>
+        <span className="ws-nome" title={info.titulo}><IconeWs k={ws.ativo} icone={info.icone} />{info.titulo}</span>
         {(geral.temAgente || geral.estado) && <CarinhaAgente {...geral} />}
         {ws.abertos.length > 1 && <span className="ws-conta">{ws.abertos.length}</span>}
         <ChevronDown size={12} />
       </button>
       {pop.ancora && (
-        <Popover ancora={pop.ancora} aoFechar={pop.fechar} largura={320}>
+        <Popover ancora={pop.ancora} aoFechar={pop.fechar} largura={480}>
           <div className="menu-rotulo">Workspaces</div>
           {chaves.map((k) => {
             const i = ws.info[k] ?? { titulo: k };
             const aberto = ws.abertos.includes(k);
             const janelas = ws.estados[k].metades.reduce((n, m) => n + m.janelas.length, 0);
             return (
-              <div key={k} className={`menu-item ws-linha${k === ws.ativo ? " atual" : ""}`} onClick={() => { trocar(k); pop.fechar(); }}>
+              <div key={k} className={`menu-item ws-linha${k === ws.ativo ? " atual" : ""}`} onClick={() => { if (editando !== k) { trocar(k); pop.fechar(); } }}>
                 <span className={`ws-ponto${aberto ? " vivo" : ""}`} title={aberto ? "Aberto (terminais rodando)" : "Fechado (as janelas voltam ao abrir)"} />
-                <span className="ws-titulo"><IconeWs k={k} icone={i.icone} />{i.titulo}</span>
+                <NomeWs info={i} editando={editando === k} aoGravar={(n) => renomear(k, n)} aoSair={() => setEditando(null)} classe="ws-titulo">
+                  <IconeWs k={k} icone={i.icone} />
+                </NomeWs>
+                <button className="btn-icone mini ws-lapis" title="Renomear" onClick={(e) => { e.stopPropagation(); setEditando(k); }}><Pencil size={12} /></button>
                 {aberto && <CarinhaAgente {...agentesDe(k)} />}
                 <span className="dir" style={{ fontSize: 11 }}>{janelas} {janelas === 1 ? "janela" : "janelas"}</span>
                 {aberto && k !== ws.ativo && (
@@ -238,12 +276,14 @@ const ICONE_MODO: Record<string, React.ReactNode> = {
  * Visão geral (como o overview do Niri ou do Hyprland): um cartão por workspace, com o item dele, memória e CPU dos
  * terminais e agentes, e um esboço das janelas abertas. Setas escolhem, Enter vai, Esc fecha; digitar filtra.
  */
-export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs }: {
+export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renomear }: {
   ws: Workspaces;
   aoEscolher: (chave: string) => void;
   aoFechar: () => void;
   fecharWs: (chave: string) => void;
+  renomear: (chave: string, nome: string) => void;
 }) {
+  const [editando, setEditando] = useState<string | null>(null);
   const [m, setM] = useState<Medida | null>(null);
   const [busca, setBusca] = useState("");
   // os abertos primeiro (o atual na frente), depois os guardados
@@ -270,6 +310,7 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs }: {
     return el && grade.current ? Math.max(1, Math.round(grade.current.clientWidth / (el.offsetWidth + 14))) : 3;
   };
   const tecla = (e: React.KeyboardEvent) => {
+    if (editando) return;
     const n = ordem.length;
     if (e.key === "Escape") { e.preventDefault(); aoFechar(); }
     if (!n) return;
@@ -304,11 +345,12 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs }: {
               key={k}
               className={`ws-cartao${i === sel ? " sel" : ""}${k === ws.ativo ? " atual" : ""}${aberto ? "" : " guardado"}`}
               onMouseEnter={() => setSel(i)}
-              onClick={() => aoEscolher(k)}
+              onClick={() => editando !== k && aoEscolher(k)}
             >
               <div className="ws-cartao-cabeca">
                 <span className="ws-cartao-icone">{k === GERAL ? <Marca tamanho={18} /> : info.icone ?? "📄"}</span>
-                <span className="ws-cartao-titulo">{info.titulo}</span>
+                <NomeWs info={info} editando={editando === k} aoGravar={(n) => renomear(k, n)} aoSair={() => setEditando(null)} classe="ws-cartao-titulo" />
+                <button className="btn-icone mini ws-lapis" title="Renomear" onClick={(ev) => { ev.stopPropagation(); setEditando(k); }}><Pencil size={12} /></button>
                 {aberto && k !== ws.ativo && (
                   <button className="btn-icone mini" title="Fechar (para os terminais; as janelas ficam guardadas)" onClick={(ev) => { ev.stopPropagation(); fecharWs(k); }}><Power size={12} /></button>
                 )}

@@ -5,7 +5,7 @@ import { BASE } from "../api";
 import { abrir, falhou } from "../ui";
 import { Popover, usePopover } from "./Popover";
 import {
-  apagarNotificacao, configuracao, limparNotificacoes, marcarLida, marcarTodasLidas, mudarConfiguracao, Notificacao,
+  apagarNotificacao, Assunto, ASSUNTOS, assuntosEscondidos, configuracao, esconderAssuntos, limparNotificacoes, marcarLida, marcarTodasLidas, mudarConfiguracao, Notificacao,
   notificacoes, notificar, Posicao, viraToast,
 } from "../notificacoes";
 import { EstadoAgente } from "../agentes";
@@ -121,8 +121,12 @@ function quando(t: number): string {
 export function Sino() {
   useNotificacoes();
   const pop = usePopover();
-  const lista = notificacoes();
+  const todas = notificacoes();
+  const escondidos = assuntosEscondidos();
+  const visivel = (n: Notificacao) => !escondidos.includes(n.assunto);
+  const lista = todas.filter(visivel);
   const naoLidas = lista.filter((n) => !n.lida).length;
+  const alternar = (a: Assunto) => esconderAssuntos(escondidos.includes(a) ? escondidos.filter((x) => x !== a) : [...escondidos, a]);
   return (
     <>
       <button className="bt-btn sino" title={naoLidas ? `${naoLidas} notificações novas` : "Notificações"} onClick={(e) => { if (pop.ancora) marcarTodasLidas(); pop.abrir(e); }}>
@@ -133,10 +137,18 @@ export function Sino() {
         <Popover ancora={pop.ancora} aoFechar={() => { marcarTodasLidas(); pop.fechar(); }} largura={380}>
           <div className="menu-rotulo sino-topo">
             <span>Notificações</span>
-            {lista.length > 0 && <button className="btn" onClick={() => limparNotificacoes()}>Limpar tudo</button>}
+            {lista.length > 0 && <button className="btn" onClick={() => { limparNotificacoes(visivel); pop.fechar(); }}>Limpar tudo</button>}
+          </div>
+          <div className="sino-filtro">
+            <button className={escondidos.length === 0 ? "ativo" : ""} onClick={() => esconderAssuntos([])}>Todas <span>{todas.length}</span></button>
+            {ASSUNTOS.map((a) => (
+              <button key={a.id} className={escondidos.includes(a.id) ? "" : "ativo"} title={escondidos.includes(a.id) ? "Mostrar estas" : "Esconder estas"} onClick={() => alternar(a.id)}>
+                {a.nome} <span>{todas.filter((n) => n.assunto === a.id).length}</span>
+              </button>
+            ))}
           </div>
           <div className="sino-lista">
-            {lista.length === 0 && <div className="sino-vazio">Nada por aqui.</div>}
+            {lista.length === 0 && <div className="sino-vazio">{todas.length ? "Nada com este filtro." : "Nada por aqui."}</div>}
             {lista.map((n) => (
               <div key={n.id} className={`sino-item${n.lida ? "" : " nova"}${n.nivel === "erro" ? " erro" : ""}`}>
                 <Icone n={n} />

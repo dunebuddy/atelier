@@ -137,7 +137,13 @@ export default function App() {
       setWs((w) => (w ? W.abrir(w, d ? W.chaveItem(d.id) : W.GERAL, d ? { titulo: d.titulo || "Sem título", icone: d.icone } : undefined) : w));
     };
     window.addEventListener("atelier:workspace", f);
-    return () => window.removeEventListener("atelier:workspace", f);
+    // um documento foi lido (aberto, recarregado): o workspace dele acompanha o título
+    const lido = (e: Event) => {
+      const d = (e as CustomEvent<{ id: number; titulo: string; icone?: string }>).detail;
+      setWs((w) => (w ? W.seguirDocumento(w, d.id, d.titulo, d.icone) : w));
+    };
+    window.addEventListener("atelier:documento-lido", lido);
+    return () => { window.removeEventListener("atelier:workspace", f); window.removeEventListener("atelier:documento-lido", lido); };
   }, []);
 
   // itens abertos por último (aparecem na busca rápida vazia)
@@ -310,6 +316,9 @@ export default function App() {
         setWs((w) => (w ? W.fechar(w, d.item ? W.chaveItem(d.item.id) : w.ativo) : w));
         return;
       case "visao_geral": setVerWs(true); return;
+      case "renomear_workspace":
+        setWs((w) => (w ? W.renomear(w, d.item ? W.chaveItem(d.item.id) : W.GERAL, d.nome ?? "") : w));
+        return;
       case "dividir": setPainel((s) => (s.metades.length > 1 ? s : P.dividir(s))); return;
       case "juntar": setPainel(P.juntar); return;
       case "modo": naMetade((s) => P.mudarModo(s, s.foco, d.modo as P.Modo)); return;
@@ -347,7 +356,18 @@ export default function App() {
         const w = wsRef.current;
         const k = w ? Object.keys(w.estados).find((x) => W.sessoesDe(w.estados[x]).some((t) => t.sessao === d.sessao)) : undefined;
         const onde = k && w ? ` em “${w.info[k]?.titulo ?? k}”` : "";
-        notificar({ msg: d.estado === "esperando" ? `um agente está esperando você${onde}.` : `um agente terminou${onde}.`, nivel: d.estado === "esperando" ? "aviso" : "info", assunto: "agente", de: "Agente" });
+        // o agente que você está olhando agora (app em foco, workspace dele aberto, terminal dele à vista) não vira
+        // toast: vai só para o sininho, e a carinha muda de cor
+        const est = k && w && k === w.ativo ? w.estados[k] : null;
+        const aVista = document.hasFocus() && !verWs && !!est && est.metades.some((m, mi) => {
+          if (est.maximizada && mi !== est.foco) return false;
+          return m.janelas.some((j) => {
+            const r = P.rotaDe(j);
+            if (r.v !== "terminal" || r.sessao !== d.sessao) return false;
+            return (m.modo === "tile" && !est.maximizada) || m.ativa === j.id;
+          });
+        });
+        notificar({ msg: d.estado === "esperando" ? `um agente está esperando você${onde}.` : `um agente terminou${onde}.`, nivel: d.estado === "esperando" ? "aviso" : "info", assunto: "agente", de: "Agente" }, aVista);
         return;
       }
     }
@@ -592,6 +612,7 @@ export default function App() {
             trocar={(k) => setWs((w) => (w ? W.abrir(w, k) : w))}
             fechar={(k) => setWs((w) => (w ? W.fechar(w, k) : w))}
             esquecer={(k) => setWs((w) => (w ? W.esquecer(w, k) : w))}
+            renomear={(k, n) => setWs((w) => (w ? W.renomear(w, k, n) : w))}
           />
         }
         aoApagarItem={
@@ -664,6 +685,7 @@ export default function App() {
           aoEscolher={(k) => { setWs((w) => (w ? W.abrir(w, k) : w)); setVerWs(false); }}
           aoFechar={() => setVerWs(false)}
           fecharWs={(k) => setWs((w) => (w ? W.fechar(w, k) : w))}
+          renomear={(k, n) => setWs((w) => (w ? W.renomear(w, k, n) : w))}
         />
       )}
       <PilhaDeAvisos />

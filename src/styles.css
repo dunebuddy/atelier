@@ -564,6 +564,10 @@ table.tabela { border-collapse: separate; border-spacing: 0; min-width: 100%; fo
 .tabela tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--acento); }
 .celula { padding: 5px 12px; min-height: 39px; display: flex; align-items: center; cursor: pointer; min-width: 120px; max-width: 320px; }
 .celula.titulo { min-width: 300px; max-width: 520px; font-weight: 550; gap: 9px; }
+/* larguras escolhidas à mão: a célula ocupa a coluna inteira (sem o teto e o piso do automático) */
+.tabela.larguras-fixas { table-layout: fixed; }
+.tabela.larguras-fixas td { overflow: hidden; }
+.tabela.larguras-fixas .celula { min-width: 0; max-width: none; }
 .celula.titulo .abrir {
   opacity: 0; margin-left: auto; font-size: 11.5px; padding: 1px 7px; border: 1px solid var(--borda-forte); border-radius: 999px;
   color: var(--texto-2); background: var(--bg-elev); display: flex; align-items: center; gap: 4px; flex-shrink: 0;
@@ -579,10 +583,13 @@ tr:hover .celula .vazio, .prop-valor .vazio { opacity: 1; }
 .pagina { max-width: 1180px; margin: 0 auto; padding: 40px 44px 120px; }
 .pagina-cabeca { margin-bottom: 26px; }
 .pagina-icone {
-  width: 58px; height: 58px; border-radius: 16px; display: grid; place-items: center; font-size: 30px; margin-bottom: 14px;
+  width: 58px; height: 58px; border-radius: 16px; display: grid; place-items: center; font-size: 30px; flex-shrink: 0;
   background: var(--bg-fundo); border: 1px solid var(--borda);
 }
-.pagina-meta { display: flex; align-items: center; gap: 7px; color: var(--texto-3); font-size: 12.5px; margin-bottom: 6px; }
+.pagina-meta { display: flex; align-items: center; gap: 7px; color: var(--texto-3); font-size: 12.5px; margin-bottom: 14px; }
+/* ícone à esquerda, título à direita (quebra ao lado do ícone); as ações vêm embaixo */
+.pagina-titulo-linha { display: flex; align-items: flex-start; gap: 16px; }
+.pagina-titulo-linha .titulo-grande { flex: 1; min-width: 0; padding-top: 4px; }
 .pagina-meta .ponto { opacity: .6; }
 .meta-tipo { color: var(--acento); font-weight: 600; }
 .meta-tipo:hover { text-decoration: underline; text-underline-offset: 3px; }
@@ -915,7 +922,7 @@ button.tipo-chip.grande:hover { border-color: var(--acento); }
 .ldt-nota { margin-top: 5px; padding: 7px 11px; border-radius: 0 10px 10px 10px; background: var(--bg-elev); border: 1px solid var(--borda); white-space: pre-wrap; font-size: 13.5px; }
 
 /* qualidade de vida: ações na página e nas notas */
-.meta-acoes { margin-left: auto; display: inline-flex; gap: 4px; }
+.meta-acoes { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 12px; }
 .meta-acoes .btn { font-size: 12.5px; padding: 3px 8px; }
 .pagina-meta { flex-wrap: wrap; }
 button.id-item.copiar { border-radius: 5px; padding: 0 4px; margin: 0 -4px; }
@@ -1180,7 +1187,11 @@ body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grab
 .sino-conta { position: absolute; top: 2px; right: 1px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 999px; background: var(--t-red, #e5484d); color: #fff; font-size: 9.5px; font-weight: 700; line-height: 15px; text-align: center; }
 .sino-topo { display: flex; align-items: center; justify-content: space-between; }
 .sino-topo .btn { font-size: 11.5px; padding: 1px 8px; text-transform: none; letter-spacing: 0; }
-.sino-lista { max-height: 60vh; overflow-y: auto; }
+.sino-lista { max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+.sino-filtro { display: flex; gap: 4px; flex-wrap: wrap; padding: 2px 8px 8px; }
+.sino-filtro button { font-size: 11.5px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--borda); color: var(--texto-3); }
+.sino-filtro button.ativo { color: var(--texto); background: var(--acento-suave); border-color: transparent; }
+.sino-filtro button span { opacity: .7; margin-left: 3px; font-variant-numeric: tabular-nums; }
 .sino-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-radius: 8px; font-size: 13px; }
 .sino-item:hover { background: var(--hover); }
 .sino-item.nova { background: color-mix(in srgb, var(--acento) 9%, transparent); }
@@ -1190,15 +1201,23 @@ body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grab
 .sino-quando { color: var(--texto-3); font-size: 11px; margin-top: 2px; }
 .sino-vazio { padding: 14px 10px; color: var(--texto-3); font-size: 13px; }
 
-/* carinha do agente: vermelho esperando > trabalhando (animação) > verde terminou > claro parado > cinza sem agente */
-.carinha { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 18px; border-radius: 6px; margin-left: 4px; flex-shrink: 0; }
-.carinha.esperando { color: #fff; background: var(--t-red, #e5484d); }
-.carinha.terminou { color: #fff; background: var(--t-green, #30a46c); }
-.carinha.parado { color: var(--texto); background: color-mix(in srgb, var(--texto) 14%, transparent); }
+/* carinha do agente: a cor vai no robô (sem fundo). vermelho esperando > laranja trabalhando (balança) > verde terminou
+   > normal parado > apagado sem agente */
+.carinha { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; flex-shrink: 0; line-height: 0; }
+.carinha svg { display: block; }
+.carinha.esperando { color: var(--t-red, #e5484d); }
+.carinha.terminou { color: var(--t-green, #30a46c); }
+.carinha.parado { color: var(--texto-2); }
 .carinha.sem-agente { color: var(--texto-3); opacity: .45; }
-.carinha.trabalhando { color: #fff; background: linear-gradient(90deg, var(--t-blue, #3e63dd), var(--t-purple, #8e4ec6), var(--acento), var(--t-blue, #3e63dd)); background-size: 300% 100%; animation: carinha-trabalha 2.4s linear infinite; }
-@keyframes carinha-trabalha { from { background-position: 0% 0; } to { background-position: 300% 0; } }
-@media (prefers-reduced-motion: reduce) { .carinha.trabalhando { animation: none; } }
+.carinha.trabalhando { color: var(--t-orange, #f76b15); }
+.carinha.trabalhando svg { transform-origin: 50% 90%; animation: carinha-trabalha .9s ease-in-out infinite; }
+@keyframes carinha-trabalha {
+  0%, 100% { transform: rotate(-12deg) translateY(0); }
+  25% { transform: rotate(0deg) translateY(-1.5px); }
+  50% { transform: rotate(12deg) translateY(0); }
+  75% { transform: rotate(0deg) translateY(-1.5px); }
+}
+@media (prefers-reduced-motion: reduce) { .carinha.trabalhando svg { animation: none; } }
 
 /* trocar de bancada: confirmação */
 .modal.confirmar-bancada { max-width: 460px; padding: 20px 22px 16px; }
@@ -1219,3 +1238,25 @@ body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grab
 .prop-valor.calculada { cursor: default; font-variant-numeric: tabular-nums; }
 .formula-campo { font-family: var(--mono, ui-monospace, Consolas, monospace); font-size: 12.5px; width: 100%; resize: vertical; }
 .formula-dica { font-size: 11.5px; padding: 2px 10px 6px; }
+
+/* janela (ou o app) que quebrou ao desenhar */
+.quebrou { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; padding: 28px; color: var(--texto-2); }
+.quebrou strong { color: var(--texto); font-size: 15px; }
+.quebrou code { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--t-red); font-size: 12.5px; max-width: 100%; }
+.quebrou-acoes { display: flex; gap: 8px; }
+.quebrou.global { position: fixed; inset: 0; justify-content: center; align-items: center; text-align: center; background: var(--bg-fundo); }
+
+/* renomear workspace */
+.ws-renomear { flex: 1; min-width: 0; height: 24px; padding: 2px 8px; font-size: 13px; }
+.ws-lapis { opacity: 0; }
+.ws-linha:hover .ws-lapis, .ws-cartao:hover .ws-lapis, .ws-lapis:focus-visible { opacity: 1; }
+
+/* explorador: a trilha rola (sem barra) e mostra sempre o fim; na árvore, o caminho da raiz ao lado */
+.ex-trilha.rolavel { overflow-x: auto; scrollbar-width: none; }
+.ex-trilha.rolavel::-webkit-scrollbar { display: none; }
+.ex-trilha.rolavel > * { flex-shrink: 0; }
+.ex-trilha-caminho { color: var(--texto-3); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: left; min-width: 0; margin-left: 6px; }
+.explorador:focus { outline: none; }
+/* arquivos na ficha, em árvore */
+.arquivos-arvore { max-height: 360px; overflow-y: auto; margin: 0 -6px; }
+.arquivos-arvore .ex-entrada { font-size: 12.5px; padding-top: 3px; padding-bottom: 3px; }

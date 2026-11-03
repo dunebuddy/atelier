@@ -102,7 +102,20 @@ export function apagarNotificacao(id: number) {
   salvar();
 }
 
-export function limparNotificacoes() {
-  lista = [];
+/** Apaga todas, ou só as que `quais` aceita (o filtro do sininho). */
+export function limparNotificacoes(quais?: (n: Notificacao) => boolean) {
+  lista = quais ? lista.filter((n) => !quais(n)) : [];
   salvar();
+}
+
+// filtro do sininho: assuntos escondidos da lista (e do número); não muda o que vira toast
+export const ASSUNTOS: { id: Assunto; nome: string }[] = [
+  { id: "app", nome: "Sistema" },
+  { id: "agente", nome: "Agentes" },
+  { id: "atualizacao", nome: "Atualização" },
+];
+export const assuntosEscondidos = (): Assunto[] => ler<Assunto[]>("notificacoes.escondidos", []);
+export function esconderAssuntos(l: Assunto[]) {
+  guardar("notificacoes.escondidos", l);
+  window.dispatchEvent(new Event("atelier:notificacoes"));
 }

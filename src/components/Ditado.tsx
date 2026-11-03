@@ -25,6 +25,9 @@ export function BotaoDitado({ aoTexto, titulo = "Ditar por voz" }: { aoTexto: (t
   useDitado();
   const [fase, setFase] = useState<"parado" | "gravando" | "transcrevendo">("parado");
   const gravacao = useRef<Awaited<ReturnType<typeof D.gravar>> | null>(null);
+  // streaming: o texto que já saiu enquanto você fala (aparece ao lado do microfone) e a fila de envio do áudio
+  const [parcial, setParcial] = useState("");
+  const envio = useRef<{ buffer: Float32Array[]; tam: number; fila: Promise<unknown> } | null>(null);
 
   useEffect(() => {
     if (fase !== "gravando") return;
@@ -33,6 +36,8 @@ export function BotaoDitado({ aoTexto, titulo = "Ditar por voz" }: { aoTexto: (t
       e.stopPropagation();
       gravacao.current?.cancelar();
       gravacao.current = null;
+      envio.current = null;
+      setParcial("");
       setFase("parado");
     };
     window.addEventListener("keydown", f, true);
@@ -46,16 +51,27 @@ export function BotaoDitado({ aoTexto, titulo = "Ditar por voz" }: { aoTexto: (t
       gravacao.current = null;
       if (!g) return;
       setFase("transcrevendo");
+      const stream = envio.current;
+      envio.current = null;
       try {
         const audio = await g.parar();
-        if (audio.length < 16000 * 0.3) { setFase("parado"); return; }
-        const t = await D.transcrever(audio);
+        let t: string;
+        if (stream) {
+          // manda o que ficou no buffer, espera a fila e fecha o ditado
+          if (stream.tam) stream.fila = stream.fila.then(() => D.enviarStreaming(juntar(stream.buffer)));
+          await stream.fila;
+          t = await D.terminarStreaming();
+        } else {
+          if (audio.length < 16000 * 0.3) { setFase("parado"); return; }
+          t = await D.transcrever(audio);
+        }
         if (t) aoTexto(t);
         else avisar("Não entendi nada. Tente falar mais perto do microfone.");
       } catch (e) {
         falhou(e);
       } finally {
         setFase("parado");
+        setParcial("");
       }
       return;
     }
@@ -65,6 +81,27 @@ export function BotaoDitado({ aoTexto, titulo = "Ditar por voz" }: { aoTexto: (t
       return;
     }
     try {
+      if (D.modeloAtual()?.motor === "streaming") {
+        // streaming: junta ~0,5 s de áudio e manda; o texto que volta aparece na hora
+        const s = { buffer: [] as Float32Array[], tam: 0, fila: D.comecarStreaming() as Promise<unknown> };
+        envio.current = s;
+        setParcial("");
+        s.fila.catch(falhou);
+        gravacao.current = await D.gravar((p) => {
+          if (envio.current !== s) return;
+          s.buffer.push(p);
+          s.tam += p.length;
+          if (s.tam < 8000) return;
+          const audio = juntar(s.buffer);
+          s.buffer = [];
+          s.tam = 0;
+          s.fila = s.fila.then(() => D.enviarStreaming(audio)).then((novo) => {
+            if (novo && envio.current === s) setParcial((t) => (t + novo).replace(/^\s+/, ""));
+          }).catch(() => {});
+        });
+        setFase("gravando");
+        return;
+      }
       gravacao.current = await D.gravar();
       setFase("gravando");
       D.preparar(); // carrega o modelo enquanto você fala
@@ -74,6 +111,8 @@ export function BotaoDitado({ aoTexto, titulo = "Ditar por voz" }: { aoTexto: (t
   };
 
   return (
+    <>
+    {parcial && <span className="ditado-parcial" title={parcial}>{parcial.length > 60 ? `…${parcial.slice(-60)}` : parcial}</span>}
     <button
       type="button"
       className={`btn-icone ditado-botao ${fase}`}
@@ -82,7 +121,15 @@ export function BotaoDitado({ aoTexto, titulo = "Ditar por voz" }: { aoTexto: (t
     >
       {fase === "transcrevendo" ? <Loader2 size={15} className="girando" /> : fase === "gravando" ? <Square size={13} /> : <Mic size={15} />}
     </button>
+    </>
   );
+}
+
+function juntar(partes: Float32Array[]): Float32Array {
+  const a = new Float32Array(partes.reduce((n, p) => n + p.length, 0));
+  let i = 0;
+  for (const p of partes) { a.set(p, i); i += p.length; }
+  return a;
 }
 
 const TEMPOS: [number, string][] = [[1, "1 minuto"], [5, "5 minutos"], [15, "15 minutos"], [30, "30 minutos"], [0, "Nunca (fica carregado)"]];

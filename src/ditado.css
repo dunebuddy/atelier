@@ -23,3 +23,9 @@
 .ditado-teste .vazio { color: var(--texto-3); }
 .ditado-indicador { color: var(--acento); }
 .comando-pedidos { padding: 2px 9px; font-size: 12px; }
+
+/* streaming: o texto que já saiu, ao lado do microfone, enquanto você fala */
+.ditado-parcial {
+  max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 12.5px; color: var(--texto-2); padding: 2px 8px; border-radius: 8px; background: var(--acento-suave);
+}

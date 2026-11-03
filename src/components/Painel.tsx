@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { combinacao } from "../atalhos";
 import { PaginaConsulta } from "./Consultas";
+import { Quebrou } from "./Quebrou";
 import {
   ArrowLeftToLine, Bot, ChevronDown, ChevronLeft, ChevronRight, Columns2, FolderOpen, FolderTree, GalleryHorizontalEnd, LayoutPanelLeft, List,
   Minimize2, PanelTop, Rows2, SquareTerminal, X,
@@ -360,7 +361,9 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
             <div className="janela-corpo">
               {/* o terminal segue o lugar da janela; o resto também para quando o workspace está escondido */}
               <VisivelContext.Provider value={ativo && l.visivel}>
-                <Conteudo j={j} ctx={ctx} visivel={l.visivel} mudar={mudar} />
+                <Quebrou onde={`janela: ${j.titulo ?? JSON.stringify(P.rotaDe(j))}`} aoFechar={() => mudar((s) => P.fechar(s, j.id))}>
+                  <Conteudo j={j} ctx={ctx} visivel={l.visivel} mudar={mudar} />
+                </Quebrou>
               </VisivelContext.Provider>
             </div>
           </section>
@@ -506,7 +509,13 @@ function Conteudo({ j, ctx, visivel, mudar }: { j: Janela; ctx: Contexto; visive
           id={r.id}
           ir={ir}
           aoMudarEsquema={ctx.aoMudarEsquema}
-          aoCarregar={(it) => it && rotular({ titulo: it.titulo || "Sem título", icone: esquema.tipos.find((t) => t.id === it.tipo_id)?.icone ?? "📄", tipo_id: it.tipo_id })}
+          aoCarregar={(it) => {
+            if (!it) return;
+            const icone = esquema.tipos.find((t) => t.id === it.tipo_id)?.icone ?? "📄";
+            rotular({ titulo: it.titulo || "Sem título", icone, tipo_id: it.tipo_id });
+            // o workspace do documento acompanha o título dele
+            window.dispatchEvent(new CustomEvent("atelier:documento-lido", { detail: { id: it.id, titulo: it.titulo || "Sem título", icone } }));
+          }}
         />
       );
     case "lixeira":

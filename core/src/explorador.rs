@@ -23,7 +23,17 @@ pub fn dentro(raiz: &Path, caminho: &Path) -> Result<PathBuf, Erro> {
     if !c.starts_with(&r) && pedidos.as_ref() != Some(&c) {
         return Err(Erro::Invalido("fora da bancada: o explorador só mostra arquivos da bancada aberta".into()));
     }
-    Ok(c)
+    Ok(sem_prefixo(c))
+}
+
+/// No Windows, `canonicalize` devolve `\\?\C:\...`; a tela compara com o caminho comum (a trilha do explorador, a
+/// pasta do documento), então o prefixo sai (menos em caminho de rede, `\\?\UNC\`).
+fn sem_prefixo(p: PathBuf) -> PathBuf {
+    let s = p.to_string_lossy();
+    match s.strip_prefix(r"\\?\") {
+        Some(resto) if !resto.starts_with(r"UNC\") => PathBuf::from(resto),
+        _ => p,
+    }
 }
 
 fn raiz(b: &Banco) -> Result<PathBuf, Erro> {
@@ -83,7 +93,7 @@ pub async fn explorar(State(b): State<Banco>, Query(q): Query<HashMap<String, St
             a["nome"].as_str().unwrap_or("").to_lowercase().cmp(&b["nome"].as_str().unwrap_or("").to_lowercase())
         })
     });
-    let pai = dir.parent().filter(|p| p.starts_with(raiz.canonicalize().unwrap_or_default())).map(Path::to_path_buf);
+    let pai = dir.parent().filter(|p| p.starts_with(sem_prefixo(raiz.canonicalize().unwrap_or_default()))).map(Path::to_path_buf);
     Ok(Json(json!({ "caminho": dir, "pai": pai, "raiz_bancada": raiz, "entradas": lista })))
 }
 

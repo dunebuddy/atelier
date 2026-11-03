@@ -21,136 +21,7 @@ Como usar:
 > (0.2.4 a 0.2.9) ou em "Ideias, sem data". Pedido novo entra aqui e ganha lugar lá.
 
 ### Bugs
-- **Sininho: notificações coladas umas nas outras** (2026-11-03). Na lista do sininho os itens encostam (dá para
-  ver nas não lidas, que têm fundo). Pré-análise: `.sino-lista` (`styles.css`, ~linha 1183) não tem espaço entre os
-  itens; `.sino-item` tem padding mas nenhuma margem. Correção: `.sino-lista { display: flex; flex-direction: column;
-  gap: 4px; }` (talvez uma linha fina entre elas, se só o espaço não bastar).
-  - Junto: **"Limpar tudo" limpa e fecha o sininho** (pedido do mesmo dia). Hoje só limpa e a janelinha fica aberta
-    e vazia. No `Sino` (`Avisos.tsx`, ~linha 136): chamar o fechar do popover depois de `limparNotificacoes()`.
-- **Tela apagou inteira (só o fundo) depois de um pedido ao agente da caixa de comando** (2026-11-03, ~10:25). Voltou
-  com Ctrl+F5. O agente fez tudo certo pelo MCP: trocou o tipo do documento aberto (Dívida → Projeto), criou uma
-  demanda e uma task com pasta, dois `nao_consigo` (dois avisos seguidos), `anotar` e, por último, `tela abrir` da
-  task na metade direita. Pré-análise:
-  - **Não reproduziu** no teste sem janela: a mesma sequência (com dados inventados, documento aberto no workspace
-    dele, troca de tipo, filhos, dois avisos, abrir à direita) não quebrou. Pode depender do estado da tela de
-    verdade (o que estava aberto, fita/tile) ou de algo que o teste sem janela não desenha.
-  - **Por que apaga tudo:** o app não tem nenhum *error boundary* (nem `componentDidCatch`, nem
-    `onerror`/`unhandledrejection` registrados). Qualquer erro ao desenhar uma janela derruba o React inteiro, sobra
-    só o fundo, e o erro se perde (ninguém viu a mensagem).
-  - **Correção proposta:** um *error boundary* por janela do painel (a janela que quebrou mostra "isto quebrou:
-    <mensagem>" com botões Recarregar a janela / Fechar, e o resto do app segue) e um global em volta do App (tela
-    de "algo quebrou" com Recarregar, em vez do fundo vazio). Os dois gravam o erro com a pilha num log
-    (`/api/log` → arquivo na pasta do app), para da próxima vez dar para achar a causa de verdade.
-- **Tabela: alargar a coluna não alarga o conteúdo** (2026-11-03). Arrastando a borda do cabeçalho, a coluna
-  cresce mas o conteúdo não acompanha (visto no Título; diminuir funciona). Pré-análise: a causa está no CSS, não
-  nas larguras guardadas: `.celula` tem `max-width: 320px` e `.celula.titulo` tem `max-width: 520px` (`styles.css`,
-  ~linha 565), então a célula para de crescer nesse teto mesmo com a `<col>` mais larga. Também afeta as outras
-  colunas acima de 320 px. Correção provável: com larguras fixas (`.tabela.larguras-fixas`, que já existe no
-  `Layouts.tsx`), tirar o teto (`max-width: none`, e o `min-width` também, para poder estreitar abaixo de 120/300) e
-  deixar a célula ocupar a coluna inteira; sem larguras guardadas, o teto continua valendo para o automático.
-
 ### Melhorias pedidas
-- **Explorador de arquivos interno: Backspace volta** (2026-11-03). Pré-análise: `Explorador.tsx` (~linha 104) não
-  trata tecla nenhuma; voltar hoje é o ".." ou a trilha. Backspace: com um arquivo aberto na prévia, fecha a prévia
-  (volta à lista, o mesmo `aoVoltar`); na lista, sobe para a pasta de cima (`pai(dir)`, sem passar da raiz). Só
-  quando o foco está no explorador e **não** num campo de texto (a prévia edita arquivo de texto: lá o Backspace é
-  apagar). Talvez Alt+← também, como no Explorer do Windows.
-  - Junto: **caminho (breadcrumb) sempre visível**, para saber onde se está ("você fica perdido"). O Paulo quer que
-    comece pelo documento (`#2723e1f Análise da arquitetura...`) e vá juntando as pastas: `#código Título / artefatos
-    / relatorio`. Pré-análise: a lista (`Explorador`) já tem trilha (`.ex-trilha`), mas a raiz mostra só `#código`
-    (sem o título) e, com caminho fundo, o `overflow: hidden` corta o **fim** (justo a pasta onde você está): cortar
-    pelo começo (o começo vira "…", o fim fica sempre à vista). Na árvore (`ArvoreArquivos`) não tem trilha nenhuma,
-    só o nome da raiz: mostrar o caminho do arquivo ou pasta selecionado.
-- **Arquivos da ficha do documento: árvore de pastas e recarregar** (2026-11-03; é a seção Arquivos na ficha). O agente pôs vários arquivos
-  na pasta e a seção continuou mostrando um só. Pré-análise, duas causas:
-  - **não é automático:** `Arquivos.tsx` só lê a lista ao abrir a página (ou quando a própria página traz arquivo);
-    nada avisa quando outro processo grava na pasta;
-  - **só um nível:** `pastas::listar_arquivos` (`core/src/pastas.rs`, ~linha 86) lê `insumos/`, `artefatos/`,
-    `rascunho/` e a raiz, sem descer; o que o agente põe numa subpasta (`artefatos/relatorio/...`) aparece só como a
-    pasta, ou nem aparece.
-  Proposta: mostrar como **árvore** (pastas que abrem e fecham, como no explorador em árvore que já existe,
-  `Explorador.tsx`/`Arvore`), um botão **Recarregar** no título da seção, e recarregar sozinho ao voltar o foco à
-  janela e quando o agente avisar (o MCP pode mandar um "mudou" ao terminar; ou um vigia de pasta no servidor, como o
-  `vigiar_banco`, só para as pastas abertas). Limitar profundidade/quantidade para pasta enorme (node_modules etc.).
-- **Cabeçalho da página do documento: reorganizar** (2026-11-03, com print). Hoje: ícone grande sozinho em cima →
-  linha do código/tipo/criado/atualizado → ações → título. O Paulo quer, de cima para baixo:
-  1. a linha `#código · Tipo · criado … · atualizado …`, primeira de todas;
-  2. **ícone à esquerda e título à direita, na mesma linha** (duas colunas; o título quebra ao lado do ícone);
-  3. a linha de ações (Abrir pasta, Agente, Arquivos, Histórico, Duplicar, Workspace, Exportar) embaixo.
-  Pré-análise: só ordem e layout em `PaginaItem.tsx` (~linhas 266–342: `.pagina-icone`, `.pagina-meta`, as ações e o
-  `.titulo-grande`) e o CSS. Ícone + título num `display: flex; align-items: flex-start; gap`, ícone sem encolher.
-  Conferir em janela estreita (o `@container janela` da `.pagina`) e o foco/atalhos do título continuarem iguais.
-- **Renomear workspace, e o nome acompanhar o documento** (2026-11-03). Hoje não dá para renomear workspace; e
-  quando o projeto é renomeado, o workspace dele continua com o nome velho. Pré-análise: o nome fica gravado em
-  `ws.info[chave].titulo` na hora em que o workspace abre (`workspaces.ts`, `abrir`, ~linha 82) e nunca mais muda.
-  Proposta:
-  - **acompanhar sozinho:** o workspace de documento mostra o título atual do documento (atualizar `info` quando o
-    documento muda de título: o evento "mudou" do banco já chega ao App; ou guardar só a chave e ler o título na
-    hora);
-  - **renomear à mão:** duplo clique / "Renomear" na lista de workspaces e na visão geral (Ctrl+Shift+O). Nome dado à
-    mão vale mais que o do documento (guardar `nome_proprio` e mostrar ele se existir; "voltar ao nome do documento"
-    apaga). O da bancada pode ganhar nome também (hoje é sempre "Bancada");
-  - **MCP:** `tela` com `acao: "renomear_workspace"` (`codigo` do documento ou sem codigo = o da bancada, `nome`;
-    `nome` vazio = volta ao do documento).
-  - Bancada: renomear já existe na API (`PATCH /api/bancadas`, `bancada.rs` `renomear`); conferir se a tela de
-    Configurações → Bancadas oferece, e se o MCP tem (não tem: dá para pôr junto).
-- **Filtro no sininho por assunto** (2026-11-03; "o próprio Unity tem"). No topo da lista do sininho, botõezinhos
-  de alternar: **Todas · Sistema · Agentes · Atualização**; desligar "Agentes" esconde as de agente da lista (e do
-  número do sininho), para ver só as que importam. Pré-análise: as notificações já têm `assunto` (`app`, `agente`,
-  `atualizacao`, em `notificacoes.ts`); é filtrar a lista no `Sino` (`Avisos.tsx`) e guardar a escolha (em
-  `ler/guardar`, para ficar entre aberturas). Cada botão com a contagem daquele assunto, como no Unity. Não confundir
-  com Configurações → Notificações → assuntos, que decide o que vira **toast**; este filtro é só do histórico.
-  Combina com o item "Notificação demais do agente" e com o espaço entre itens / "Limpar tudo fecha".
-- **Notificação demais do agente** (2026-11-03). Toda resposta do agente (hook Stop → "um agente terminou") sobe um
-  aviso; conversando com ele, é um aviso por mensagem. O Paulo quer: **só avisar quando o agente não é o que ele está
-  olhando agora**. Pré-análise: em `App.tsx` (~linha 343, `case "agente"`) já se acha o workspace `k` da sessão. Regra
-  proposta: se a janela do app está em foco (`document.hasFocus()`), `k` é o workspace ativo e o terminal daquela
-  sessão está à vista (a janela ativa de uma das metades, ou visível no tile/fita), **não sobe toast**: vai só para o
-  histórico do sininho (`notificar(n, true)`, que já existe) e a carinha muda de cor como hoje. Fora isso, avisa
-  como hoje. Pensar se "esperando você" segue a mesma regra (provavelmente sim: você já está vendo o pedido) e se
-  vale uma opção em Configurações → Notificações ("avisar mesmo quando o agente está à vista").
-- **Lista de workspaces (barra de título): nomes comidos** (2026-11-03). Nome comprido vira "…" e não há como ver o
-  nome inteiro. O Paulo quer: a janelinha **~50% mais larga** e um **tooltip com o nome inteiro** ao passar o
-  mouse. Pré-análise: `Workspaces.tsx` (~linha 62), `Popover ... largura={320}` → 480; na `.ws-titulo` pôr
-  `title={i.titulo}` (o mesmo vale para o botão da barra, `.seletor-ws .ws-nome`, que corta em 240 px: `title` com o
-  nome, e talvez subir o teto). Conferir se o popover de 480 px cabe em janela estreita (ele já se ajusta à borda?).
-- **Carinha do agente: a cor vai no robô, não no fundo** (pedido de 2026-11-03, com print). Hoje (`.carinha` em
-  `styles.css`, `CarinhaAgente` em `Avisos.tsx`) o estado pinta o fundo do quadradinho, e o "trabalhando" é um degradê
-  correndo no fundo; além disso o robô não fica centralizado na aba do workspace. O Paulo quer:
-  - sem fundo colorido: a **cor da fonte do robô** muda: vermelho esperando você, verde terminou, cinza parado/sem
-    agente (como hoje, só que no traço);
-  - **trabalhando**: uma cor própria (ele sugeriu laranja) e uma **animação de movimento** no robô, que mostre que
-    tem coisa acontecendo (ele balançando, pulando de leve), no lugar do degradê;
-  - centralizar o robô na aba.
-  - Pré-análise: é só CSS. Tirar `background` dos estados e usar `color` (o ícone `Bot` do lucide herda
-    `currentColor`); laranja = `var(--t-orange)`; animação por `transform` no svg (ex.: `rotate(-12deg)` ↔
-    `rotate(12deg)` com `translateY(-1px)`, ~0,8 s, `transform-origin` embaixo), mantendo o `prefers-reduced-motion`
-    (aí fica só a cor). Centralizar: conferir o `margin-left: 4px` e o `align-items` da aba do workspace.
-- **Ditado: motor de streaming, e o Nemotron 3.5 ASR Streaming (NVIDIA) no catálogo** (pedido de 2026-11-02; o
-  Paulo decide onde entra no roadmap). Decisão dele: **cada tipo de modelo no seu motor**. Modelo de streaming roda num
-  motor de streaming (transcreve enquanto fala); modelo de lote (Parakeet TDT, Whisper) continua no motor de hoje,
-  que transcreve ao parar. "O Handy faz, por que a gente não faz?"
-  - O modelo: `nvidia/nemotron-3.5-asr-streaming-0.6b` (jun/2026, sucessor do Parakeet), 40 idiomas com pt-BR
-    (WER 5,48% no FLEURS pt-BR), pontuação e maiúsculas. Licença OpenMDW (uso comercial ok).
-  - Por que não é só uma linha em `modelos-ditado.json`: é FastConformer cache-aware + RNNT; o parakeet.js só roda
-    TDT e o transformers.js não o conhece. Precisa de um terceiro motor (`motor: "streaming"` ou "nemotron").
-  - ONNX pronto para o navegador: `onnx-community/nemotron-3.5-asr-streaming-0.6b-onnx-int4` (~790 MB: `encoder.onnx`
-    + `.data` 690 MB, `decoder` 60 MB, `joint` 38 MB, `tokenizer.json`/`vocab.txt`, e um `silero_vad.onnx`).
-    Formato do onnxruntime-genai; no navegador, onnxruntime-web direto. Alternativa: o export do sherpa-onnx
-    (`csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-...`, ~680 MB).
-  - O que o motor precisa fazer (de `genai_config.json` e `audio_processor_config.json`):
-    - mel em JS: 128 mels, n_fft 512, hop 160, janela hann 400, pré-ênfase 0,97, log com +1e-10, sem normalizar;
-    - pedaços de 8960 amostras (560 ms); o encoder recebe e devolve o cache (`cache_last_channel`,
-      `cache_last_time`, `cache_last_channel_len`; contexto à esquerda 56, conv 8, pre-encode 9) e o `lang_id`
-      (o idioma escolhido, ou automático);
-    - RNNT guloso: decoder LSTM (2 camadas, 640; `h_in`/`c_in`), joint, blank 13087, até 10 símbolos por quadro;
-      tokens SentencePiece (`tokenizer.json`);
-    - o VAD (silero) para cortar silêncio, opcional.
-  - Na captura (`ditado.ts`, `gravar`): mandar o áudio ao Worker em pedaços enquanto grava (hoje junta tudo e manda
-    no fim) e mostrar o texto parcial na tela; ao parar, fecha o último pedaço.
-  - O catálogo ganha o campo `motor` novo; as versões antigas do app ignoram motor que não conhecem (hoje tratariam
-    como Whisper e dariam erro): filtrar isso no `catalogo()` antes de pôr o modelo no JSON do GitHub.
-  - Teste: só dá para conferir no app de verdade (microfone); antes, um teste com um .wav no Worker.
 ### Pedidos do agente (de `pedidos-ao-atelier.md`)
 
 Revisão crítica de 2026-11-02 (o Paulo pediu: dizer o que não faz sentido, o que já existe e o que engessa o app).
@@ -203,6 +74,9 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 - Migrar o posto `daily-work` para dentro do atelier.
 
 ### A conferir no uso
+- **0.2.11:** ditar com o Nemotron no microfone de verdade (baixar em Configurações → Ditado; o primeiro ditado
+  demora uns segundos carregando); o robô animado; renomear workspace; a tela "isto quebrou" se algo der errado
+  (e o `erros.log`).
 - **0.2.8 no app de verdade** (o teste sem janela não tem Tauri): abrir uma bancada em nova janela, fechar essa
   janela (fecha de verdade; a principal vai para a bandeja), clicar num link `atelier://doc/<código>` com o app
   aberto e com ele fechado, e a janela nova abrindo o documento de outra bancada.
@@ -220,6 +94,33 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.11** (2026-11-03, todas as pendências de uma vez, a pedido do Paulo):
+  - **sininho:** espaço entre as notificações; filtro por assunto no topo (Todas · Sistema · Agentes · Atualização,
+    com contagem; esconder um assunto tira da lista e do número); "Limpar tudo" limpa o que está à vista e fecha;
+  - **agente à vista não vira toast:** com o app em foco, o workspace dele aberto e o terminal dele à vista (aba
+    ativa, tile, ou a janela maximizada), "terminou" e "esperando" vão só para o sininho;
+  - **carinha do agente:** a cor vai no robô (sem fundo): vermelho esperando, laranja trabalhando (balançando),
+    verde terminou; centralizado;
+  - **tabela:** com larguras escolhidas à mão, a célula ocupa a coluna inteira (sem o teto de 320/520 px);
+  - **tela que quebra não apaga mais o app:** proteção por janela ("Esta janela quebrou", Tentar de novo / Fechar)
+    e uma geral (Recarregar); os erros vão para `~/atelier/erros.log` (`POST /api/log`), com os erros soltos
+    (promessa sem catch) também. A causa da tela apagada de 03/11 segue desconhecida: o log vai mostrar da próxima;
+  - **workspaces:** lista 50% mais larga (480 px) e com o nome inteiro no tooltip (também no botão da barra);
+    **renomear** (lápis na lista e na visão geral; vazio volta ao nome do documento); o workspace de documento
+    **acompanha o título** dele; MCP `tela` com `acao: "renomear_workspace"`;
+  - **página do documento:** linha do código/tipo/datas em cima, ícone e título lado a lado, ações embaixo;
+  - **arquivos da ficha em árvore**, com as pastas abrindo, botão de reler e releitura sozinha a cada 5 s;
+  - **explorador:** Backspace (ou Alt+←) fecha o arquivo ou sobe uma pasta; a trilha começa por `#código Título` e
+    mostra sempre o fim. Corrigido junto: a trilha nunca mostrava as subpastas (o servidor devolvia os caminhos
+    com o prefixo `\\?\` do Windows);
+  - **ditado de streaming com o Nemotron 3.5 (NVIDIA):** motor novo (`src/nemotron.ts`: mel do NeMo em JS, encoder
+    com cache, RNNT guloso) seguindo o onnxruntime-genai; o texto aparece ao lado do microfone enquanto você fala
+    e entra inteiro ao parar. Idioma automático (com "pt-BR" fixo o modelo tira a pontuação; no automático sai
+    certinho). O encoder roda na **placa de vídeo** (WebGPU, ~230 ms por pedaço de 560 ms); no processador o
+    WebView roda com uma thread só e fica ~6× mais lento que a fala (cai para lá se a placa falhar, e avisa). O
+    modelo (~790 MB) fica no OPFS do WebView: o Cache Storage recusou o arquivo de 690 MB. Testado com áudio
+    gerado (voz Maria do Windows) dentro do app de teste; o microfone de verdade fica para conferir;
+  - o catálogo de modelos agora ignora motor que a versão não conhece (para os próximos).
 - **0.2.10** (2026-11-02, bugs do uso):
   - **"Clicar em Filhos criou duas visões"**: não foi o clique (o "Filhos" da ficha já abre lista avulsa); foi o agente
     da calculadora, que chamou `criar_visao` para mostrar os passos, porque o MCP não tinha lista temporária. Agora

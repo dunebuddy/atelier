@@ -484,3 +484,7 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 - 0.2.10: `tela` abrir com `lista` (lista temporária pelo MCP, sem salvar; rota `consulta` ganhou `layout` e `config`);
   terminal com `@xterm/addon-unicode11` (largura dos símbolos dos agentes), nova medida da fonte depois de carregar e
   redesenho a cada ajuste; Ctrl+V cola só pelo navegador (antes colava duas vezes).
+- 0.2.11 (2026-11-03): todas as pendências numa versão. Novos: `src/nemotron.ts` (motor de streaming; teste fora
+  do app com Bun + onnxruntime-web e um .wav), `components/Quebrou.tsx` (error boundaries + `/api/log`),
+  `RamoPasta` exportado do Explorador (árvore da ficha), `W.renomear`/`W.seguirDocumento` em `workspaces.ts`.
+  `explorador::sem_prefixo` tira o `\\?\` dos caminhos canônicos.

@@ -50,6 +50,17 @@ Como usar:
   deixar a célula ocupar a coluna inteira; sem larguras guardadas, o teto continua valendo para o automático.
 
 ### Melhorias pedidas
+- **Arquivos no fim da página do documento: árvore de pastas e recarregar** (2026-11-03). O agente pôs vários arquivos
+  na pasta e a seção continuou mostrando um só. Pré-análise, duas causas:
+  - **não é automático:** `Arquivos.tsx` só lê a lista ao abrir a página (ou quando a própria página traz arquivo);
+    nada avisa quando outro processo grava na pasta;
+  - **só um nível:** `pastas::listar_arquivos` (`core/src/pastas.rs`, ~linha 86) lê `insumos/`, `artefatos/`,
+    `rascunho/` e a raiz, sem descer; o que o agente põe numa subpasta (`artefatos/relatorio/...`) aparece só como a
+    pasta, ou nem aparece.
+  Proposta: mostrar como **árvore** (pastas que abrem e fecham, como no explorador em árvore que já existe,
+  `Explorador.tsx`/`Arvore`), um botão **Recarregar** no título da seção, e recarregar sozinho ao voltar o foco à
+  janela e quando o agente avisar (o MCP pode mandar um "mudou" ao terminar; ou um vigia de pasta no servidor, como o
+  `vigiar_banco`, só para as pastas abertas). Limitar profundidade/quantidade para pasta enorme (node_modules etc.).
 - **Cabeçalho da página do documento: reorganizar** (2026-11-03, com print). Hoje: ícone grande sozinho em cima →
   linha do código/tipo/criado/atualizado → ações → título. O Paulo quer, de cima para baixo:
   1. a linha `#código · Tipo · criado … · atualizado …`, primeira de todas;

@@ -50,6 +50,14 @@ Como usar:
   deixar a célula ocupar a coluna inteira; sem larguras guardadas, o teto continua valendo para o automático.
 
 ### Melhorias pedidas
+- **Cabeçalho da página do documento: reorganizar** (2026-11-03, com print). Hoje: ícone grande sozinho em cima →
+  linha do código/tipo/criado/atualizado → ações → título. O Paulo quer, de cima para baixo:
+  1. a linha `#código · Tipo · criado … · atualizado …`, primeira de todas;
+  2. **ícone à esquerda e título à direita, na mesma linha** (duas colunas; o título quebra ao lado do ícone);
+  3. a linha de ações (Abrir pasta, Agente, Arquivos, Histórico, Duplicar, Workspace, Exportar) embaixo.
+  Pré-análise: só ordem e layout em `PaginaItem.tsx` (~linhas 266–342: `.pagina-icone`, `.pagina-meta`, as ações e o
+  `.titulo-grande`) e o CSS. Ícone + título num `display: flex; align-items: flex-start; gap`, ícone sem encolher.
+  Conferir em janela estreita (o `@container janela` da `.pagina`) e o foco/atalhos do título continuarem iguais.
 - **Renomear workspace, e o nome acompanhar o documento** (2026-11-03). Hoje não dá para renomear workspace; e
   quando o projeto é renomeado, o workspace dele continua com o nome velho. Pré-análise: o nome fica gravado em
   `ws.info[chave].titulo` na hora em que o workspace abre (`workspaces.ts`, `abrir`, ~linha 82) e nunca mais muda.

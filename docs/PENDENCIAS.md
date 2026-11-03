@@ -36,6 +36,12 @@ Como usar:
     (tabela/lista), cada um recolhível e com "ver mais" no limite; sem seções, fica como hoje. Um documento pode
     aparecer em duas seções (favorito e ativo): decidir se repete ou se a de baixo esconde os de cima ("o resto").
     MCP: `criar_visao`/`atualizar_visao` com `secoes`. Dá para combinar com as consultas SQL (uma seção = um SQL).
+  - **Quem monta as seções é o Paulo** (esclarecido no mesmo dia): ele diz quais quer, em cada visão. Mas **todo
+    tipo novo já nasce com seções padrão** na visão dele (hoje `criar_tipo` já cria a visão do tipo, `db.rs` ~linha
+    1061): **Favoritas** · **Recentes** (atualizadas nos últimos 15 dias) · **Abertas** (status não concluído) ·
+    **Todas**. Precisa de filtro por data relativa ("últimos N dias" em `atualizado_em`) e de "abertas" (o status
+    fora do histórico, como o "esconder concluídos" de hoje). Os tipos que já existem: oferecer "pôr as seções
+    padrão" na visão do tipo (um botão), sem mudar sozinho as visões que ele já arrumou.
 ### Pedidos do agente (de `pedidos-ao-atelier.md`)
 
 Revisão crítica de 2026-11-02 (o Paulo pediu: dizer o que não faz sentido, o que já existe e o que engessa o app).

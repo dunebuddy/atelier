@@ -22,6 +22,15 @@ Como usar:
 
 ### Bugs
 ### Melhorias pedidas
+- **Sininho: filtro com ícones e limpar do jeito certo** (2026-11-03, depois da 0.2.11).
+  - **Ícones no lugar dos nomes** no filtro ("nome é feio"): Todas = `Bell`, Sistema = `Monitor` (ou `Info`), Agentes
+    = `Bot`, Atualização = `Sparkles` (os mesmos do `Icone` de cada notificação), com o nome no tooltip e a contagem
+    como bolinha. Desligado = apagado/riscado.
+  - **"Limpar tudo" limpa tudo**, mostrando ou não (hoje, na 0.2.11, ele limpa só o que o filtro deixa ver: o Paulo
+    não quer isso). Em `Avisos.tsx`, `limparNotificacoes(visivel)` → `limparNotificacoes()`.
+  - **Limpar só um assunto** (só agente, só sistema): o botão Limpar vira um menu pequeno (Limpar tudo · Limpar
+    agentes · Limpar sistema · Limpar atualização), ou uma lixeirinha que aparece ao passar o mouse em cada ícone do
+    filtro. `limparNotificacoes((n) => n.assunto === a)` já serve. Continua fechando o sininho depois.
 - **Toda lista de documentos: ícone do tipo à esquerda e o código no título** (2026-11-03). Para saber de que tipo é
   e qual é sem abrir. Pré-análise: padronizar um componente só de "linha de documento" (`ícone do tipo · #código ·
   título`) e usar em todo lugar que lista documento: tabela (o Título já mostra o código em algumas; conferir o

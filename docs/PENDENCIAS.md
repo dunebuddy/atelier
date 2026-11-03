@@ -50,6 +50,11 @@ Como usar:
   deixar a célula ocupar a coluna inteira; sem larguras guardadas, o teto continua valendo para o automático.
 
 ### Melhorias pedidas
+- **Lista de workspaces (barra de título): nomes comidos** (2026-11-03). Nome comprido vira "…" e não há como ver o
+  nome inteiro. O Paulo quer: a janelinha **~50% mais larga** e um **tooltip com o nome inteiro** ao passar o
+  mouse. Pré-análise: `Workspaces.tsx` (~linha 62), `Popover ... largura={320}` → 480; na `.ws-titulo` pôr
+  `title={i.titulo}` (o mesmo vale para o botão da barra, `.seletor-ws .ws-nome`, que corta em 240 px: `title` com o
+  nome, e talvez subir o teto). Conferir se o popover de 480 px cabe em janela estreita (ele já se ajusta à borda?).
 - **Carinha do agente: a cor vai no robô, não no fundo** (pedido de 2026-11-03, com print). Hoje (`.carinha` em
   `styles.css`, `CarinhaAgente` em `Avisos.tsx`) o estado pinta o fundo do quadradinho, e o "trabalhando" é um degradê
   correndo no fundo; além disso o robô não fica centralizado na aba do workspace. O Paulo quer:

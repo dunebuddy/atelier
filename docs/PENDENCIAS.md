@@ -50,6 +50,14 @@ Como usar:
   deixar a célula ocupar a coluna inteira; sem larguras guardadas, o teto continua valendo para o automático.
 
 ### Melhorias pedidas
+- **Notificação demais do agente** (2026-11-03). Toda resposta do agente (hook Stop → "um agente terminou") sobe um
+  aviso; conversando com ele, é um aviso por mensagem. O Paulo quer: **só avisar quando o agente não é o que ele está
+  olhando agora**. Pré-análise: em `App.tsx` (~linha 343, `case "agente"`) já se acha o workspace `k` da sessão. Regra
+  proposta: se a janela do app está em foco (`document.hasFocus()`), `k` é o workspace ativo e o terminal daquela
+  sessão está à vista (a janela ativa de uma das metades, ou visível no tile/fita), **não sobe toast**: vai só para o
+  histórico do sininho (`notificar(n, true)`, que já existe) e a carinha muda de cor como hoje. Fora isso, avisa
+  como hoje. Pensar se "esperando você" segue a mesma regra (provavelmente sim: você já está vendo o pedido) e se
+  vale uma opção em Configurações → Notificações ("avisar mesmo quando o agente está à vista").
 - **Lista de workspaces (barra de título): nomes comidos** (2026-11-03). Nome comprido vira "…" e não há como ver o
   nome inteiro. O Paulo quer: a janelinha **~50% mais larga** e um **tooltip com o nome inteiro** ao passar o
   mouse. Pré-análise: `Workspaces.tsx` (~linha 62), `Popover ... largura={320}` → 480; na `.ws-titulo` pôr

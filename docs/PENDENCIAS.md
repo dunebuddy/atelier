@@ -55,6 +55,12 @@ Como usar:
   (volta à lista, o mesmo `aoVoltar`); na lista, sobe para a pasta de cima (`pai(dir)`, sem passar da raiz). Só
   quando o foco está no explorador e **não** num campo de texto (a prévia edita arquivo de texto: lá o Backspace é
   apagar). Talvez Alt+← também, como no Explorer do Windows.
+  - Junto: **caminho (breadcrumb) sempre visível**, para saber onde se está ("você fica perdido"). O Paulo quer que
+    comece pelo documento (`#2723e1f Análise da arquitetura...`) e vá juntando as pastas: `#código Título / artefatos
+    / relatorio`. Pré-análise: a lista (`Explorador`) já tem trilha (`.ex-trilha`), mas a raiz mostra só `#código`
+    (sem o título) e, com caminho fundo, o `overflow: hidden` corta o **fim** (justo a pasta onde você está): cortar
+    pelo começo (o começo vira "…", o fim fica sempre à vista). Na árvore (`ArvoreArquivos`) não tem trilha nenhuma,
+    só o nome da raiz: mostrar o caminho do arquivo ou pasta selecionado.
 - **Arquivos da ficha do documento: árvore de pastas e recarregar** (2026-11-03; é a seção Arquivos na ficha). O agente pôs vários arquivos
   na pasta e a seção continuou mostrando um só. Pré-análise, duas causas:
   - **não é automático:** `Arquivos.tsx` só lê a lista ao abrir a página (ou quando a própria página traz arquivo);

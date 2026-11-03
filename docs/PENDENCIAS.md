@@ -22,6 +22,13 @@ Como usar:
 
 ### Bugs
 ### Melhorias pedidas
+- **Toda lista de documentos: ícone do tipo à esquerda e o código no título** (2026-11-03). Para saber de que tipo é
+  e qual é sem abrir. Pré-análise: padronizar um componente só de "linha de documento" (`ícone do tipo · #código ·
+  título`) e usar em todo lugar que lista documento: tabela (o Título já mostra o código em algumas; conferir o
+  ícone), layout lista, cartões do quadro (kanban), linha do tempo, listas da ficha (`ListaCurta`/`ListaDaFicha`,
+  relações, "apontado por", "mencionado em"), a lista ao vivo dentro do texto (`ListaNoTexto`), a busca rápida
+  (Ctrl+P), a árvore da barra lateral e os resultados das consultas SQL com `codigo`. Hoje cada um monta o seu
+  jeito; o ícone vem de `esquema.tipos.find(t => t.id === tipo_id)?.icone`.
 - **Favoritos, e visão com mais de uma consulta (seções)** (2026-11-03). Vai ter muito projeto e demanda; o Paulo
   quer achar rápido os que importam. Duas ideias, que se completam:
   1. **Favoritar** um documento (estrela) e uma visão que mostra só os favoritos.

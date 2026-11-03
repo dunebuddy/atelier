@@ -21,6 +21,20 @@ Como usar:
 > (0.2.4 a 0.2.9) ou em "Ideias, sem data". Pedido novo entra aqui e ganha lugar lá.
 
 ### Bugs
+- **Tela apagou inteira (só o fundo) depois de um pedido ao agente da caixa de comando** (2026-11-03, ~10:25). Voltou
+  com Ctrl+F5. O agente fez tudo certo pelo MCP: trocou o tipo do documento aberto (Dívida → Projeto), criou uma
+  demanda e uma task com pasta, dois `nao_consigo` (dois avisos seguidos), `anotar` e, por último, `tela abrir` da
+  task na metade direita. Pré-análise:
+  - **Não reproduziu** no teste sem janela: a mesma sequência (com dados inventados, documento aberto no workspace
+    dele, troca de tipo, filhos, dois avisos, abrir à direita) não quebrou. Pode depender do estado da tela de
+    verdade (o que estava aberto, fita/tile) ou de algo que o teste sem janela não desenha.
+  - **Por que apaga tudo:** o app não tem nenhum *error boundary* (nem `componentDidCatch`, nem
+    `onerror`/`unhandledrejection` registrados). Qualquer erro ao desenhar uma janela derruba o React inteiro, sobra
+    só o fundo, e o erro se perde (ninguém viu a mensagem).
+  - **Correção proposta:** um *error boundary* por janela do painel (a janela que quebrou mostra "isto quebrou:
+    <mensagem>" com botões Recarregar a janela / Fechar, e o resto do app segue) e um global em volta do App (tela
+    de "algo quebrou" com Recarregar, em vez do fundo vazio). Os dois gravam o erro com a pilha num log
+    (`/api/log` → arquivo na pasta do app), para da próxima vez dar para achar a causa de verdade.
 - **Tabela: alargar a coluna não alarga o conteúdo** (2026-11-03). Arrastando a borda do cabeçalho, a coluna
   cresce mas o conteúdo não acompanha (visto no Título; diminuir funciona). Pré-análise: a causa está no CSS, não
   nas larguras guardadas: `.celula` tem `max-width: 320px` e `.celula.titulo` tem `max-width: 520px` (`styles.css`,

@@ -21,6 +21,13 @@ Como usar:
 > (0.2.4 a 0.2.9) ou em "Ideias, sem data". Pedido novo entra aqui e ganha lugar lá.
 
 ### Bugs
+- **Tabela: alargar a coluna não alarga o conteúdo** (2026-11-03). Arrastando a borda do cabeçalho, a coluna
+  cresce mas o conteúdo não acompanha (visto no Título; diminuir funciona). Pré-análise: a causa está no CSS, não
+  nas larguras guardadas: `.celula` tem `max-width: 320px` e `.celula.titulo` tem `max-width: 520px` (`styles.css`,
+  ~linha 565), então a célula para de crescer nesse teto mesmo com a `<col>` mais larga. Também afeta as outras
+  colunas acima de 320 px. Correção provável: com larguras fixas (`.tabela.larguras-fixas`, que já existe no
+  `Layouts.tsx`), tirar o teto (`max-width: none`, e o `min-width` também, para poder estreitar abaixo de 120/300) e
+  deixar a célula ocupar a coluna inteira; sem larguras guardadas, o teto continua valendo para o automático.
 
 ### Melhorias pedidas
 - **Carinha do agente: a cor vai no robô, não no fundo** (pedido de 2026-11-03, com print). Hoje (`.carinha` em

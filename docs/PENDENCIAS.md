@@ -21,6 +21,10 @@ Como usar:
 > (0.2.4 a 0.2.9) ou em "Ideias, sem data". Pedido novo entra aqui e ganha lugar lá.
 
 ### Bugs
+- **Sininho: notificações coladas umas nas outras** (2026-11-03). Na lista do sininho os itens encostam (dá para
+  ver nas não lidas, que têm fundo). Pré-análise: `.sino-lista` (`styles.css`, ~linha 1183) não tem espaço entre os
+  itens; `.sino-item` tem padding mas nenhuma margem. Correção: `.sino-lista { display: flex; flex-direction: column;
+  gap: 4px; }` (talvez uma linha fina entre elas, se só o espaço não bastar).
 - **Tela apagou inteira (só o fundo) depois de um pedido ao agente da caixa de comando** (2026-11-03, ~10:25). Voltou
   com Ctrl+F5. O agente fez tudo certo pelo MCP: trocou o tipo do documento aberto (Dívida → Projeto), criou uma
   demanda e uma task com pasta, dois `nao_consigo` (dois avisos seguidos), `anotar` e, por último, `tela abrir` da

@@ -28,10 +28,11 @@ Como usar:
   2. **Visão com várias seções**, uma embaixo da outra, cada uma com o seu filtro/ordem: na visão "Demanda", em cima
      **as favoritas**, embaixo **as ativas** (ou as recentes).
   Pré-análise:
-  - Favorito: uma marca própria do documento (coluna `favorito` em `itens`, migração; estrela no cabeçalho da página,
-    na linha da tabela e no MCP `atualizar_documento`), não uma propriedade comum (vale para todo tipo sem configurar).
-    Alternativa sem migração: uma propriedade `checkbox` "Favorito" — mas teria de ser ligada tipo a tipo. Filtro
-    novo `favoritos: true` no `FiltroVisao`; a barra lateral pode ganhar uma seção "Favoritos" (como Consultas).
+  - Favorito: **decidido pelo Paulo: campo fixo do documento**, como o título e o corpo (todo documento tem, em
+    toda bancada, sem configurar tipo nenhum): coluna `favorito` em `itens` (migração), estrela no cabeçalho da
+    página e na linha da tabela, `favorito` em `ler_documento`/`atualizar_documento` no MCP e coluna em `documentos`
+    das consultas SQL. Nada de propriedade `checkbox`. Filtro novo `favoritos: true` no `FiltroVisao`; a barra lateral
+    pode ganhar uma seção "Favoritos" (como Consultas).
   - Seções: `config.secoes: [{ titulo, filtro, ordenar?, limite? }]` na visão; a tela desenha um bloco por seção
     (tabela/lista), cada um recolhível e com "ver mais" no limite; sem seções, fica como hoje. Um documento pode
     aparecer em duas seções (favorito e ativo): decidir se repete ou se a de baixo esconde os de cima ("o resto").

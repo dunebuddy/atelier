@@ -50,6 +50,13 @@ Como usar:
   deixar a célula ocupar a coluna inteira; sem larguras guardadas, o teto continua valendo para o automático.
 
 ### Melhorias pedidas
+- **Filtro no sininho por assunto** (2026-11-03; "o próprio Unity tem"). No topo da lista do sininho, botõezinhos
+  de alternar: **Todas · Sistema · Agentes · Atualização**; desligar "Agentes" esconde as de agente da lista (e do
+  número do sininho), para ver só as que importam. Pré-análise: as notificações já têm `assunto` (`app`, `agente`,
+  `atualizacao`, em `notificacoes.ts`); é filtrar a lista no `Sino` (`Avisos.tsx`) e guardar a escolha (em
+  `ler/guardar`, para ficar entre aberturas). Cada botão com a contagem daquele assunto, como no Unity. Não confundir
+  com Configurações → Notificações → assuntos, que decide o que vira **toast**; este filtro é só do histórico.
+  Combina com o item "Notificação demais do agente" e com o espaço entre itens / "Limpar tudo fecha".
 - **Notificação demais do agente** (2026-11-03). Toda resposta do agente (hook Stop → "um agente terminou") sobe um
   aviso; conversando com ele, é um aviso por mensagem. O Paulo quer: **só avisar quando o agente não é o que ele está
   olhando agora**. Pré-análise: em `App.tsx` (~linha 343, `case "agente"`) já se acha o workspace `k` da sessão. Regra

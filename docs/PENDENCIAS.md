@@ -96,6 +96,16 @@ Como usar:
   do outro lado, ou o editor engole a tecla. Conferir os dois: (1) `focusin` dentro de uma janela atualiza `foco` e a
   `ativa` (vale para todos os atalhos "da janela com foco": fechar, mover, maximizar); (2) o atalho chega com o
   cursor no editor (Tiptap) e no terminal (já está em `FORA_DO_TERMINAL`).
+- **Ctrl+Alt+clique abre no outro painel** (04/11, o Paulo: "Ctrl+clique abre em outra aba; Ctrl+Alt+clique abrisse no
+  outro painel: se estou no painel 0, abre no 1; se estou no 1, abre no 0").
+  - vale em todo lugar que hoje aceita Ctrl+clique para "abrir ao lado" (`aoLadoAte` em `Painel.tsx`, links e menções
+    no texto, linhas de tabela/quadro/árvore, barra lateral, Favoritos, busca): com Alt junto, usa
+    `abrirNaMetade(e, r, 1 - mi, true)` (nova janela na outra metade, que fica com o foco);
+  - a "outra metade" é a oposta à **de onde veio o clique** (barra lateral, que não é de metade nenhuma: a oposta à
+    metade com foco);
+  - painel com uma metade só: cria a direita; com a direita escondida (Ctrl+\, item acima): mostra ela de novo;
+  - com uma janela expandida (85%): desfaz o expandir, para a nova aparecer;
+  - dica no tooltip/lista de atalhos: "Ctrl+clique: nova aba · Ctrl+Alt+clique: no outro painel".
 - **Fixar (pinar) uma janela aberta** (04/11, o Paulo: "se o documento está pinado, nada feche ele, a menos que eu
   feche... cliquei num link, abre outra janela; cliquei numa visão, abre outra janela").
   Pré-análise: as janelas de cada metade vivem em `painel.ts` (`EstadoPainel` → `metades[].janelas`); quem troca o

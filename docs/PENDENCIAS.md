@@ -53,7 +53,19 @@ Como usar:
     metade) mostra a metade de novo;
   - juntar de verdade continua existindo, mas só como ação explícita no menu/paleta ("Juntar as metades");
   - o `estado` do MCP diz que a direita está escondida.
+  - **Não duplicar o Ctrl+Alt+Shift+J** (o Paulo: "meio que faz o que eu queria... tomar cuidado para não ficar com os
+    dois com a mesma funcionalidade"). Hoje o "maximizar" (`alternarMaximizada`) faz a janela com foco ocupar o
+    painel todo, **de qualquer lado**. Diferença a manter: Ctrl+\ = mostrar/esconder **a metade direita** (sempre a
+    direita, com tudo o que ela tem; mesmo com o foco na direita, esconde ela e o foco vai para a esquerda);
+    Ctrl+Alt+Shift+J = **a janela com foco** toma o espaço todo (esquerda ou direita, e também esconde as outras
+    janelas da mesma metade no modo tile/fita). Nomes na lista de atalhos deixando isso claro.
   Esforço: pequeno (`painel.ts` + quem desenha as metades em `Painel.tsx`).
+- **Ctrl+Alt+Shift+J não funciona com o foco dentro da janela** (04/11, o Paulo: "se tiver com foco, não está
+  funcionando; eu tenho que clicar no título do painel"). Suspeita: o `foco` do `EstadoPainel` só muda ao clicar na
+  aba/título, não ao clicar ou digitar **dentro** da janela (editor, tabela, terminal); aí o atalho maximiza a janela
+  do outro lado, ou o editor engole a tecla. Conferir os dois: (1) `focusin` dentro de uma janela atualiza `foco` e a
+  `ativa` (vale para todos os atalhos "da janela com foco": fechar, mover, maximizar); (2) o atalho chega com o
+  cursor no editor (Tiptap) e no terminal (já está em `FORA_DO_TERMINAL`).
 - **Fixar (pinar) uma janela aberta** (04/11, o Paulo: "se o documento está pinado, nada feche ele, a menos que eu
   feche... cliquei num link, abre outra janela; cliquei numa visão, abre outra janela").
   Pré-análise: as janelas de cada metade vivem em `painel.ts` (`EstadoPainel` → `metades[].janelas`); quem troca o

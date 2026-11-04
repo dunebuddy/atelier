@@ -31,7 +31,8 @@ Como usar:
     arquivo for `image/*`; outro tipo de arquivo continua virando link;
   - **arrastar imagem** do Explorer para dentro do texto: hoje o drop da página copia para `insumos/` sem tocar no
     texto; com imagem, inserir no ponto onde soltou (o drop fora do texto segue como está);
-  - **`/imagem`** no menu de barra: escolher um arquivo (diálogo do Tauri), copiar para `insumos/` e inserir;
+  - **`/imagem`** no menu de barra (o Paulo confirmou: "é isso mesmo"; achar também digitando `/image`): escolher um
+    arquivo (diálogo do Tauri), copiar para `insumos/` e inserir;
   - documento **sem pasta**: colar cria a pasta (já é o que acontece com arquivo colado hoje, `carregar()`);
   - na tela: imagem com largura máxima do texto, clique abre em tamanho grande (ou no visualizador do app); selecionada,
     Delete apaga só do texto (o arquivo fica em `insumos/`);

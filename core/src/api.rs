@@ -231,6 +231,7 @@ pub fn rotas(banco: Banco) -> Router {
         .route("/api/agentes/{id}/testar", post(testar_agente))
         .route("/api/executar", post(executar))
         .route("/api/comando", post(comando))
+        .route("/api/redigir", post(redigir))
         .route("/api/integracoes/{id}", post(instalar_integracao).delete(remover_integracao))
         .route("/api/temas", get(|| async { Json(json!({ "pasta": crate::temas::pasta(), "temas": crate::temas::listar() })) }))
         .layer(cors)
@@ -1259,6 +1260,37 @@ async fn comando(State(b): State<Banco>, Json(d): Json<Value>) -> R {
     // roda na pasta do atelier (fora de qualquer projeto): o agente só tem o MCP para trabalhar
     let cwd = Some(bancada::pasta_atelier());
     let r = crate::agentes::executar(exe, &modelo, &prompt, cwd, std::time::Duration::from_secs(600)).await?;
+    Ok(Json(r))
+}
+
+const REDIGIR_INSTRUCOES: &str = "Você é o redator de relatórios do atelier, o sistema de gestão pessoal do Paulo. \
+Faça só o que a instrução pede com o conteúdo entre <conteudo> e </conteudo>. Não use ferramentas, não leia nem grave arquivos \
+e não comente o que fez: responda SÓ com o resultado, em português do Brasil, pronto para entrar no relatório. Não invente \
+fatos que não estão no conteúdo.";
+
+/// Redigir com um agente (relatório): `{ "agente": "claude-code", "modelo": "haiku", "instrucao": "...", "texto": "...",
+/// "html": false }`. Só texto entra e sai; com `html: true` o conteúdo é um relatório HTML inteiro e a resposta também.
+async fn redigir(State(b): State<Banco>, Json(d): Json<Value>) -> R {
+    let txt = |k: &str| d.get(k).and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let (id, modelo, instrucao, texto) = (txt("agente"), txt("modelo"), txt("instrucao"), txt("texto"));
+    if instrucao.trim().is_empty() || texto.trim().is_empty() {
+        return Err(Erro::Invalido("redigir: informe instrucao e texto".into()));
+    }
+    let html = d.get("html").and_then(|v| v.as_bool()).unwrap_or(false);
+    let prefs = cfg_de(&b).preferencias.clone();
+    let (exe, args) = tokio::task::spawn_blocking(move || crate::agentes::para_texto(&prefs, &id, Some(&modelo)))
+        .await
+        .map_err(|e| Erro::Invalido(e.to_string()))??;
+    let formato = if html {
+        "O conteúdo é um relatório em HTML (um arquivo inteiro, com <style>). Devolva o HTML INTEIRO ajustado, de <!doctype html> \
+até </html>, sem cercas de código e sem texto antes ou depois. Mantenha todos os dados; mude o que a instrução pedir \
+(texto, ordem, destaque, estilo). Sem scripts e sem recursos de fora (fontes, imagens da web)."
+    } else {
+        "Responda em markdown simples (parágrafos, listas, **negrito**), sem título e sem cercas de código."
+    };
+    let prompt = format!("{REDIGIR_INSTRUCOES}\n{formato}\n\n## Instrução\n{instrucao}\n\n<conteudo>\n{texto}\n</conteudo>\n");
+    let cwd = Some(bancada::pasta_atelier());
+    let r = crate::agentes::executar(exe, &args, &prompt, cwd, std::time::Duration::from_secs(if html { 900 } else { 300 })).await?;
     Ok(Json(r))
 }
 

@@ -6,8 +6,9 @@ import { falhou } from "../ui";
 import { Popover, usePopover } from "./Popover";
 
 /** Pede ao app para abrir o terminal embutido (com um agente ou só o shell) nesta pasta. */
-export function abrirTerminalEmbutido(cwd: string, programa?: string, titulo?: string) {
-  window.dispatchEvent(new CustomEvent("atelier:terminal", { detail: { cwd, programa, titulo } }));
+/** `programa: "agente"` mostra a escolha do agente (num popover junto de `ancora`, o botão clicado). */
+export function abrirTerminalEmbutido(cwd: string, programa?: string, titulo?: string, ancora?: HTMLElement) {
+  window.dispatchEvent(new CustomEvent("atelier:terminal", { detail: { cwd, programa, titulo, ancora } }));
 }
 
 /** Botão que abre um menu: gerenciador de arquivos, VS Code, terminal do sistema ou terminal no atelier. */
@@ -37,7 +38,7 @@ export function MenuPasta({ pasta, children, classe = "mini-acao", titulo }: { p
           <button className="menu-item" onClick={() => { pop.fechar(); abrirTerminalEmbutido(pasta); }}>
             <SquareTerminal size={14} /> Terminal aqui no atelier
           </button>
-          <button className="menu-item" onClick={() => { pop.fechar(); abrirTerminalEmbutido(pasta, "agente"); }}>
+          <button className="menu-item" onClick={() => { const a = pop.ancora ?? undefined; pop.fechar(); abrirTerminalEmbutido(pasta, "agente", undefined, a); }}>
             <Bot size={14} /> Agente aqui no atelier…
           </button>
           <div className="menu-rotulo" style={{ textTransform: "none", letterSpacing: 0, fontWeight: 400, fontFamily: "Cascadia Code, Consolas, monospace", fontSize: 11 }}>{pasta}</div>

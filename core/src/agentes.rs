@@ -90,6 +90,9 @@ pub fn listar(prefs: &Preferencias) -> Vec<Value> {
                 "executor": uso.executor && com_mcp && exe.is_some(),
                 "prompt": uso.prompt && com_mcp && exe.is_some(),
                 "comando": uso.comando && com_mcp && exe.is_some(),
+                // modelos sugeridos (o primeiro é o barato) e se dá para escolher modelo neste agente
+                "modelos": modelos_sugeridos(c.id),
+                "escolhe_modelo": flag_modelo(c.id).is_some(),
             })
         })
         .collect()
@@ -105,6 +108,51 @@ pub fn habilitado(prefs: &Preferencias, id: &str, uso: &str) -> Res<(&'static Cl
     let exe = executavel(c).ok_or(Erro::Invalido(format!("{} não foi encontrado nesta máquina", c.nome)))?;
     let modelo = if uso == "comando" && !c.comando.is_empty() { c.comando } else { a["exec"].as_str().unwrap_or("") };
     Ok((c, exe, modelo.to_string()))
+}
+
+/// Como cada agente recebe o modelo na linha de comando (para escolher um barato e rápido num resumo).
+pub fn flag_modelo(id: &str) -> Option<&'static str> {
+    match id {
+        "claude-code" | "copilot-cli" | "cursor" => Some("--model"),
+        "codex" | "gemini-cli" | "opencode" => Some("-m"),
+        _ => None,
+    }
+}
+
+/// Modelos sugeridos na tela (o primeiro é o barato e rápido). Dá para digitar outro.
+pub fn modelos_sugeridos(id: &str) -> &'static [&'static str] {
+    match id {
+        "claude-code" => &["haiku", "sonnet", "opus"],
+        "codex" => &["gpt-5-mini", "gpt-5"],
+        "gemini-cli" => &["gemini-2.5-flash", "gemini-2.5-pro"],
+        _ => &[],
+    }
+}
+
+/// Agente para redigir (só texto, sem mexer em nada): vale o que estiver ligado para executor, prompt ou comando.
+/// `modelo` (opcional) entra com a flag do agente, antes do pedido.
+pub fn para_texto(prefs: &Preferencias, id: &str, modelo: Option<&str>) -> Res<(PathBuf, String)> {
+    let c = cli(id).ok_or(Erro::Invalido(format!("agente desconhecido: {id}")))?;
+    let (_, exe, args) = ["executor", "prompt", "comando"]
+        .iter()
+        .find_map(|u| habilitado(prefs, id, u).ok())
+        .ok_or(Erro::Invalido(format!("{} não está ligado (Configurações → Integrações: Executor, Prompt ou Comando)", c.nome)))?;
+    let modelo = modelo.map(str::trim).filter(|m| !m.is_empty() && !m.contains(char::is_whitespace));
+    let args = match (modelo, flag_modelo(id)) {
+        (Some(m), Some(f)) => {
+            let mut t: Vec<&str> = args.split_whitespace().collect();
+            // antes do pedido ("{prompt}" ou "-" da entrada padrão), senão no fim
+            let pos = match t.last() {
+                Some(&u) if u.contains("{prompt}") || u == "-" => t.len() - 1,
+                _ => t.len(),
+            };
+            t.insert(pos, m);
+            t.insert(pos, f);
+            t.join(" ")
+        }
+        _ => args,
+    };
+    Ok((exe, args))
 }
 
 /// `<agente> --version`, com prazo: confirma que o executável responde.

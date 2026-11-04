@@ -336,6 +336,14 @@ export const api = {
       }),
   pedidos: () => req<{ arquivo: string; existe: boolean; abertos: number }>("GET", "/falta"),
   estadoDaTela: (texto: string) => req("POST", "/tela/estado", { texto }),
+  /** redigir com um agente (relatório): só texto entra e sai; `html` = o relatório inteiro */
+  redigir: (d: { agente: string; modelo?: string; instrucao: string; texto: string; html?: boolean }, sinal?: AbortSignal) =>
+    fetch(BASE + "/redigir", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(d), signal: sinal })
+      .then(async (r) => {
+        const dados = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(dados.erro ?? `erro ${r.status}`);
+        return dados as { saida: string; segundos: number };
+      }),
   testarAgente: (id: string) => req<{ ok: boolean; versao?: string; erro?: string | null }>("POST", `/agentes/${id}/testar`),
   /** chama o agente sem terminal e espera a resposta (até 10 min); `sinal` cancela (o processo morre junto) */
   executar: (d: { agente: string; prompt: string; uso: "prompt" | "executor"; item?: number }, sinal?: AbortSignal) =>
@@ -516,6 +524,9 @@ export interface AgenteCli {
   prompt: boolean;
   /** recebe os comandos do app (botão e atalho na barra de título) */
   comando: boolean;
+  /** modelos sugeridos (o primeiro é o barato e rápido) */
+  modelos?: string[];
+  escolhe_modelo?: boolean;
 }
 
 export interface UsoAgente {

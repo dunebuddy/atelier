@@ -317,11 +317,12 @@ export function PaginaItem({
             <button
               className="btn"
               title="Abre um agente (Claude, Codex...) num terminal aqui no atelier, dentro da pasta do documento. Cria a pasta se faltar."
-              onClick={async () => {
+              onClick={async (e) => {
+                const botao = e.currentTarget;
                 try {
                   const pasta = item.pasta ?? (await api.criarPasta(item.id)).pasta;
                   if (!item.pasta) carregar();
-                  abrirTerminalEmbutido(pasta, "agente", `#${item.codigo}`);
+                  abrirTerminalEmbutido(pasta, "agente", `#${item.codigo}`, botao);
                 } catch (e) {
                   falhou(e);
                 }

@@ -182,11 +182,13 @@ export function TerminalJanela({ sessao, cwd, programa, shell, visivel }: { sess
  * Cada escolha abre uma janela de terminal no painel de trabalho.
  */
 export function EscolherAgente() {
-  const [escolher, setEscolher] = useState<{ cwd?: string; titulo?: string } | null>(null);
+  const [escolher, setEscolher] = useState<{ cwd?: string; titulo?: string; ancora?: HTMLElement } | null>(null);
   const [programas, setProgramas] = useState<Programa[]>([]);
+  const [apps, setApps] = useState<AppExterno[]>([]);
 
   useEffect(() => {
     fetch(`${BASE}/terminal/programas`).then((r) => r.json()).then((d) => setProgramas(d.agentes)).catch(() => {});
+    if (escolher) fetch(`${BASE}/apps`).then((r) => r.json()).then(setApps).catch(() => setApps([]));
   }, [escolher]);
 
   const rotulo = (programa: string, titulo?: string) => {
@@ -196,8 +198,8 @@ export function EscolherAgente() {
 
   useEffect(() => {
     const f = (e: Event) => {
-      const d = (e as CustomEvent<{ cwd?: string; programa?: string; titulo?: string }>).detail;
-      if (d.programa === "agente") setEscolher({ cwd: d.cwd, titulo: d.titulo });
+      const d = (e as CustomEvent<{ cwd?: string; programa?: string; titulo?: string; ancora?: HTMLElement }>).detail;
+      if (d.programa === "agente") setEscolher({ cwd: d.cwd, titulo: d.titulo, ancora: d.ancora });
       else abrirTerminal(d.cwd, d.programa, d.programa ? rotulo(d.programa, d.titulo) : d.titulo);
     };
     const tecla = (e: KeyboardEvent) => {
@@ -217,31 +219,46 @@ export function EscolherAgente() {
   }, [programas]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!escolher) return null;
-  return (
-    <div className="modal-fundo topo" onMouseDown={(e) => e.target === e.currentTarget && setEscolher(null)}>
-      <div className="busca-rapida" style={{ width: 420 }}>
-        <div className="br-campo"><Bot size={17} /> <span style={{ flex: 1, color: "var(--texto)" }}>Abrir qual agente{escolher.titulo ? ` em ${escolher.titulo}` : ""}?</span></div>
-        <div className="br-lista">
-          {programas.map((p) => (
-            <button
-              key={p.id}
-              className="br-item"
-              disabled={!p.instalado}
-              title={p.instalado ? p.comando : `${p.comando} não está instalado nesta máquina`}
-              onClick={() => { abrirTerminal(escolher.cwd, p.id, rotulo(p.id, escolher.titulo)); setEscolher(null); }}
-            >
-              <Bot size={15} />
-              <span className="br-rotulo">{p.nome}</span>
-              <span className="br-detalhe">{p.instalado ? p.comando : "não instalado"}</span>
+  // só os que estão instalados e ligados; o caminho do programa fica na dica (não espreme o nome)
+  const prontos = programas.filter((p) => p.instalado);
+  const fechar = () => setEscolher(null);
+  const conteudo = (
+    <>
+      <div className="menu-rotulo menu-rotulo-nome">Abrir{escolher.titulo ? ` em ${escolher.titulo}` : ""}: no terminal do atelier</div>
+      {prontos.map((p) => (
+        <button key={p.id} className="menu-item" title={p.comando}
+          onClick={() => { abrirTerminal(escolher.cwd, p.id, rotulo(p.id, escolher.titulo)); fechar(); }}>
+          <Bot size={14} /> {p.nome}
+        </button>
+      ))}
+      {prontos.length === 0 && (
+        <div className="menu-rotulo" style={{ textTransform: "none", letterSpacing: 0 }}>
+          Nenhum agente ligado como Terminal. Ligue em Configurações → Integrações (precisa do MCP do atelier).
+        </div>
+      )}
+      <button className="menu-item" onClick={() => { abrirTerminal(escolher.cwd, undefined, escolher.titulo); fechar(); }}>
+        <SquareTerminal size={14} /> Só o terminal
+      </button>
+      {apps.length > 0 && escolher.cwd && (
+        <>
+          <div className="menu-rotulo" title="Agentes com janela própria: abrem fora do atelier, na pasta">Abrir com (app de desktop)</div>
+          {apps.map((a) => (
+            <button key={a.id} className="menu-item" title={a.pasta ? undefined : "Este app não abre direto numa pasta: o caminho vai copiado"}
+              onClick={() => { fechar(); abrirNoApp(a, escolher.cwd!); }}>
+              <AppWindow size={14} /> {a.nome}
             </button>
           ))}
-          {programas.length === 0 && (
-            <div className="br-vazio">Nenhum agente ligado como Terminal. Ligue em Configurações → Integrações (precisa do MCP do atelier instalado).</div>
-          )}
-          <button className="br-item" onClick={() => { abrirTerminal(escolher.cwd, undefined, escolher.titulo); setEscolher(null); }}>
-            <SquareTerminal size={15} /> <span className="br-rotulo">Só o terminal</span>
-          </button>
-        </div>
+        </>
+      )}
+    </>
+  );
+  if (escolher.ancora?.isConnected) {
+    return <Popover ancora={escolher.ancora} aoFechar={fechar} largura={260}>{conteudo}</Popover>;
+  }
+  return (
+    <div className="modal-fundo topo" onMouseDown={(e) => e.target === e.currentTarget && fechar()}>
+      <div className="popover" style={{ position: "relative", width: 300, margin: "0 auto" }}>
+        {conteudo}
       </div>
     </div>
   );

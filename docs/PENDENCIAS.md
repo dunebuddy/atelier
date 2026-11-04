@@ -13,7 +13,20 @@ Como usar:
 
 ## Próxima versão
 
-(vazio — escolher da caixa de entrada)
+**0.2.14** (em andamento, 04/11 à noite; o Paulo disse que ainda vem mais coisa para ela):
+- **Relatório bonito, com layout e agente** (feito, falta só soltar): HTML e PDF com 4 layouts (`src/relatorio.ts`:
+  Executivo com capa, números e sumário · Fichas · Tabela compacta · Documento corrido), cores do tipo e chips das
+  opções, prévia ao vivo ao lado das opções; **texto de cada documento** inteiro ou pelo agente (resumo em 1
+  parágrafo, tópicos, só decisões, instrução livre) e a linha do tempo resumida; **ajuste final** do relatório inteiro
+  por instrução; **escolha do agente e do modelo** (um para os campos, barato: `haiku`; outro para o ajuste:
+  `sonnet`), estimativa de tokens/tempo, "Ver com o agente" antes de salvar, Parar, cache (não paga de novo).
+  Backend: `/api/redigir` (só texto, sem ferramentas) e `agentes::para_texto` / `flag_modelo`. Ficou para depois:
+  modelo de relatório salvo com nome e `gerar_relatorio` no MCP.
+- **Botão "Agente" do documento: popover** (04/11, o Paulo: "aparece essa tela horrível... só o Claude Code aparece
+  como agente, os outros são discriminados"; "um pop-upzinho, que nem quando clico no botão do terminal"; "não precisa
+  mostrar o caminho"; "incluindo os apps de desktop"). O caminho do executável espremia o nome até sumir. Agora é um
+  popover junto do botão (como o do terminal): só os agentes instalados e ligados, "Só o terminal" e os apps de
+  desktop (Claude, ChatGPT/Codex...) abrindo na pasta do documento.
 
 ## Caixa de entrada
 
@@ -22,29 +35,6 @@ Como usar:
 
 ### Bugs
 ### Melhorias pedidas
-- **Relatório bonito, com layout e agente** (04/11, o Paulo: "sempre tá feio... é todo programático"; "relatório HTML,
-  e aí algumas opções de layout... ou PDF, todos que não for MD"; "campo de texto: quero só um resumo de um
-  parágrafo, passa por um agente, um Haiku faz isso baratinho"; "depois passar um agente no relatório inteiro: deixa
-  ele mais assim ou mais assado"). Ficou para a 0.2.14 (a 0.2.13 já estava no CI quando chegou).
-  Hoje: `Exportar.tsx` monta tudo no front (md, html, pdf, xlsx, csv; arranjo relatório/tabela/lista; campos e notas
-  escolhidos) e o backend só grava; o HTML/PDF sai com estilo mínimo.
-  - **Layouts de verdade** para HTML e PDF (o MD fica como está): uns 3 ou 4 moldes com tipografia, capa, sumário,
-    cabeçalho com título/data/bancada, cartões ou tabela por documento, cores do tipo e chips de status/prioridade
-    (ex.: "Executivo", "Ficha por documento", "Tabela compacta", "Linha do tempo"); escolha com miniatura e
-    pré-visualização ao vivo antes de salvar; o PDF sai do mesmo HTML (impressão com `@page`, quebra de página por
-    documento);
-  - **campos com instrução para o agente**: além de "corpo inteiro", cada campo de texto (corpo, notas, uma
-    propriedade de texto) pode ser "resumo em 1 parágrafo", "em tópicos", "só as decisões"... ou uma instrução livre;
-    cada documento passa por um modelo **barato** (Haiku; configurável) e o resultado entra no lugar do texto; com
-    cache por documento+instrução+versão do texto, para não pagar de novo;
-  - **passada final no relatório inteiro** (opcional): uma caixa "deixe mais assim ou assado" (ex.: "mais executivo,
-    destaque os riscos, agrupe por frente"); o agente recebe o HTML pronto + o molde e devolve o HTML ajustado;
-    pré-visualizar, comparar e aceitar ou refazer;
-  - por onde roda: os agentes já ligados ao atelier (`api.agentes` / `api.comando`, o Claude Code com `--model
-    haiku`) ou a API direto com chave do Paulo (fora do repo); mostrar antes quantos documentos vão passar pelo
-    agente e uma estimativa de custo/tempo, com Cancelar;
-  - guardar o conjunto (molde + campos + instruções) como **modelo de relatório** com nome, para repetir na mesma
-    visão sem refazer escolhas; o MCP ganha `gerar_relatorio` com esse modelo (o agente gera pelo Paulo).
 - **Atalhos em dois tempos com Ctrl+K (como VS Code / tmux)** (04/11, o Paulo: "os atalhos que batem... Ctrl+K e aí o
   segundo atalho, como no tmux, Ctrl+B e a ação; acho que o Ctrl+K é liberado"). Pré-análise:
   - hoje o Ctrl+K é só um **extra** da busca (o principal é Ctrl+P): sai de lá e vira o prefixo;

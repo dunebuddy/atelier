@@ -74,6 +74,15 @@ Como usar:
   a ativa) e ganha o × no mesmo lugar da ativa; o título não muda de tamanho (o espaço do × já é reservado, então
   nada pula); a ativa continua com o × dela. Esforço: CSS, mais um ajuste no JSX das
   abas em `Painel.tsx` se as ações da metade estiverem em outro lugar. Vale nos três modos (abas, tile, fita).
+- **Janela maximizada sem indicação** (04/11, o Paulo: "não tenho nenhuma indicação... se eu for no banheiro e voltar
+  daqui 15 minutos, já não lembro"; "a tela quase num pop-up, ou uma borda ao redor"). Com o Ctrl+Alt+Shift+J ligado
+  (`maximizada` no `EstadoPainel`), deixar óbvio:
+  - a janela maximizada vira um **"pop-up"**: margem pequena em volta, cantos arredondados, sombra e uma **borda na
+    cor de destaque**; atrás, o fundo escurecido (sem mostrar as outras janelas, para não distrair);
+  - na faixa da aba, um selo **"Maximizada · Ctrl+Alt+Shift+J volta"** com um botão de restaurar (⤡); Esc também
+    volta (se o Esc não estiver sendo usado dentro da janela, como no terminal);
+  - o Modo Zen (F11) pode usar a mesma moldura, com o selo "Zen · F11 volta".
+  Junta com "Ctrl+Alt+Shift+J não funciona com o foco dentro da janela", logo abaixo.
 - **Ctrl+Alt+Shift+J não funciona com o foco dentro da janela** (04/11, o Paulo: "se tiver com foco, não está
   funcionando; eu tenho que clicar no título do painel"). Suspeita: o `foco` do `EstadoPainel` só muda ao clicar na
   aba/título, não ao clicar ou digitar **dentro** da janela (editor, tabela, terminal); aí o atalho maximiza a janela

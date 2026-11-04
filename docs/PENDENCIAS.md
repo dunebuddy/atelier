@@ -74,15 +74,22 @@ Como usar:
   a ativa) e ganha o × no mesmo lugar da ativa; o título não muda de tamanho (o espaço do × já é reservado, então
   nada pula); a ativa continua com o × dela. Esforço: CSS, mais um ajuste no JSX das
   abas em `Painel.tsx` se as ações da metade estiverem em outro lugar. Vale nos três modos (abas, tile, fita).
-- **Janela maximizada sem indicação** (04/11, o Paulo: "não tenho nenhuma indicação... se eu for no banheiro e voltar
-  daqui 15 minutos, já não lembro"; "a tela quase num pop-up, ou uma borda ao redor"). Com o Ctrl+Alt+Shift+J ligado
-  (`maximizada` no `EstadoPainel`), deixar óbvio:
-  - a janela maximizada vira um **"pop-up"**: margem pequena em volta, cantos arredondados, sombra e uma **borda na
-    cor de destaque**; atrás, o fundo escurecido (sem mostrar as outras janelas, para não distrair);
-  - na faixa da aba, um selo **"Maximizada · Ctrl+Alt+Shift+J volta"** com um botão de restaurar (⤡); Esc também
-    volta (se o Esc não estiver sendo usado dentro da janela, como no terminal);
-  - o Modo Zen (F11) pode usar a mesma moldura, com o selo "Zen · F11 volta".
-  Junta com "Ctrl+Alt+Shift+J não funciona com o foco dentro da janela", logo abaixo.
+- **Maximizar = expandir (como o VS Code), não tomar tudo** (04/11, o Paulo: "adorei o dois cliques, ele fica
+  grande... mas faz que nem o Code: aumenta, mas não toma a área toda, só fica maior, pra eu saber que ainda tem o outro
+  painel aberto"; "eu fico sem saber se o painel tá aberto"; "vamos começar com 85% do espaço disponível para painel").
+  Hoje o duplo clique na aba/cabeça (`Painel.tsx`) e o Ctrl+Alt+Shift+J fazem a mesma coisa (`alternarMaximizada`): a
+  janela ativa toma o painel inteiro e o resto some, sem sinal nenhum. Pedido:
+  - **expandir**: a janela (e a metade dela) passa a ocupar **85% do espaço do painel**; a outra metade e as outras
+    janelas da mesma metade (tile/fita) ficam **visíveis e espremidas** nos 15% restantes, com a faixa de abas
+    aparecendo; assim dá para ver que existe outra coisa aberta. 85% é o começo; ajustar depois com o uso (talvez
+    vire preferência);
+  - **duplo clique e Ctrl+Alt+Shift+J fazem exatamente isso** (o mesmo comando, nome na lista de atalhos:
+    "Expandir a janela com foco (de novo: voltar)"); de novo volta às proporções de antes (guardar a proporção
+    anterior, não voltar para 50/50);
+  - clicar na parte espremida (ou dar foco nela) desfaz o expandir, como no VS Code;
+  - **tomar a tela inteira fica só para o Modo Zen (F11)**, que segue como está;
+  - sinal discreto na janela expandida (ícone ⤢ na faixa da aba, que também desfaz), já que o resto continua à vista.
+  Substitui a ideia anterior de "pop-up com borda" para o maximizar. Junta com o item logo abaixo.
 - **Ctrl+Alt+Shift+J não funciona com o foco dentro da janela** (04/11, o Paulo: "se tiver com foco, não está
   funcionando; eu tenho que clicar no título do painel"). Suspeita: o `foco` do `EstadoPainel` só muda ao clicar na
   aba/título, não ao clicar ou digitar **dentro** da janela (editor, tabela, terminal); aí o atalho maximiza a janela

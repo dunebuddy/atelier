@@ -70,7 +70,9 @@ Como usar:
     alinhados; é ali que entram o alfinete (fixar) e o menu da janela;
   - **metades separadas por uma linha fina de 1 px**, sem vão nem cartão; o conteúdo começa logo abaixo da faixa;
   - a metade com foco se distingue sutilmente (no VS Code, a aba ativa do grupo sem foco fica um pouco mais apagada).
-  O Paulo vai mandar outro print com o mouse em cima (como fica o hover). Esforço: CSS, mais um ajuste no JSX das
+  **Hover** (segundo print, mouse na primeira aba): a aba sob o mouse clareia um pouco o fundo (fica entre a inativa e
+  a ativa) e ganha o × no mesmo lugar da ativa; o título não muda de tamanho (o espaço do × já é reservado, então
+  nada pula); a ativa continua com o × dela. Esforço: CSS, mais um ajuste no JSX das
   abas em `Painel.tsx` se as ações da metade estiverem em outro lugar. Vale nos três modos (abas, tile, fita).
 - **Ctrl+Alt+Shift+J não funciona com o foco dentro da janela** (04/11, o Paulo: "se tiver com foco, não está
   funcionando; eu tenho que clicar no título do painel"). Suspeita: o `foco` do `EstadoPainel` só muda ao clicar na

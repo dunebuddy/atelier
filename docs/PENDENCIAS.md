@@ -48,8 +48,10 @@ Como usar:
     cada comando ganha uma lista de apelidos. O nome descritivo na lista segue em português.
   - **`/image`, `/link`, `/file`: autocomplete de caminho**, como no editor de código: depois do comando (`/image `),
     o menu lista arquivos e pastas a partir da **pasta do documento** (`insumos/`, `artefatos/`...), filtrando
-    enquanto digita; `/` entra na pasta, `..` sobe; Tab completa, Enter insere (`/image` → `![](insumos/x.png)`,
-    só imagens; `/link` e `/file` → link para o arquivo).
+    enquanto digita; `/` entra na pasta, `..` sobe; Tab completa. **Enter troca o comando digitado pelo markdown
+    equivalente** (o Paulo: "quando eu terminar o comando e der enter, ele insere o markdown equivalente"):
+    `/image insumos/x.png` → `![](insumos/x.png)` (a imagem já aparece), só imagens na lista; `/link` e `/file` →
+    `[x.pdf](insumos/x.pdf)`.
   - Na raiz do autocomplete, além das pastas, os **documentos relacionados** (pai, filhos, ligados), cada um levando à
     pasta dele, para pegar imagem de outro documento (o caminho inserido aí é absoluto, ou relativo com `../`).
   - Documento sem pasta: começa pelos relacionados e oferece "escolher arquivo…" (diálogo).

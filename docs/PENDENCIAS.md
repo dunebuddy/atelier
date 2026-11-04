@@ -22,6 +22,21 @@ Como usar:
 
 ### Bugs
 ### Melhorias pedidas
+- **Imagem no documento** (04/11, o Paulo: "dá o teu jeito aí pra gente poder colocar imagem no documento").
+  Pré-análise: o editor **já mostra** imagem (`Imagem` em `EditorBlocos.tsx`, `![](caminho)` relativo à pasta do
+  documento ou absoluto, servido por `/api/arquivo`); o agente já consegue pôr imagem escrevendo o markdown. O que falta
+  é o caminho do Paulo:
+  - **colar imagem** (print, Ctrl+V): hoje `handlePaste` em `Editor.tsx` guarda em `insumos/` mas insere um **link**;
+    passar a inserir a **imagem** (`![](insumos/colado-....png)`, relativo, para a pasta poder mudar de lugar) quando o
+    arquivo for `image/*`; outro tipo de arquivo continua virando link;
+  - **arrastar imagem** do Explorer para dentro do texto: hoje o drop da página copia para `insumos/` sem tocar no
+    texto; com imagem, inserir no ponto onde soltou (o drop fora do texto segue como está);
+  - **`/imagem`** no menu de barra: escolher um arquivo (diálogo do Tauri), copiar para `insumos/` e inserir;
+  - documento **sem pasta**: colar cria a pasta (já é o que acontece com arquivo colado hoje, `carregar()`);
+  - na tela: imagem com largura máxima do texto, clique abre em tamanho grande (ou no visualizador do app); selecionada,
+    Delete apaga só do texto (o arquivo fica em `insumos/`);
+  - talvez depois: redimensionar arrastando a borda (o markdown puro não guarda tamanho; precisaria de `<img width>`).
+  Esforço: pequeno a médio, quase todo em `Editor.tsx`. Sem migração e sem mudança no MCP.
 ### Pedidos do agente (de `pedidos-ao-atelier.md`)
 
 Revisão crítica de 2026-11-02 (o Paulo pediu: dizer o que não faz sentido, o que já existe e o que engessa o app).

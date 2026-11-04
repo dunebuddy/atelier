@@ -90,8 +90,32 @@ Como usar:
   - **tomar a tela inteira fica só para o Modo Zen (F11)**, que segue como está;
   - sinal discreto na janela expandida (ícone ⤢ na faixa da aba, que também desfaz), já que o resto continua à vista.
   Substitui a ideia anterior de "pop-up com borda" para o maximizar. Junta com o item logo abaixo.
+- **Atalhos do app engolidos pela página** (04/11, o Paulo: "se eu tiver rolado ou escrito alguma coisa e apertar o
+  F11, é como se capturasse na página... esses atalhos deviam ser do app, não da página"; "alguns vão ser necessários,
+  Ctrl+B negrito..., esses aí tem que capturar"). Varredura feita (04/11):
+  - **Causa 1, iframes**: o leitor de Markdown e de HTML do Explorador (`Explorador.tsx:363` e `:399`) e o leitor de
+    documentos (`Documentos.tsx:127`) desenham dentro de `<iframe sandbox>`. Clicar ou rolar ali dá o foco ao iframe,
+    e **toda tecla vai para o iframe; o `keydown` do app (`App.tsx:537`, no `window`) nunca fica sabendo** (F11, Ctrl+P,
+    Ctrl+W... todos). O clique dentro do iframe também não chega ao `onMouseDownCapture` da janela (`Painel.tsx:335`),
+    então nem o foco do painel muda. É o "tô lendo uma parada" + F11.
+    Correção: Markdown e documento **sem iframe** (HTML já higienizado num `div`, estilo isolado com shadow DOM);
+    no HTML de verdade (que precisa de `allow-scripts`), injetar um script mínimo que repassa `keydown`/`mousedown` ao
+    app por `postMessage`, e o app trata como se fosse dele.
+  - **Causa 2, o filtro do AltGr**: `App.tsx:481` ignora **qualquer Ctrl+Alt+letra** quando o foco está num campo, no
+    editor ou num `contenteditable` (para não roubar o AltGr do ABNT2: ?, °...). Só que **Ctrl+Alt+Shift+J** também é
+    Ctrl+Alt+letra: com o cursor no texto, o maximizar é jogado fora; por isso só funciona depois de clicar no título.
+    Correção: o AltGr do ABNT2 nunca vem com Shift nessas letras e o Windows marca `e.getModifierState("AltGraph")`;
+    filtrar só quando `AltGraph` está ligado (ou sem Shift), e não por "Ctrl+Alt+letra".
+  - **O que já está certo e fica**: Ctrl+B no editor é negrito (a barra lateral só fora do `.ProseMirror`); no
+    terminal, Ctrl+W/B/J/R são do programa (`FORA_DO_TERMINAL` / `DO_TERMINAL` em `atalhos.ts`). Regra a manter:
+    **o app sempre vê a tecla primeiro**; só desiste quando o atalho tem um uso de texto conhecido ali (lista
+    explícita: negrito/itálico/sublinhado no editor, as do terminal). F11, Ctrl+P, Ctrl+Shift+P, Ctrl+, , Ctrl+\,
+    Ctrl+Alt+Shift+J, Ctrl+1/2 valem em qualquer lugar.
+  - Ao implementar: listener do app em **captura** (`addEventListener("keydown", f, true)`) para nenhum
+    `stopPropagation` de componente (Tiptap, xterm, CodeMirror) engolir; e o foco do painel seguir `focusin` (Tab,
+    teclado), não só o clique.
 - **Ctrl+Alt+Shift+J não funciona com o foco dentro da janela** (04/11, o Paulo: "se tiver com foco, não está
-  funcionando; eu tenho que clicar no título do painel"). Suspeita: o `foco` do `EstadoPainel` só muda ao clicar na
+  funcionando; eu tenho que clicar no título do painel"). **Causa achada**: é a causa 2 do item acima (filtro do AltGr). Suspeita: o `foco` do `EstadoPainel` só muda ao clicar na
   aba/título, não ao clicar ou digitar **dentro** da janela (editor, tabela, terminal); aí o atalho maximiza a janela
   do outro lado, ou o editor engole a tecla. Conferir os dois: (1) `focusin` dentro de uma janela atualiza `foco` e a
   `ativa` (vale para todos os atalhos "da janela com foco": fechar, mover, maximizar); (2) o atalho chega com o

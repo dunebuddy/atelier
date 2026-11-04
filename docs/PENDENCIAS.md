@@ -44,6 +44,21 @@ Como usar:
     Delete apaga só do texto (o arquivo fica em `insumos/`);
   - talvez depois: redimensionar arrastando a borda (o markdown puro não guarda tamanho; precisaria de `<img width>`).
   Esforço: pequeno a médio, quase todo em `Editor.tsx`. Sem migração e sem mudança no MCP.
+- **Fixar (pinar) uma janela aberta** (04/11, o Paulo: "se o documento está pinado, nada feche ele, a menos que eu
+  feche... cliquei num link, abre outra janela; cliquei numa visão, abre outra janela").
+  Pré-análise: as janelas de cada metade vivem em `painel.ts` (`EstadoPainel` → `metades[].janelas`); quem troca o
+  conteúdo da janela ativa é `navegar` (barra lateral, `abrir()` sem `nova`) e `irNaJanela` (link/menção dentro da
+  própria janela, em `Painel.tsx`).
+  - `Janela` ganha `fixa?: boolean`, que fica gravado com o workspace (sobrevive a reabrir o app);
+  - **janela fixa nunca troca de conteúdo**: `navegar` e `irNaJanela` sobre ela viram `abrirNova` (abre ao lado, na
+    mesma metade, e a nova fica ativa). Vale para link e menção no texto, visão, Favoritos, documento da barra lateral,
+    busca, voltar/avançar e o `tela` do MCP;
+  - **só o Paulo fecha**: "fechar todas" / "fechar as outras" e o `tela` do agente pulam as fixas; o × de uma janela
+    fixa pede para desafixar primeiro (ou fecha com um clique a mais, a decidir);
+  - na tela: botão de alfinete (📌) na aba e no menu da janela; a aba fixa mostra o alfinete; atalho a escolher;
+  - não é só documento: dá para fixar visão, consulta, terminal ou explorador do mesmo jeito (mesma regra);
+  - MCP: `tela` com `fixar`/`desafixar` e o `estado` dizendo quais estão fixas.
+  Esforço: pequeno a médio (quase todo em `painel.ts`, mais a aba em `Painel.tsx`). Sem migração.
 - **Comandos de barra em inglês + autocomplete de arquivo** (04/11, o Paulo: "prefiro barra image... as pessoas vão
   tentar barra image primeiro"; "como aparece o autocomplete no editor de código").
   - Hoje: `COMANDOS` em `Editor.tsx` tem `id` em português (`lista`, `tarefa`, `citacao`, `codigo`, `divisor`,

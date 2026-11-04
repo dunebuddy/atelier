@@ -44,6 +44,23 @@ Como usar:
     Delete apaga só do texto (o arquivo fica em `insumos/`);
   - talvez depois: redimensionar arrastando a borda (o markdown puro não guarda tamanho; precisaria de `<img width>`).
   Esforço: pequeno a médio, quase todo em `Editor.tsx`. Sem migração e sem mudança no MCP.
+- **Ver imagem grande de verdade (visualizador em tela cheia)** (04/11, o Paulo: "quando clicasse no zoom da imagem, que
+  ficasse grande de verdade, na tela... hoje fica grande no local e eu tenho que ficar arrastando; um pop-up que ocupe
+  a tela toda, com fit para ficar o maior possível, controle de zoom, clicar fora ou Esc fecha").
+  Hoje: não há visualizador do app; a imagem do Explorador fica encaixada na janela (`.ex-centro`), a do texto do
+  documento fica no tamanho do texto, e a de dentro do leitor de Markdown fica no iframe (onde o zoom é o do WebView,
+  que amplia "no local").
+  - **Um componente só, `VerImagem`**, aberto por clique (ou Enter) em qualquer imagem: no texto do documento, no
+    Explorador, no leitor de Markdown, nos anexos/insumos; Explorador ganha também a lupa na barra;
+  - **sobreposição na tela inteira** do app (por cima de painéis e barra lateral), fundo escuro, a imagem **encaixada
+    no maior tamanho possível** sem cortar (fit), inclusive ampliando imagem pequena até o limite do nítido;
+  - **zoom**: roda do mouse (em volta do ponteiro), Ctrl+= / Ctrl+-, botões − / % / +, "encaixar" (0) e "tamanho real"
+    (1); com zoom maior que a tela, arrastar move; duplo clique alterna encaixar ↔ 100%;
+  - **fechar**: Esc, clique fora da imagem (no fundo) ou ×; o foco volta para onde estava;
+  - com várias imagens no mesmo documento/pasta: ← → passam para a próxima; rodapé com o nome do arquivo, tamanho em
+    pixels e "abrir no programa padrão" / "mostrar na pasta";
+  - os atalhos ficam com o visualizador enquanto ele está aberto (Esc, setas, Ctrl+=), sem mexer no zoom do app.
+  Junta com "Imagem no documento" (o clique na imagem do texto abre aqui).
 - **Ctrl+\ esconde a metade direita, não junta** (04/11, o Paulo: "não é para sumir com o painel... fica escondido,
   o painel só esconde"). Hoje `dividir` em `painel.ts`, com duas metades, chama `juntar`: as janelas da direita
   **vão para a esquerda** e a metade deixa de existir. Pedido:

@@ -916,7 +916,7 @@ async fn exportar(State(b): State<Banco>, Json(d): Json<Value>) -> R {
 
 /// Ações que a tela entende (o MCP `tela` e o Comando do app usam esta lista).
 pub const ACOES_TELA: &str = "abrir (codigo | visao | pasta | arquivo | lixeira | tipo | lista), workspace, fechar_workspace, renomear_workspace, \
-visao_geral, dividir, juntar, modo, fechar, focar, terminal, explorador_sistema, barra_lateral, tema, zoom, configuracoes, \
+visao_geral, dividir, esconder_direita, mostrar_direita, juntar, modo, fechar, fixar, desafixar, expandir, focar, terminal, explorador_sistema, barra_lateral, tema, zoom, configuracoes, \
 busca, recarregar, filtrar, destacar, estado";
 
 /// Pedido para a tela do app. `lado: "esquerda" | "direita"` escolhe a metade do painel (a direita nasce se o painel
@@ -1034,6 +1034,8 @@ async fn tela(State(b): State<Banco>, Json(d): Json<Value>) -> R {
         }
         // fechar: "atual" (padrão), "todas" ou parte do título da janela
         "fechar" => ev["janela"] = json!(txt("janela").unwrap_or("atual".into())),
+        // fixar/desafixar (alfinete) e expandir: a janela pelo id do "estado" ou a atual
+        "fixar" | "desafixar" | "expandir" => ev["janela"] = json!(txt("janela").unwrap_or("atual".into())),
         // focar: a janela pelo id (do "estado") ou o painel/lado
         "focar" => {
             if let Some(j) = txt("janela") {
@@ -1099,7 +1101,7 @@ async fn tela(State(b): State<Banco>, Json(d): Json<Value>) -> R {
             ev["caminho"] = json!(txt("caminho").ok_or(Erro::Invalido("pedir_bancada: informe o caminho".into()))?);
             ev["nome"] = json!(txt("nome").unwrap_or_default());
         }
-        "recarregar" | "dividir" | "juntar" | "visao_geral" => {}
+        "recarregar" | "dividir" | "esconder_direita" | "mostrar_direita" | "juntar" | "visao_geral" => {}
         outro => return Err(Erro::Invalido(format!("ação desconhecida: {outro} (ações: {ACOES_TELA}). Se for algo que a tela devia saber fazer, registre com nao_consigo."))),
     }
     // só a janela desta bancada faz (as outras ignoram)

@@ -6,10 +6,12 @@ import { useAoReaparecer, useVisivel } from "../visivel";
 import { RamoPasta } from "./Explorador";
 
 /** Copia caminhos para a pasta do item (cria a pasta no padrão se faltar). */
-export async function trazerArquivos(item: Item, caminhos: string[], destino = "insumos") {
-  if (!caminhos.length) return;
+export async function trazerArquivos(item: Item, caminhos: string[], destino = "insumos"): Promise<string[]> {
+  if (!caminhos.length) return [];
   const r = await api.trazerArquivos(item.id, caminhos, destino);
   avisar(`Copiado para ${destino}/: ${r.copiados.join(", ")}`);
+  // os nomes como ficaram (um repetido ganha sufixo), relativos à pasta do documento
+  return r.copiados.map((n) => `${destino}/${n}`);
 }
 
 /** Arquivos da pasta do item, com "Adicionar…" (escolher no sistema). Arrastar sobre a página também funciona. */

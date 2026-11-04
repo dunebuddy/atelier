@@ -13,8 +13,10 @@ import { ComandoAgente, descreverTela, PedidoTela } from "./components/Comando";
 import { AvisoAtualizacao } from "./components/Atualizacao";
 import { CapturaGlobal } from "./components/Captura";
 import { Atalhos } from "./components/Atalhos";
+import { VisualizadorDeImagem } from "./components/VerImagem";
+import "./moldura";
 import { Sidebar, type Navegacao } from "./components/Sidebar";
-import { Contexto, PainelTrabalho } from "./components/Painel";
+import { cliqueNoOutro, Contexto, PainelTrabalho } from "./components/Painel";
 import * as P from "./painel";
 import { EstadoPainel, janelaAtiva, rotaDe } from "./painel";
 import { avisar, falhou, guardar, ler, Rota, Tema } from "./ui";
@@ -281,7 +283,9 @@ export default function App() {
   useEffect(() => {
     const f = (e: Event) => {
       const d = (e as CustomEvent<{ rota: Rota; nova?: boolean }>).detail;
-      (d.nova ? abrirAoLado : ir)(d.rota);
+      // Ctrl+Alt+clique (barra lateral, busca...): no outro painel
+      if (cliqueNoOutro()) setPainel((s) => P.abrirNoOutro(s, d.rota));
+      else (d.nova ? abrirAoLado : ir)(d.rota);
     };
     window.addEventListener("atelier:abrir", f);
     return () => window.removeEventListener("atelier:abrir", f);
@@ -301,7 +305,7 @@ export default function App() {
     const naMetade = (f: (s: EstadoPainel) => EstadoPainel) => setPainel((s) => {
       if (d.metade == null) return f(s);
       const n = d.metade > 0 && s.metades.length < 2 ? P.dividir(s) : s;
-      return f({ ...n, foco: Math.min(d.metade, n.metades.length - 1) });
+      return f(P.focar(n, Math.min(d.metade, n.metades.length - 1)));
     });
     switch (d.acao) {
       case "abrir":
@@ -319,7 +323,19 @@ export default function App() {
       case "renomear_workspace":
         setWs((w) => (w ? W.renomear(w, d.item ? W.chaveItem(d.item.id) : W.GERAL, d.nome ?? "") : w));
         return;
-      case "dividir": setPainel((s) => (s.metades.length > 1 ? s : P.dividir(s))); return;
+      case "dividir": case "mostrar_direita": setPainel((s) => (s.metades.length > 1 && !s.metades[1].escondida ? s : P.dividir(s))); return;
+      case "esconder_direita": setPainel((s) => (P.duasVisiveis(s) ? P.dividir(s) : s)); return;
+      case "fixar": case "desafixar": case "expandir": {
+        const qual = d.janela ?? "atual";
+        setPainel((s) => {
+          const id = qual === "atual" ? janelaAtiva(s)?.id : P.acharJanela(s, qual)?.j.id;
+          if (!id) return s;
+          if (d.acao === "expandir") return P.alternarExpandida(s, id);
+          const j = P.acharJanela(s, id)!.j;
+          return !!j.fixada === (d.acao === "fixar") ? s : P.alternarFixada(s, id);
+        });
+        return;
+      }
       case "juntar": setPainel(P.juntar); return;
       case "modo": naMetade((s) => P.mudarModo(s, s.foco, d.modo as P.Modo)); return;
       case "fechar": naMetade((s) => P.fecharJanelas(s, d.janela ?? "atual")); return;
@@ -478,10 +494,15 @@ export default function App() {
       // na fita com Ctrl+Alt+setas, mover, dividir...), que o terminal também deixa subir
       if (alvo.closest?.(".xterm") && !doPainel(e)) return;
       // digitando, Ctrl+Alt+letra/número é o AltGr do teclado (ABNT2: ?, °, ¹...): não é atalho
-      if (digitando && e.ctrlKey && e.altKey && /^(Key|Digit)/.test(e.code)) return;
+      // (o AltGr nunca vem com Shift: Ctrl+Alt+Shift+J, o expandir, vale digitando)
+      if (digitando && e.ctrlKey && e.altKey && !e.shiftKey && /^(Key|Digit)/.test(e.code)) return;
       const com = (g: (s: EstadoPainel, id: string) => EstadoPainel) => setPainel((s) => { const a = janelaAtiva(s); return a ? g(s, a.id) : s; });
       const acoes: [string, () => void][] = [
-        ["fechar-janela", () => com(P.fechar)],
+        // a fixada não fecha pelo atalho: o alfinete na aba desafixa, e aí fecha
+        ["fechar-janela", () => com((s, id) => {
+          if (P.acharJanela(s, id)?.j.fixada) { window.setTimeout(() => avisar("Janela fixada: tire o alfinete (na aba) para fechar."), 0); return s; }
+          return P.fechar(s, id);
+        })],
         ["proxima-janela", () => setPainel((s) => P.focarVizinha(s, 1))],
         ["janela-anterior", () => setPainel((s) => P.focarVizinha(s, -1))],
         ["modo-abas", () => setPainel((s) => P.mudarModo(s, s.foco, "abas"))],
@@ -496,16 +517,16 @@ export default function App() {
         ["desempilhar", () => com((s, id) => P.empilhar(s, id, false))],
         ["promover", () => com(P.promover)],
         ["largura", () => com(P.proximaLargura)],
-        ["trocar-metade", () => setPainel((s) => (s.metades.length > 1 ? { ...s, foco: 1 - s.foco } : s))],
+        ["trocar-metade", () => setPainel((s) => (s.metades.length > 1 ? P.focar(s, 1 - s.foco) : s))],
         ["workspace-proximo", () => setWs((w) => (w ? W.vizinho(w, 1) : w))],
         ["workspace-anterior", () => setWs((w) => (w ? W.vizinho(w, -1) : w))],
         ["menu", () => setFechada((x) => !x)],
         ["config", () => setConfig("aparencia")],
         ["atalhos", () => setConfig("atalhos")],
-        ["maximizar", () => setPainel(P.alternarMaximizada)],
+        ["maximizar", () => setPainel((s) => P.alternarExpandida(s))],
         ["zen", () => setZen((z) => { setPainel((s) => ({ ...s, maximizada: !z })); return !z; })],
-        ["painel-0", () => setPainel((s) => ({ ...s, foco: 0 }))],
-        ["painel-1", () => setPainel((s) => (s.metades.length > 1 ? { ...s, foco: 1 } : P.dividir(s)))],
+        ["painel-0", () => setPainel((s) => P.focar(s, 0))],
+        ["painel-1", () => setPainel((s) => (s.metades.length > 1 ? P.focar(s, 1) : P.dividir(s)))],
         ["ir-terminal", () => setPainel((s) => {
           // o último terminal do painel com foco (ou de qualquer um); sem terminal, abre um
           const ordem = [s.foco, ...s.metades.map((_, i) => i).filter((i) => i !== s.foco)];
@@ -676,6 +697,7 @@ export default function App() {
       <ComandoAgente descricao={descricaoTela} />
       <BarraStatus ws={ws} />
       <CapturaGlobal prefs={prefs} />
+      <VisualizadorDeImagem />
       <EscolherAgente />
       <AvisoAtualizacao prefs={prefs} />
       {verAtalhos && <Atalhos aoFechar={() => setVerAtalhos(false)} />}

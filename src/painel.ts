@@ -20,6 +20,8 @@ export interface Janela {
   tipo_id?: number | null;
   /** nome de cada lugar por onde a janela passou (para a lista do histórico) */
   rotulos?: Record<string, string>;
+  /** fixada (alfinete): nunca troca de conteúdo (o que se abre nela vai para uma janela nova) e só o Paulo fecha */
+  fixada?: boolean;
 }
 
 export interface Metade {
@@ -28,6 +30,8 @@ export interface Metade {
   modo: Modo;
   /** tile: largura do principal, em fração (0.3 a 0.8) */
   proporcao: number;
+  /** só a da direita: escondida pelo Ctrl+\ (as janelas ficam lá, intactas, e voltam como estavam) */
+  escondida?: boolean;
 }
 
 export interface EstadoPainel {
@@ -36,8 +40,22 @@ export interface EstadoPainel {
   foco: number;
   /** com duas metades: fração da largura da primeira */
   divisao: number;
-  /** a janela ativa do painel com foco ocupa o painel inteiro (as outras ficam escondidas, sem desmontar) */
+  /** Modo Zen: a janela ativa do painel com foco ocupa o painel inteiro (as outras ficam escondidas, sem desmontar) */
   maximizada?: boolean;
+  /** expandida (duplo clique, Ctrl+Alt+Shift+J): a janela ocupa 85% do painel e o resto fica à vista, espremido */
+  expandida?: string | null;
+}
+
+/** Quanto do painel a janela expandida ocupa. */
+export const EXPANDIR = 0.85;
+
+/** A metade da direita existe e está à vista? */
+export const duasVisiveis = (e: EstadoPainel) => e.metades.length > 1 && !e.metades[1].escondida;
+
+/** Foco foi para a metade da direita escondida: ela volta (o que se abre lá aparece). */
+function mostrar(e: EstadoPainel): EstadoPainel {
+  if (e.foco !== 1 || !e.metades[1]?.escondida) return e;
+  return { ...e, metades: e.metades.map((m, i) => (i === 1 ? { ...m, escondida: false } : m)) };
 }
 
 export const LARGURAS = [1, 2, 3, 4];
@@ -96,14 +114,32 @@ export function janelaAtiva(e: EstadoPainel): Janela | null {
 /** Abre numa janela nova, logo depois da ativa da metade (`mi`, padrão: a do foco). */
 export function abrirNova(e: EstadoPainel, r: Rota, mi = e.foco): EstadoPainel {
   const j = novaJanela(r);
-  return {
+  return mostrar({
     ...trocarMetade(e, mi, (m) => {
       const i = m.janelas.findIndex((x) => x.id === m.ativa);
       const janelas = [...m.janelas.slice(0, i + 1), j, ...m.janelas.slice(i + 1)];
       return { ...m, janelas, ativa: j.id };
     }),
     foco: mi,
-  };
+    // a nova tem de aparecer: o expandir de outra janela desfaz
+    expandida: null,
+  });
+}
+
+/** Abre na outra metade (Ctrl+Alt+clique): a oposta a `mi`; sem a direita, ela nasce; escondida, volta. */
+export function abrirNoOutro(e: EstadoPainel, r: Rota, mi = e.foco): EstadoPainel {
+  return abrirNaMetade(e, r, e.metades.length > 1 ? 1 - mi : 1, true);
+}
+
+/** Vai para `r` dentro da janela `id`; se ela está fixada, abre numa janela nova ao lado (na mesma metade). */
+export function irOuNova(e: EstadoPainel, id: string, r: Rota): EstadoPainel {
+  const a = acharJanela(e, id);
+  if (a?.j.fixada) return abrirNova(e, r, a.mi);
+  return irNaJanela(e, id, r);
+}
+
+export function alternarFixada(e: EstadoPainel, id: string): EstadoPainel {
+  return trocarJanela(e, id, (j) => ({ ...j, fixada: !j.fixada }));
 }
 
 /** Abre na metade `mi` (0 = esquerda, 1 = direita; a direita nasce se o painel não está dividido). `nova`: janela
@@ -112,7 +148,7 @@ export function abrirNaMetade(e: EstadoPainel, r: Rota, mi: number, nova = false
   let n = e;
   if (mi > 0 && n.metades.length < 2) n = dividir(n);
   const alvo = Math.min(mi, n.metades.length - 1);
-  n = { ...n, foco: alvo };
+  n = mostrar({ ...n, foco: alvo });
   return nova ? abrirNova(n, r, alvo) : navegar(n, r);
 }
 
@@ -120,18 +156,20 @@ export function abrirNaMetade(e: EstadoPainel, r: Rota, mi: number, nova = false
 export function fecharJanelas(e: EstadoPainel, qual: string, mi = e.foco): EstadoPainel {
   const m = e.metades[mi];
   if (!m) return e;
+  // a fixada só o Paulo fecha (o agente e o "fechar todas" passam por cima)
+  const livre = (id: string) => !acharJanela(e, id)?.j.fixada;
   // o id exato de uma janela (o "estado" da tela mostra) fecha só ela, em qualquer metade
-  if (acharJanela(e, qual)) return fechar(e, qual);
+  if (acharJanela(e, qual)) return livre(qual) ? fechar(e, qual) : e;
   const q = qual.toLowerCase();
   const ids = q === "atual" ? (m.ativa ? [m.ativa] : []) : q === "todas" ? m.janelas.map((j) => j.id)
     : e.metades.flatMap((x) => x.janelas).filter((j) => (j.titulo ?? "").toLowerCase().includes(q)).map((j) => j.id);
-  return ids.reduce((s, id) => fechar(s, id), e);
+  return ids.filter(livre).reduce((s, id) => fechar(s, id), e);
 }
 
 /** Vai para `r` na janela ativa (ou abre uma, se não há, ou se a ativa é terminal/arquivos). */
 export function navegar(e: EstadoPainel, r: Rota): EstadoPainel {
   const a = janelaAtiva(e);
-  if (!a || fixa(rotaDe(a)) || fixa(r)) return abrirNova(e, r);
+  if (!a || a.fixada || fixa(rotaDe(a)) || fixa(r)) return abrirNova(e, r);
   return irNaJanela(e, a.id, r);
 }
 
@@ -149,16 +187,28 @@ export function substituir(e: EstadoPainel, id: string, r: Rota): EstadoPainel {
 }
 
 export function irParaPasso(e: EstadoPainel, id: string, pos: number): EstadoPainel {
-  return trocarJanela(e, id, (j) => ({ ...j, pos: Math.max(0, Math.min(j.hist.length - 1, pos)) }));
+  // fixada não anda no histórico (nada troca o que ela mostra)
+  return trocarJanela(e, id, (j) => (j.fixada ? j : { ...j, pos: Math.max(0, Math.min(j.hist.length - 1, pos)) }));
 }
 
 export function ativar(e: EstadoPainel, mi: number, id: string): EstadoPainel {
-  return { ...trocarMetade(e, mi, (m) => ({ ...m, ativa: id })), foco: mi };
+  // dar foco a outra janela (clicar na parte espremida) desfaz o expandir, como no VS Code
+  const expandida = e.expandida && e.expandida !== id ? null : e.expandida;
+  return mostrar({ ...trocarMetade(e, mi, (m) => ({ ...m, ativa: id })), foco: mi, expandida });
 }
 
-/** Liga e desliga o "maximizar": a janela ativa do painel com foco ocupa o painel inteiro. */
-export function alternarMaximizada(e: EstadoPainel): EstadoPainel {
-  return { ...e, maximizada: !e.maximizada };
+/** Muda o foco de metade (a direita escondida volta). */
+export function focar(e: EstadoPainel, mi: number): EstadoPainel {
+  if (mi >= e.metades.length) return e;
+  const ativa = e.metades[mi].ativa;
+  const expandida = e.expandida && e.expandida !== ativa ? null : e.expandida;
+  return mostrar({ ...e, foco: mi, expandida });
+}
+
+/** Expandir (duplo clique, Ctrl+Alt+Shift+J): a janela com foco fica com 85% do painel; de novo, volta. */
+export function alternarExpandida(e: EstadoPainel, id = janelaAtiva(e)?.id): EstadoPainel {
+  if (!id) return e;
+  return { ...e, expandida: e.expandida === id ? null : id };
 }
 
 /** Fecha a janela. A metade fica aberta mesmo vazia (só o "juntar" tira uma metade). */
@@ -166,7 +216,7 @@ export function fechar(e: EstadoPainel, id: string): EstadoPainel {
   const achada = acharJanela(e, id);
   if (!achada) return e;
   const { mi } = achada;
-  return trocarMetade(e, mi, (m) => {
+  return trocarMetade(e.expandida === id ? { ...e, expandida: null } : e, mi, (m) => {
     const i = m.janelas.findIndex((j) => j.id === id);
     const janelas = m.janelas.filter((j) => j.id !== id);
     // a que vinha empilhada embaixo da fechada não sobe para a coluna de outra
@@ -176,9 +226,15 @@ export function fechar(e: EstadoPainel, id: string): EstadoPainel {
   });
 }
 
-/** Divide o painel em dois: a metade nova nasce vazia (nada é copiado). Com duas, junta. */
+/** Ctrl+\: divide o painel em dois (a metade nova nasce vazia). Com duas, **esconde** a direita (as janelas dela
+ *  ficam lá, intactas) ou mostra de novo como estava. Juntar de verdade é `juntar`, só pelo menu. */
 export function dividir(e: EstadoPainel): EstadoPainel {
-  if (e.metades.length > 1) return juntar(e);
+  if (e.metades.length > 1) {
+    const esconder = !e.metades[1].escondida;
+    const metades = e.metades.map((m, i) => (i === 1 ? { ...m, escondida: esconder } : m));
+    const expandida = esconder && e.metades[1].janelas.some((j) => j.id === e.expandida) ? null : e.expandida;
+    return { ...e, metades, foco: esconder ? 0 : 1, expandida };
+  }
   return { ...e, metades: [...e.metades, { janelas: [], ativa: null, modo: e.metades[0].modo, proporcao: 0.6 }], foco: 1 };
 }
 
@@ -189,7 +245,7 @@ export function juntar(e: EstadoPainel): EstadoPainel {
   const ja = new Set(a.janelas.map((j) => chaveRota(rotaDe(j))));
   const vem = b.janelas.filter((j) => !ja.has(chaveRota(rotaDe(j))));
   const ativa = vem.some((j) => j.id === b.ativa) ? b.ativa : a.ativa ?? vem[0]?.id ?? null;
-  return { ...e, metades: [{ ...a, janelas: [...a.janelas, ...vem.map((j) => ({ ...j, empilhada: false }))], ativa }], foco: 0 };
+  return { ...e, metades: [{ ...a, janelas: [...a.janelas, ...vem.map((j) => ({ ...j, empilhada: false }))], ativa }], foco: 0, expandida: null };
 }
 
 /** Muda a janela de lugar: para outra metade (no fim, ou antes de `antesDe`) ou dentro da mesma. */
@@ -205,7 +261,7 @@ export function mover(e: EstadoPainel, id: string, paraMi: number, antesDe?: str
     const janelas = pos < 0 ? [...m.janelas, j] : [...m.janelas.slice(0, pos), j, ...m.janelas.slice(pos)];
     return { ...m, janelas, ativa: id };
   });
-  return { ...e, metades, foco: paraMi };
+  return mostrar({ ...e, metades, foco: paraMi });
 }
 
 /** Manda a janela para a outra metade (com uma só, divide e manda para a direita). */
@@ -217,7 +273,7 @@ export function moverParaOutraMetade(e: EstadoPainel, id: string, mi: number): E
 export function fecharOutras(e: EstadoPainel, id: string, mi: number): EstadoPainel {
   const m = e.metades[mi];
   if (!m) return e;
-  return m.janelas.filter((j) => j.id !== id).reduce((s, j) => fechar(s, j.id), ativar(e, mi, id));
+  return m.janelas.filter((j) => j.id !== id && !j.fixada).reduce((s, j) => fechar(s, j.id), ativar(e, mi, id));
 }
 
 /** Anda a janela uma posição para o lado dentro da metade. */
@@ -292,11 +348,25 @@ export function colunasDaFita(m: Metade): { ids: string[]; largura: number }[] {
 }
 
 /** Onde cada janela fica dentro do corpo da metade. `rolagem`: deslocamento da fita. */
-export function arrumar(m: Metade, mi: number, corpo: Retangulo, rolagem: number, vao = 6): Lugar[] {
+export function arrumar(m: Metade, mi: number, corpo: Retangulo, rolagem: number, vao = 6, expandida?: string | null): Lugar[] {
   const n = m.janelas.length;
   if (!n) return [];
   if (m.modo === "abas" || n === 1) {
     return m.janelas.map((j) => ({ id: j.id, mi, r: corpo, visivel: j.id === m.ativa || n === 1, cabeca: m.modo !== "abas" }));
+  }
+  // expandida (tile e fita): ela com 85% à esquerda; as outras empilhadas, espremidas, no resto (à vista)
+  const exp = expandida ? m.janelas.find((j) => j.id === expandida) : undefined;
+  if (exp) {
+    const we = Math.round(corpo.w * EXPANDIR);
+    const resto = m.janelas.filter((j) => j.id !== exp.id);
+    const h = (corpo.h - vao * (resto.length - 1)) / resto.length;
+    return [
+      { id: exp.id, mi, r: { x: corpo.x, y: corpo.y, w: we - vao / 2, h: corpo.h }, visivel: true, cabeca: true },
+      ...resto.map((j, i) => ({
+        id: j.id, mi, visivel: true, cabeca: true,
+        r: { x: corpo.x + we + vao / 2, y: corpo.y + i * (h + vao), w: corpo.w - we - vao / 2, h },
+      })),
+    ];
   }
   if (m.modo === "tile") {
     const wp = Math.round(corpo.w * m.proporcao);

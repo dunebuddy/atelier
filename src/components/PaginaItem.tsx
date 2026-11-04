@@ -18,6 +18,7 @@ import { IconeEspecie, valorDe, ValorProp } from "./Valor";
 
 // pesados e nem sempre na tela: só carregam quando aparecem pela primeira vez
 const Editor = lazy(() => import("./Editor").then((m) => ({ default: m.Editor })));
+import type { DocComPasta, InserirArquivos } from "./Editor";
 const Exportar = lazy(() => import("./Exportar").then((m) => ({ default: m.Exportar })));
 
 export function PaginaItem({
@@ -67,6 +68,8 @@ export function PaginaItem({
   // arrastar arquivos do sistema para cima da página: copia para insumos/ (só no app; o navegador não dá o caminho)
   const itemRef = useRef<Item | null>(null);
   itemRef.current = item;
+  const raizRef = useRef<HTMLDivElement>(null);
+  const inserirRef = useRef<InserirArquivos | null>(null);
   useEffect(() => {
     let solta: (() => void) | undefined;
     let vivo = true;
@@ -82,8 +85,15 @@ export function PaginaItem({
             setArrastando(false);
             const it = itemRef.current;
             if (!it) return;
+            // com as duas metades à vista, só a página onde soltou recebe
+            const dpr = window.devicePixelRatio || 1;
+            const ponto = p.position ? { x: p.position.x / dpr, y: p.position.y / dpr } : undefined;
+            const el = ponto ? document.elementFromPoint(ponto.x, ponto.y) : null;
+            if (el && el.closest(".pagina") && raizRef.current && !raizRef.current.contains(el)) return;
             try {
-              await trazerArquivos(it, p.paths);
+              const rels = await trazerArquivos(it, p.paths);
+              // soltou em cima do texto: entra no ponto onde soltou (imagem como imagem, o resto como link)
+              if (el?.closest(".ProseMirror") && raizRef.current?.contains(el)) inserirRef.current?.(rels, ponto);
               carregar();
               setRecargaArquivos((n) => n + 1);
             } catch (e) {
@@ -239,7 +249,7 @@ export function PaginaItem({
   );
 
   return (
-    <div className="pagina">
+    <div className="pagina" ref={raizRef}>
       {arrastando && (
         <div className="soltar-aqui">
           <div>Solte para copiar para <code>insumos/</code> de <strong>#{item.codigo}</strong></div>
@@ -369,6 +379,29 @@ export function PaginaItem({
               codigo={item.codigo}
               aoMencao={(c) => abrirCodigo(c, ir)}
               prompt={{ itemId: item.id, codigo: item.codigo, titulo: item.titulo }}
+              inserirRef={inserirRef}
+              aoEscolherArquivo={async () => {
+                const { open } = await import("@tauri-apps/plugin-dialog");
+                const r = await open({ multiple: true, title: "Escolher arquivo (vai para insumos/)" });
+                const caminhos = Array.isArray(r) ? r : typeof r === "string" ? [r] : [];
+                const rels = await trazerArquivos(item, caminhos);
+                setRecargaArquivos((n) => n + 1);
+                if (!item.pasta) carregar();
+                return rels;
+              }}
+              relacionados={async () => {
+                // os ligados a este (nos dois sentidos) e os que o citam, que têm pasta
+                const ids = new Set<number>([
+                  ...(item.relacionados ?? []).map((x) => x.id),
+                  ...(item.referencias ?? []).map((x) => x.item.id),
+                  ...(item.mencionado_em ?? []).map((x) => x.id),
+                ]);
+                ids.delete(item.id);
+                const docs = await Promise.all([...ids].slice(0, 30).map((id) => api.item(id).catch(() => null)));
+                return docs.filter((d): d is Item => !!d?.pasta).map((d): DocComPasta => ({
+                  codigo: d.codigo, titulo: d.titulo, pasta: d.pasta!, icone: esquema.tipos.find((t) => t.id === d.tipo_id)?.icone,
+                }));
+              }}
               aoColarArquivo={async (f) => {
                 try {
                   const agora = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, "");

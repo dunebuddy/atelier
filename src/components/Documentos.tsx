@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import type { WorkBook } from "xlsx";
+import { repasseDaMoldura } from "../moldura";
 
 /** Até quantas linhas e colunas a planilha mostra (mais que isso trava a janela; o resto, no programa dela). */
 const MAX_LINHAS = 2000;
@@ -115,7 +116,7 @@ export function DocumentoWord({ url }: { url: string }) {
   if (erro) return <div className="vazio-grande">Não consegui ler o documento ({erro}).</div>;
   if (html == null) return <div className="vazio-grande">Abrindo…</div>;
   const fundo = getComputedStyle(document.documentElement).getPropertyValue("--bg-fundo").trim() || "#eee";
-  const doc = `<!doctype html><html><head><meta charset="utf-8"><base target="_blank"><style>
+  const doc = `<!doctype html><html><head><meta charset="utf-8"><base target="_blank">${repasseDaMoldura()}<style>
     body{margin:0;padding:20px 12px 40px;background:${fundo}}
     .folha{max-width:780px;margin:0 auto;background:#fff;color:#1f1f1f;padding:48px 56px;box-shadow:0 1px 4px rgba(0,0,0,.18);
       border-radius:3px;font:14.5px/1.6 Calibri,"Segoe UI",system-ui,sans-serif;overflow-wrap:break-word}
@@ -124,5 +125,5 @@ export function DocumentoWord({ url }: { url: string }) {
     table{border-collapse:collapse;margin:.6em 0} td,th{border:1px solid #bbb;padding:4px 8px;vertical-align:top}
     td p,th p{margin:0}
   </style></head><body><div class="folha">${html || "<p><em>Documento sem texto.</em></p>"}</div></body></html>`;
-  return <iframe className="ex-moldura" sandbox="allow-popups" srcDoc={doc} title="Documento" />;
+  return <iframe className="ex-moldura" sandbox="allow-popups allow-scripts" srcDoc={doc} title="Documento" />;
 }

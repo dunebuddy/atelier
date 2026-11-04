@@ -494,3 +494,11 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 
 ### Ponto de parada (2026-11-03)
 - Pendências zeradas. A conferir no uso: o Nemotron no microfone de verdade; favoritos e seções no dia a dia.
+- 0.2.13 (2026-11-04, noite): `painel.ts` (`Metade.escondida`, `Janela.fixada`, `EstadoPainel.expandida` + `EXPANDIR`,
+  `focar`, `irOuNova`, `abrirNoOutro`, `alternarExpandida`, `alternarFixada`; `maximizada` ficou só para o Zen),
+  `Painel.tsx` (abas estilo VS Code, `cliqueNoOutro`), `components/VerImagem.tsx`, `src/moldura.ts`, comandos de
+  barra e autocomplete de caminho em `Editor.tsx` (`trazerArquivos` agora devolve os caminhos relativos).
+
+### Ponto de parada (2026-11-04)
+- Fica nas pendências: atalhos em dois tempos com Ctrl+K. A conferir no uso: imagem colada/arrastada no app instalado
+  (o soltar do Tauri), o repasse de teclas das molduras no WebView2, as abas novas nos temas claros.

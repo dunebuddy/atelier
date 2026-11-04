@@ -1,11 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { combinacao } from "../atalhos";
+import { combinacao, dispararAtalho } from "../atalhos";
 import { PaginaConsulta } from "./Consultas";
 import { Quebrou } from "./Quebrou";
 import {
   ArrowLeftToLine, Bot, ChevronDown, ChevronLeft, ChevronRight, Columns2, FolderOpen, FolderTree, GalleryHorizontalEnd, LayoutPanelLeft, List,
-  Minimize2, PanelTop, Rows2, SquareTerminal, X,
+  Maximize2, Minimize2, PanelRightClose, PanelRightOpen, PanelTop, Pin, PinOff, Rows2, SquareTerminal, X,
 } from "lucide-react";
 import { Esquema, Visao } from "../api";
 import * as P from "../painel";
@@ -33,7 +33,10 @@ export interface Contexto {
 
 type Mudar = (f: (e: EstadoPainel) => EstadoPainel) => void;
 
-const CABECA = 38;
+// faixa de abas colada, da altura de uma linha (como a do VS Code)
+const CABECA = 35;
+// entre as metades, só uma linha fina
+const VAO = 1;
 
 export const MODOS: { id: Modo; nome: string; icone: React.ReactNode; atalho: string }[] = [
   { id: "abas", nome: "Abas", icone: <PanelTop size={15} />, atalho: "Ctrl+Alt+1" },
@@ -96,11 +99,17 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
     return () => obs.disconnect();
   }, []);
 
-  const duas = estado.metades.length > 1;
+  // a direita escondida (Ctrl+\) fica montada, só sem lugar na tela
+  const duas = P.duasVisiveis(estado);
+  const escondida = (mi: number) => mi === 1 && !!estado.metades[1]?.escondida;
+  // expandida: a metade dela fica com 85% e a outra continua à vista, espremida
+  const miExpandida = estado.expandida ? P.acharJanela(estado, estado.expandida)?.mi ?? null : null;
+  const divisao = duas && miExpandida != null ? (miExpandida === 0 ? P.EXPANDIR : 1 - P.EXPANDIR) : estado.divisao;
   const retMetade = (mi: number): P.Retangulo => {
+    if (escondida(mi)) return { x: tam.w, y: 0, w: 0, h: tam.h };
     if (!duas) return { x: 0, y: 0, w: tam.w, h: tam.h };
-    const corte = Math.round(tam.w * estado.divisao);
-    return mi === 0 ? { x: 0, y: 0, w: corte - 3, h: tam.h } : { x: corte + 3, y: 0, w: tam.w - corte - 3, h: tam.h };
+    const corte = Math.round(tam.w * divisao);
+    return mi === 0 ? { x: 0, y: 0, w: corte, h: tam.h } : { x: corte + VAO, y: 0, w: tam.w - corte - VAO, h: tam.h };
   };
   const corpoDe = (mi: number): P.Retangulo => {
     const m = retMetade(mi);
@@ -128,7 +137,7 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
   // maximizada: a janela ativa do painel com foco ocupa tudo; as outras ficam montadas, só escondidas (terminal vivo)
   const maxi = estado.maximizada ? P.janelaAtiva(estado) : null;
   const lugares: Lugar[] = estado.metades
-    .flatMap((m, mi) => P.arrumar(m, mi, corpoDe(mi), rolagem[mi] ?? 0))
+    .flatMap((m, mi) => P.arrumar(m, mi, corpoDe(mi), rolagem[mi] ?? 0, VAO, estado.expandida).map((l) => (escondida(mi) ? { ...l, visivel: false } : l)))
     .map((l) => (!maxi ? l : l.id === maxi.id ? { ...l, r: { x: 0, y: CABECA, w: tam.w, h: tam.h - CABECA }, visivel: true } : { ...l, visivel: false }));
   // todas as janelas num lugar só do DOM: mudar de modo ou de metade não desmonta nada (o terminal continua vivo)
   const todas = estado.metades.flatMap((m, mi) => m.janelas.map((j) => ({ j, mi })));
@@ -238,10 +247,10 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
         return (
           <div
             key={`cab${mi}`}
-            className={`metade-cabeca${focada && duas ? " focada" : ""}${sobre === `m${mi}` ? " soltar" : ""}${maxi ? " maximizada" : ""}`}
-            style={{ left: r.x, width: r.w, height: CABECA, display: maxi && !focada ? "none" : undefined }}
+            className={`metade-cabeca${focada ? " focada" : ""}${duas ? " dividido" : ""}${sobre === `m${mi}` ? " soltar" : ""}${maxi ? " maximizada" : ""}`}
+            style={{ left: r.x, width: r.w, height: CABECA, display: (maxi && !focada) || escondida(mi) ? "none" : undefined }}
             {...alvo(`m${mi}`, mi)}
-            onMouseDown={() => !focada && mudar((s) => ({ ...s, foco: mi }))}
+            onMouseDown={() => !focada && mudar((s) => P.focar(s, mi))}
           >
             {m.janelas.length > 1 && (
               <button className="btn-icone botao-abas" title="Todas as abas desta metade" onClick={(e) => setListaAbas({ ancora: e.currentTarget, mi })}>
@@ -253,18 +262,22 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
                 <div
                   key={j.id}
                   data-aba={j.id}
-                  className={`aba${j.id === m.ativa ? " ativa" : ""}${sobre === j.id ? " soltar-antes" : ""}${j.empilhada && m.modo === "fita" ? " empilhada" : ""}${arrastando === j.id ? " arrastada" : ""}`}
+                  className={`aba${j.id === m.ativa ? " ativa" : ""}${j.fixada ? " fixada" : ""}${j.id === estado.expandida ? " expandida" : ""}${sobre === j.id ? " soltar-antes" : ""}${j.empilhada && m.modo === "fita" ? " empilhada" : ""}${arrastando === j.id ? " arrastada" : ""}`}
                   {...alvo(j.id, mi, j.id)}
                   onPointerDown={pegar(j)}
                   onClick={() => mudar((s) => P.ativar(s, mi, j.id))}
-                  onDoubleClick={() => mudar((s) => P.alternarMaximizada(P.ativar(s, mi, j.id)))}
+                  onDoubleClick={() => mudar((s) => P.alternarExpandida(P.ativar(s, mi, j.id), j.id))}
                   onContextMenu={(e) => { e.preventDefault(); setMenu({ ancora: e.currentTarget, id: j.id, mi }); }}
                   onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); mudar((s) => P.fechar(s, j.id)); } }}
-                  title={j.titulo}
+                  title={`${j.titulo ?? ""}${j.fixada ? " (fixada: o que se abre nela vai para outra janela)" : ""}`}
                 >
                   <IconeJanela j={j} />
                   <span className="aba-rotulo">{j.titulo ?? "…"}</span>
-                  <button title="Fechar (Ctrl+W)" onClick={(e) => { e.stopPropagation(); mudar((s) => P.fechar(s, j.id)); }}><X size={12} /></button>
+                  {j.fixada ? (
+                    <button className="aba-pino" title="Fixada. Clique para tirar o alfinete" onClick={(e) => { e.stopPropagation(); mudar((s) => P.alternarFixada(s, j.id)); }}><Pin size={12} /></button>
+                  ) : (
+                    <button className="aba-fechar" title="Fechar (Ctrl+W)" onClick={(e) => { e.stopPropagation(); mudar((s) => P.fechar(s, j.id)); }}><X size={12} /></button>
+                  )}
                 </div>
               ))}
             </div>
@@ -274,11 +287,18 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
                 <button className="btn-icone" title="Próxima janela (Ctrl+Alt+→)" onClick={() => mudar((s) => P.focarVizinha({ ...s, foco: mi }, 1))}><ChevronRight size={15} /></button>
               </div>
             )}
+            {miExpandida === mi && (
+              <button className="btn-icone expandida-voltar" title={`Expandida. Voltar ao tamanho de antes (${combinacao("maximizar")} ou duplo clique na aba)`} onClick={() => mudar((s) => ({ ...s, expandida: null }))}>
+                <Minimize2 size={14} />
+              </button>
+            )}
             <SeletorModo modo={m.modo} aoEscolher={(x) => mudar((s) => P.mudarModo(s, mi, x))} />
             <BotaoTerminal />
-            {mi === estado.metades.length - 1 && (
-              <button className="btn-icone" title={`${duas ? "Juntar as metades" : "Dividir o painel em dois"} (${combinacao("dividir")})`} onClick={() => mudar(P.dividir)}>
-                {duas ? <ArrowLeftToLine size={15} /> : <Columns2 size={15} />}
+            {(duas ? mi === 1 : mi === 0) && (
+              <button className="btn-icone"
+                title={`${duas ? "Esconder a metade da direita (as janelas ficam lá)" : estado.metades.length > 1 ? "Mostrar a metade da direita" : "Dividir o painel em dois"} (${combinacao("dividir")})`}
+                onClick={() => mudar(P.dividir)}>
+                {duas ? <PanelRightClose size={15} /> : estado.metades.length > 1 ? <PanelRightOpen size={15} /> : <Columns2 size={15} />}
               </button>
             )}
           </div>
@@ -286,23 +306,23 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
       })}
 
       {maxi && (
-        <button className="btn maximizada-sair" title="Voltar ao painel (Ctrl+Alt+Shift+J ou duplo clique na aba)" onClick={() => mudar(P.alternarMaximizada)}>
-          <Minimize2 size={13} /> Voltar
+        <button className="btn maximizada-sair" title={`Sair do Modo Zen (${combinacao("zen")}, ou Esc duas vezes)`} onClick={() => dispararAtalho("zen")}>
+          <Minimize2 size={13} /> Sair do Zen
         </button>
       )}
 
-      {duas && !maxi && <div className="alca-painel" title="Arraste para mudar o tamanho das metades" style={{ left: retMetade(0).w - 1, width: 8 }} onMouseDown={arrastarDivisao} />}
+      {duas && !maxi && miExpandida == null && <div className="alca-painel" title="Arraste para mudar o tamanho das metades" style={{ left: retMetade(0).w - 3, width: 7 }} onMouseDown={arrastarDivisao} />}
 
       {estado.metades.map((m, mi) =>
-        m.modo === "tile" && m.janelas.length > 1 && !maxi ? (
+        m.modo === "tile" && m.janelas.length > 1 && !maxi && miExpandida !== mi && !escondida(mi) ? (
           <div key={`prop${mi}`} className="alca-painel" style={{ left: corpoDe(mi).x + corpoDe(mi).w * m.proporcao - 3, top: CABECA, width: 6, bottom: 0 }} onMouseDown={arrastarProporcao(mi)} />
         ) : null,
       )}
 
       {estado.metades.map((m, mi) =>
-        !m.janelas.length && !maxi ? (
+        !m.janelas.length && !maxi && !escondida(mi) ? (
           <div key={`vazia${mi}`} className="metade-vazia" style={{ left: corpoDe(mi).x, top: CABECA, width: corpoDe(mi).w, bottom: 0 }}
-            onMouseDown={() => mudar((s) => ({ ...s, foco: mi }))} {...alvo(`m${mi}`, mi)}>
+            onMouseDown={() => mudar((s) => P.focar(s, mi))} {...alvo(`m${mi}`, mi)}>
             Metade vazia. Clique aqui e escolha uma visão na barra ao lado, use {combinacao("busca")}, abra um terminal ou arraste uma aba para cá.
           </div>
         ) : null,
@@ -333,11 +353,14 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
               clipPath: m.modo === "fita" || corte.top || corte.right || corte.bottom || corte.left ? `inset(${corte.top}px ${corte.right}px ${corte.bottom}px ${corte.left}px)` : undefined,
             }}
             onMouseDownCapture={() => { if (m.ativa !== j.id || estado.foco !== mi) mudar((s) => P.ativar(s, mi, j.id)); }}
+            // o foco do painel segue também o teclado (Tab, o cursor que entra num campo), não só o clique
+            onFocusCapture={() => { if (m.ativa !== j.id || estado.foco !== mi) mudar((s) => P.ativar(s, mi, j.id)); }}
           >
             {l.cabeca && m.janelas.length > 1 && (
-              <div className="janela-cabeca" onPointerDown={pegar(j)} onDoubleClick={() => mudar((s) => P.alternarMaximizada(P.ativar(s, mi, j.id)))}>
+              <div className="janela-cabeca" onPointerDown={pegar(j)} onDoubleClick={() => mudar((s) => P.alternarExpandida(P.ativar(s, mi, j.id), j.id))}>
                 <IconeJanela j={j} />
                 <span className="aba-rotulo">{j.titulo ?? "…"}</span>
+                {j.fixada && <button className="btn-icone mini" title="Fixada. Clique para tirar o alfinete" onClick={() => mudar((s) => P.alternarFixada(s, j.id))}><Pin size={12} /></button>}
                 {m.modo === "fita" && (
                   <>
                     <div className="larguras" title="Largura da coluna (Ctrl+Alt+R)">
@@ -355,7 +378,7 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
                 {m.modo === "tile" && m.janelas[0].id !== j.id && (
                   <button className="btn-icone mini" title="Virar a principal (Ctrl+Alt+Enter)" onClick={() => mudar((s) => P.promover(s, j.id))}><LayoutPanelLeft size={13} /></button>
                 )}
-                <button className="btn-icone mini" title="Fechar (Ctrl+W)" onClick={() => mudar((s) => P.fechar(s, j.id))}><X size={13} /></button>
+                {!j.fixada && <button className="btn-icone mini" title="Fechar (Ctrl+W)" onClick={() => mudar((s) => P.fechar(s, j.id))}><X size={13} /></button>}
               </div>
             )}
             <div className="janela-corpo">
@@ -370,7 +393,7 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
         );
       })}
 
-      {arrastando && estado.metades.length === 1 && (
+      {arrastando && !duas && (
         <div className={`soltar-metade${sobre === "nova" ? " sobre" : ""}`} style={{ left: tam.w / 2, top: CABECA, width: tam.w / 2, bottom: 0 }}
           {...alvo("nova", 1)}>
           Solte aqui para abrir na metade da direita
@@ -407,25 +430,58 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
       )}
 
       {menu && (
-        <Popover ancora={menu.ancora} aoFechar={() => setMenu(null)} largura={250}>
-          <button className="menu-item" onClick={doMenu(P.moverParaOutraMetade)}>
-            <Columns2 size={14} /> {duas ? "Mover para a outra metade" : "Mover para a metade da direita"}
-          </button>
-          <button className="menu-item" onClick={doMenu((s, id) => P.fechar(s, id))}>
-            <X size={14} /> Fechar
-          </button>
-          <button className="menu-item" onClick={doMenu(P.fecharOutras)}>
-            <X size={14} /> Fechar as outras desta metade
-          </button>
+        <Popover ancora={menu.ancora} aoFechar={() => setMenu(null)} largura={290}>
+          {(() => {
+            const j = P.acharJanela(estado, menu.id)?.j;
+            return (
+              <>
+                <button className="menu-item" onClick={doMenu((s, id) => P.alternarFixada(s, id))}>
+                  {j?.fixada ? <><PinOff size={14} /> Tirar o alfinete</> : <><Pin size={14} /> Fixar (nada troca o que ela mostra)</>}
+                </button>
+                <button className="menu-item" onClick={doMenu((s, id, mi) => P.alternarExpandida(P.ativar(s, mi, id), id))}>
+                  {estado.expandida === menu.id ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                  <span style={{ flex: 1 }}>{estado.expandida === menu.id ? "Voltar ao tamanho de antes" : "Expandir"}</span> <kbd>{combinacao("maximizar")}</kbd>
+                </button>
+                <button className="menu-item" onClick={doMenu(P.moverParaOutraMetade)}>
+                  <Columns2 size={14} /> {estado.metades.length > 1 ? "Mover para a outra metade" : "Mover para a metade da direita"}
+                </button>
+                {estado.metades.length > 1 && (
+                  <button className="menu-item" onClick={doMenu((s) => P.juntar(s))}>
+                    <ArrowLeftToLine size={14} /> Juntar as metades (a direita vem para cá)
+                  </button>
+                )}
+                {!j?.fixada && (
+                  <button className="menu-item" onClick={doMenu((s, id) => P.fechar(s, id))}>
+                    <X size={14} /> Fechar
+                  </button>
+                )}
+                <button className="menu-item" onClick={doMenu(P.fecharOutras)}>
+                  <X size={14} /> Fechar as outras desta metade (menos as fixadas)
+                </button>
+              </>
+            );
+          })()}
         </Popover>
       )}
     </div>
   );
 }
 
-// Ctrl+clique (ou clique do meio) em qualquer coisa que navega dentro de uma janela abre ao lado, em vez de trocar
+// Ctrl+clique (ou clique do meio) em qualquer coisa que navega dentro de uma janela abre ao lado, em vez de trocar;
+// Ctrl+Alt+clique abre no outro painel
 let aoLadoAte = 0;
-const marcar = (e: MouseEvent) => { if (e.ctrlKey || e.metaKey || e.button === 1) aoLadoAte = Date.now() + 400; };
+let outroAte = 0;
+const marcar = (e: MouseEvent) => {
+  if ((e.ctrlKey || e.metaKey) && e.altKey) outroAte = Date.now() + 400;
+  else if (e.ctrlKey || e.metaKey || e.button === 1) aoLadoAte = Date.now() + 400;
+};
+/** O clique que acabou de acontecer foi Ctrl+Alt (abrir no outro painel)? Responde uma vez só. */
+export function cliqueNoOutro(): boolean {
+  const sim = Date.now() < outroAte;
+  outroAte = 0;
+  if (sim) aoLadoAte = 0;
+  return sim;
+}
 window.addEventListener("click", marcar, true);
 window.addEventListener("auxclick", marcar, true);
 
@@ -433,9 +489,14 @@ window.addEventListener("auxclick", marcar, true);
 function Conteudo({ j, ctx, visivel, mudar }: { j: Janela; ctx: Contexto; visivel: boolean; mudar: Mudar }) {
   const r = rotaDe(j);
   const ir = (nova: Rota) => {
+    const outro = cliqueNoOutro();
     const aoLado = Date.now() < aoLadoAte;
     aoLadoAte = 0;
-    mudar((s) => (aoLado ? P.abrirNova(s, nova, P.acharJanela(s, j.id)?.mi ?? s.foco) : P.irNaJanela(s, j.id, nova)));
+    mudar((s) => {
+      const mi = P.acharJanela(s, j.id)?.mi ?? s.foco;
+      if (outro) return P.abrirNoOutro(s, nova, mi);
+      return aoLado ? P.abrirNova(s, nova, mi) : P.irOuNova(s, j.id, nova);
+    });
   };
   const rotular = (d: Pick<Janela, "titulo" | "icone" | "tipo_id">) => mudar((s) => P.rotular(s, j.id, d));
   const { esquema, visoes } = ctx;

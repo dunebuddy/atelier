@@ -21,166 +21,18 @@ Como usar:
 > (0.2.4 a 0.2.9) ou em "Ideias, sem data". Pedido novo entra aqui e ganha lugar lá.
 
 ### Bugs
-- **Fechar o Comando quebra a tela** (04/11, 0.2.12: "O atelier quebrou ao desenhar a tela. l is not a function").
-  Causa achada (`erros.log` + a mesma build, `index-BbB5uSmH.js`): em `Comando.tsx:129`,
-  `useEffect(() => fim.current?.scrollIntoView(...))` devolve o retorno do `scrollIntoView`, e no WebView2 novo ele
-  devolve uma **Promise**; o React acha que é a função de limpeza e, ao fechar (muda `aberto`), chama a Promise.
-  Correção: chaves no efeito (`() => { ...; }`). Os outros efeitos sem chaves devolvem `undefined` (conferido), mas
-  vale trocar todos para chaves, por garantia.
 ### Melhorias pedidas
-- **Imagem no documento** (04/11, o Paulo: "dá o teu jeito aí pra gente poder colocar imagem no documento").
-  Pré-análise: o editor **já mostra** imagem (`Imagem` em `EditorBlocos.tsx`, `![](caminho)` relativo à pasta do
-  documento ou absoluto, servido por `/api/arquivo`); o agente já consegue pôr imagem escrevendo o markdown. O que falta
-  é o caminho do Paulo:
-  - **colar imagem** (print, Ctrl+V): hoje `handlePaste` em `Editor.tsx` guarda em `insumos/` mas insere um **link**;
-    passar a inserir a **imagem** (`![](insumos/colado-....png)`, relativo, para a pasta poder mudar de lugar) quando o
-    arquivo for `image/*`; outro tipo de arquivo continua virando link;
-  - **arrastar imagem** do Explorer para dentro do texto: hoje o drop da página copia para `insumos/` sem tocar no
-    texto; com imagem, inserir no ponto onde soltou (o drop fora do texto segue como está);
-  - **`/imagem`** no menu de barra (o Paulo confirmou: "é isso mesmo"; achar também digitando `/image`): escolher um
-    arquivo (diálogo do Tauri), copiar para `insumos/` e inserir;
-  - documento **sem pasta**: colar cria a pasta (já é o que acontece com arquivo colado hoje, `carregar()`);
-  - na tela: imagem com largura máxima do texto, clique abre em tamanho grande (ou no visualizador do app); selecionada,
-    Delete apaga só do texto (o arquivo fica em `insumos/`);
-  - talvez depois: redimensionar arrastando a borda (o markdown puro não guarda tamanho; precisaria de `<img width>`).
-  Esforço: pequeno a médio, quase todo em `Editor.tsx`. Sem migração e sem mudança no MCP.
-- **Ver imagem grande de verdade (visualizador em tela cheia)** (04/11, o Paulo: "quando clicasse no zoom da imagem, que
-  ficasse grande de verdade, na tela... hoje fica grande no local e eu tenho que ficar arrastando; um pop-up que ocupe
-  a tela toda, com fit para ficar o maior possível, controle de zoom, clicar fora ou Esc fecha").
-  Hoje: não há visualizador do app; a imagem do Explorador fica encaixada na janela (`.ex-centro`), a do texto do
-  documento fica no tamanho do texto, e a de dentro do leitor de Markdown fica no iframe (onde o zoom é o do WebView,
-  que amplia "no local").
-  - **Um componente só, `VerImagem`**, aberto por clique (ou Enter) em qualquer imagem: no texto do documento, no
-    Explorador, no leitor de Markdown, nos anexos/insumos; Explorador ganha também a lupa na barra;
-  - **sobreposição na tela inteira** do app (por cima de painéis e barra lateral), fundo escuro, a imagem **encaixada
-    no maior tamanho possível** sem cortar (fit), inclusive ampliando imagem pequena até o limite do nítido;
-  - **zoom**: roda do mouse (em volta do ponteiro), Ctrl+= / Ctrl+-, botões − / % / +, "encaixar" (0) e "tamanho real"
-    (1); com zoom maior que a tela, arrastar move; duplo clique alterna encaixar ↔ 100%;
-  - **fechar**: Esc, clique fora da imagem (no fundo) ou ×; o foco volta para onde estava;
-  - com várias imagens no mesmo documento/pasta: ← → passam para a próxima; rodapé com o nome do arquivo, tamanho em
-    pixels e "abrir no programa padrão" / "mostrar na pasta";
-  - os atalhos ficam com o visualizador enquanto ele está aberto (Esc, setas, Ctrl+=), sem mexer no zoom do app.
-  Junta com "Imagem no documento" (o clique na imagem do texto abre aqui).
-- **Ctrl+\ esconde a metade direita, não junta** (04/11, o Paulo: "não é para sumir com o painel... fica escondido,
-  o painel só esconde"). Hoje `dividir` em `painel.ts`, com duas metades, chama `juntar`: as janelas da direita
-  **vão para a esquerda** e a metade deixa de existir. Pedido:
-  - Ctrl+\ com duas metades: **esconde** a direita (`metades[1].escondida = true`, gravado com o workspace); as
-    janelas dela ficam lá, intactas; Ctrl+\ de novo mostra a direita como estava (janelas, ativa, proporção);
-  - com a direita escondida, abrir algo "na direita" (Ctrl+2, `tela` com metade direita, "abrir ao lado" em outra
-    metade) mostra a metade de novo;
-  - juntar de verdade continua existindo, mas só como ação explícita no menu/paleta ("Juntar as metades");
-  - o `estado` do MCP diz que a direita está escondida.
-  - **Não duplicar o Ctrl+Alt+Shift+J** (o Paulo: "meio que faz o que eu queria... tomar cuidado para não ficar com os
-    dois com a mesma funcionalidade"). Hoje o "maximizar" (`alternarMaximizada`) faz a janela com foco ocupar o
-    painel todo, **de qualquer lado**. Diferença a manter: Ctrl+\ = mostrar/esconder **a metade direita** (sempre a
-    direita, com tudo o que ela tem; mesmo com o foco na direita, esconde ela e o foco vai para a esquerda);
-    Ctrl+Alt+Shift+J = **a janela com foco** toma o espaço todo (esquerda ou direita, e também esconde as outras
-    janelas da mesma metade no modo tile/fita). Nomes na lista de atalhos deixando isso claro.
-  Esforço: pequeno (`painel.ts` + quem desenha as metades em `Painel.tsx`).
-- **Abas e metades com o visual do VS Code** (04/11, o Paulo mandou um print do VS Code com dois grupos lado a lado:
-  "tá vendo como ele organiza direitinho os botõezinhos"; "é só questão de CSS"). No lugar das "pílulas" separadas:
-  - **faixa de abas colada**, da altura de uma linha (~35 px), sem margem nem cantos arredondados, encostada no topo
-    da metade; cada aba = ícone + título (cortado com "…") + ×; abas separadas só por uma linha fina;
-  - **aba ativa** com o fundo do conteúdo (parece "a mesma folha" do que está embaixo) e texto mais claro; as outras
-    com fundo um tom mais escuro e texto apagado; o × aparece na ativa e no hover das outras;
-  - **ações da metade à direita da própria faixa** (no VS Code: dividir, bloquear, ⋯), ícones pequenos e discretos,
-    alinhados; é ali que entram o alfinete (fixar) e o menu da janela;
-  - **metades separadas por uma linha fina de 1 px**, sem vão nem cartão; o conteúdo começa logo abaixo da faixa;
-  - a metade com foco se distingue sutilmente (no VS Code, a aba ativa do grupo sem foco fica um pouco mais apagada).
-  **Hover** (segundo print, mouse na primeira aba): a aba sob o mouse clareia um pouco o fundo (fica entre a inativa e
-  a ativa) e ganha o × no mesmo lugar da ativa; o título não muda de tamanho (o espaço do × já é reservado, então
-  nada pula); a ativa continua com o × dela. Esforço: CSS, mais um ajuste no JSX das
-  abas em `Painel.tsx` se as ações da metade estiverem em outro lugar. Vale nos três modos (abas, tile, fita).
-- **Maximizar = expandir (como o VS Code), não tomar tudo** (04/11, o Paulo: "adorei o dois cliques, ele fica
-  grande... mas faz que nem o Code: aumenta, mas não toma a área toda, só fica maior, pra eu saber que ainda tem o outro
-  painel aberto"; "eu fico sem saber se o painel tá aberto"; "vamos começar com 85% do espaço disponível para painel").
-  Hoje o duplo clique na aba/cabeça (`Painel.tsx`) e o Ctrl+Alt+Shift+J fazem a mesma coisa (`alternarMaximizada`): a
-  janela ativa toma o painel inteiro e o resto some, sem sinal nenhum. Pedido:
-  - **expandir**: a janela (e a metade dela) passa a ocupar **85% do espaço do painel**; a outra metade e as outras
-    janelas da mesma metade (tile/fita) ficam **visíveis e espremidas** nos 15% restantes, com a faixa de abas
-    aparecendo; assim dá para ver que existe outra coisa aberta. 85% é o começo; ajustar depois com o uso (talvez
-    vire preferência);
-  - **duplo clique e Ctrl+Alt+Shift+J fazem exatamente isso** (o mesmo comando, nome na lista de atalhos:
-    "Expandir a janela com foco (de novo: voltar)"); de novo volta às proporções de antes (guardar a proporção
-    anterior, não voltar para 50/50);
-  - clicar na parte espremida (ou dar foco nela) desfaz o expandir, como no VS Code;
-  - **tomar a tela inteira fica só para o Modo Zen (F11)**, que segue como está;
-  - sinal discreto na janela expandida (ícone ⤢ na faixa da aba, que também desfaz), já que o resto continua à vista.
-  Substitui a ideia anterior de "pop-up com borda" para o maximizar. Junta com o item logo abaixo.
-- **Atalhos do app engolidos pela página** (04/11, o Paulo: "se eu tiver rolado ou escrito alguma coisa e apertar o
-  F11, é como se capturasse na página... esses atalhos deviam ser do app, não da página"; "alguns vão ser necessários,
-  Ctrl+B negrito..., esses aí tem que capturar"). Varredura feita (04/11):
-  - **Causa 1, iframes**: o leitor de Markdown e de HTML do Explorador (`Explorador.tsx:363` e `:399`) e o leitor de
-    documentos (`Documentos.tsx:127`) desenham dentro de `<iframe sandbox>`. Clicar ou rolar ali dá o foco ao iframe,
-    e **toda tecla vai para o iframe; o `keydown` do app (`App.tsx:537`, no `window`) nunca fica sabendo** (F11, Ctrl+P,
-    Ctrl+W... todos). O clique dentro do iframe também não chega ao `onMouseDownCapture` da janela (`Painel.tsx:335`),
-    então nem o foco do painel muda. É o "tô lendo uma parada" + F11.
-    Correção: Markdown e documento **sem iframe** (HTML já higienizado num `div`, estilo isolado com shadow DOM);
-    no HTML de verdade (que precisa de `allow-scripts`), injetar um script mínimo que repassa `keydown`/`mousedown` ao
-    app por `postMessage`, e o app trata como se fosse dele.
-  - **Causa 2, o filtro do AltGr**: `App.tsx:481` ignora **qualquer Ctrl+Alt+letra** quando o foco está num campo, no
-    editor ou num `contenteditable` (para não roubar o AltGr do ABNT2: ?, °...). Só que **Ctrl+Alt+Shift+J** também é
-    Ctrl+Alt+letra: com o cursor no texto, o maximizar é jogado fora; por isso só funciona depois de clicar no título.
-    Correção: o AltGr do ABNT2 nunca vem com Shift nessas letras e o Windows marca `e.getModifierState("AltGraph")`;
-    filtrar só quando `AltGraph` está ligado (ou sem Shift), e não por "Ctrl+Alt+letra".
-  - **O que já está certo e fica**: Ctrl+B no editor é negrito (a barra lateral só fora do `.ProseMirror`); no
-    terminal, Ctrl+W/B/J/R são do programa (`FORA_DO_TERMINAL` / `DO_TERMINAL` em `atalhos.ts`). Regra a manter:
-    **o app sempre vê a tecla primeiro**; só desiste quando o atalho tem um uso de texto conhecido ali (lista
-    explícita: negrito/itálico/sublinhado no editor, as do terminal). F11, Ctrl+P, Ctrl+Shift+P, Ctrl+, , Ctrl+\,
-    Ctrl+Alt+Shift+J, Ctrl+1/2 valem em qualquer lugar.
-  - Ao implementar: listener do app em **captura** (`addEventListener("keydown", f, true)`) para nenhum
-    `stopPropagation` de componente (Tiptap, xterm, CodeMirror) engolir; e o foco do painel seguir `focusin` (Tab,
-    teclado), não só o clique.
-- **Ctrl+Alt+Shift+J não funciona com o foco dentro da janela** (04/11, o Paulo: "se tiver com foco, não está
-  funcionando; eu tenho que clicar no título do painel"). **Causa achada**: é a causa 2 do item acima (filtro do AltGr). Suspeita: o `foco` do `EstadoPainel` só muda ao clicar na
-  aba/título, não ao clicar ou digitar **dentro** da janela (editor, tabela, terminal); aí o atalho maximiza a janela
-  do outro lado, ou o editor engole a tecla. Conferir os dois: (1) `focusin` dentro de uma janela atualiza `foco` e a
-  `ativa` (vale para todos os atalhos "da janela com foco": fechar, mover, maximizar); (2) o atalho chega com o
-  cursor no editor (Tiptap) e no terminal (já está em `FORA_DO_TERMINAL`).
-- **Ctrl+Alt+clique abre no outro painel** (04/11, o Paulo: "Ctrl+clique abre em outra aba; Ctrl+Alt+clique abrisse no
-  outro painel: se estou no painel 0, abre no 1; se estou no 1, abre no 0").
-  - vale em todo lugar que hoje aceita Ctrl+clique para "abrir ao lado" (`aoLadoAte` em `Painel.tsx`, links e menções
-    no texto, linhas de tabela/quadro/árvore, barra lateral, Favoritos, busca): com Alt junto, usa
-    `abrirNaMetade(e, r, 1 - mi, true)` (nova janela na outra metade, que fica com o foco);
-  - a "outra metade" é a oposta à **de onde veio o clique** (barra lateral, que não é de metade nenhuma: a oposta à
-    metade com foco);
-  - painel com uma metade só: cria a direita; com a direita escondida (Ctrl+\, item acima): mostra ela de novo;
-  - com uma janela expandida (85%): desfaz o expandir, para a nova aparecer;
-  - dica no tooltip/lista de atalhos: "Ctrl+clique: nova aba · Ctrl+Alt+clique: no outro painel".
-- **Fixar (pinar) uma janela aberta** (04/11, o Paulo: "se o documento está pinado, nada feche ele, a menos que eu
-  feche... cliquei num link, abre outra janela; cliquei numa visão, abre outra janela").
-  Pré-análise: as janelas de cada metade vivem em `painel.ts` (`EstadoPainel` → `metades[].janelas`); quem troca o
-  conteúdo da janela ativa é `navegar` (barra lateral, `abrir()` sem `nova`) e `irNaJanela` (link/menção dentro da
-  própria janela, em `Painel.tsx`).
-  - `Janela` ganha `fixa?: boolean`, que fica gravado com o workspace (sobrevive a reabrir o app);
-  - **janela fixa nunca troca de conteúdo**: `navegar` e `irNaJanela` sobre ela viram `abrirNova` (abre ao lado, na
-    mesma metade, e a nova fica ativa). Vale para link e menção no texto, visão, Favoritos, documento da barra lateral,
-    busca, voltar/avançar e o `tela` do MCP;
-  - **só o Paulo fecha**: "fechar todas" / "fechar as outras" e o `tela` do agente pulam as fixas; o × de uma janela
-    fixa pede para desafixar primeiro (ou fecha com um clique a mais, a decidir);
-  - na tela: botão de alfinete (📌) na aba e no menu da janela; a aba fixa mostra o alfinete; atalho a escolher;
-  - não é só documento: dá para fixar visão, consulta, terminal ou explorador do mesmo jeito (mesma regra);
-  - MCP: `tela` com `fixar`/`desafixar` e o `estado` dizendo quais estão fixas.
-  Esforço: pequeno a médio (quase todo em `painel.ts`, mais a aba em `Painel.tsx`). Sem migração.
-- **Comandos de barra em inglês + autocomplete de arquivo** (04/11, o Paulo: "prefiro barra image... as pessoas vão
-  tentar barra image primeiro"; "como aparece o autocomplete no editor de código").
-  - Hoje: `COMANDOS` em `Editor.tsx` tem `id` em português (`lista`, `tarefa`, `citacao`, `codigo`, `divisor`,
-    `tabela`, `diagrama`, `agora`, `item`) e `nome` em português; o filtro acha pelo começo do `id` ou por pedaço do
-    nome. (Bug no caminho: "Lista ao vivo" repete o `id` `lista`.)
-  - **Comando principal em inglês**, mostrado na dica (`/image`, `/link`, `/file`, `/table`, `/todo`, `/quote`,
-    `/code`, `/divider`, `/diagram`, `/now`, `/h1`...), e o português continua achando (`/imagem`, `/tabela`...):
-    cada comando ganha uma lista de apelidos. O nome descritivo na lista segue em português.
-  - **`/image`, `/link`, `/file`: autocomplete de caminho**, como no editor de código: depois do comando (`/image `),
-    o menu lista arquivos e pastas a partir da **pasta do documento** (`insumos/`, `artefatos/`...), filtrando
-    enquanto digita; `/` entra na pasta, `..` sobe; Tab completa. **Enter troca o comando digitado pelo markdown
-    equivalente** (o Paulo: "quando eu terminar o comando e der enter, ele insere o markdown equivalente"):
-    `/image insumos/x.png` → `![](insumos/x.png)` (a imagem já aparece), só imagens na lista; `/link` e `/file` →
-    `[x.pdf](insumos/x.pdf)`.
-  - Na raiz do autocomplete, além das pastas, os **documentos relacionados** (pai, filhos, ligados), cada um levando à
-    pasta dele, para pegar imagem de outro documento (o caminho inserido aí é absoluto, ou relativo com `../`).
-  - Documento sem pasta: começa pelos relacionados e oferece "escolher arquivo…" (diálogo).
-  - Precisa de uma rota de listar pasta (o Explorador já lista; reaproveitar `explorador.rs`).
-  Junta bem com "Imagem no documento" acima: fazer os dois na mesma versão.
+- **Atalhos em dois tempos com Ctrl+K (como VS Code / tmux)** (04/11, o Paulo: "os atalhos que batem... Ctrl+K e aí o
+  segundo atalho, como no tmux, Ctrl+B e a ação; acho que o Ctrl+K é liberado"). Pré-análise:
+  - hoje o Ctrl+K é só um **extra** da busca (o principal é Ctrl+P): sai de lá e vira o prefixo;
+  - Ctrl+K liga um "modo comando" por ~1,5 s com um selo na barra de status ("Ctrl+K … esperando a segunda tecla",
+    e a lista das possíveis); a segunda tecla é sem Ctrl (ex.: Ctrl+K → `\` esconde a direita, → `J` expande, → `Z`
+    Zen, → `P` fixa, → `←/→` foco de metade, → `W` fecha as outras); Esc ou tempo esgotado cancela;
+  - resolve os conflitos: o que hoje precisa de Ctrl+Alt+Shift+letra (e briga com AltGr, terminal e editor) ganha
+    uma versão curta em dois tempos; a lista de atalhos e a configuração passam a aceitar combinações "Ctrl+K J";
+  - cuidados: no **terminal** o Ctrl+K é "apagar até o fim da linha" do shell (fica com o terminal, como o Ctrl+W;
+    lá vale um prefixo alternativo, ou o Ctrl+K só com o foco fora do terminal); no **editor** muita gente usa
+    Ctrl+K para link (hoje o atelier não usa).
 ### Pedidos do agente (de `pedidos-ao-atelier.md`)
 
 Revisão crítica de 2026-11-02 (o Paulo pediu: dizer o que não faz sentido, o que já existe e o que engessa o app).
@@ -253,6 +105,27 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.13** (2026-11-04, à noite; o Paulo fechou o dia e pediu para juntar tudo):
+  - **imagem no documento**: colar um print (Ctrl+V) entra como imagem (`insumos/`, caminho relativo); arrastar
+    arquivos do sistema para cima do texto entra no ponto onde soltou (imagem como imagem, o resto como link);
+  - **comandos de barra em inglês** (`/image`, `/link`, `/file`, `/table`, `/todo`, `/quote`, `/code`, `/divider`,
+    `/diagram`, `/now`, `/mention`, `/livelist`...), o português continua achando (`/imagem`, `/tabela`...);
+    **autocomplete de caminho** em `/image`, `/link` e `/file` a partir da pasta do documento (`..` sobe; Tab
+    completa; Enter troca o comando pelo markdown), com as pastas dos documentos ligados na raiz e "Escolher arquivo…";
+  - **visualizador de imagem em tela cheia** (`components/VerImagem.tsx`): clique na imagem do texto, do Explorador
+    ou do leitor de Markdown; encaixa no maior tamanho, roda do mouse amplia no ponteiro, arrastar move, duplo clique
+    encaixar ↔ 100%, ← → passam, Esc / clique fora fecham, abrir no programa e mostrar na pasta;
+  - **painel**: Ctrl+\ **esconde** a metade direita (as janelas ficam; de novo mostra como estava; juntar só pelo
+    menu da aba); **expandir** (duplo clique / Ctrl+Alt+Shift+J) = 85% do painel com o resto à vista, como o VS Code
+    (clicar na parte espremida desfaz); **fixar** (alfinete, menu da aba): nada troca o que ela mostra, só o Paulo
+    fecha; **Ctrl+Alt+clique** abre no outro painel; o MCP ganhou `esconder_direita`, `mostrar_direita`, `fixar`,
+    `desafixar`, `expandir`;
+  - **abas no visual do VS Code**: faixa colada de 35 px, aba ativa com o fundo do conteúdo, × só na ativa e no hover,
+    metades separadas por 1 px;
+  - **atalhos do app em qualquer lugar**: os leitores em moldura (Markdown, Word) repassam teclas e clique ao app
+    (script único com CSP + nonce, `src/moldura.ts`); o filtro do AltGr não engole mais Ctrl+Alt+Shift+letra; o foco
+    do painel segue o teclado (`focusin`);
+  - **bug**: fechar o Comando quebrava a tela (efeito devolvia a Promise do `scrollIntoView`).
 - **0.2.12** (2026-11-03, à noite, sozinho: o Paulo encerrou o dia e pediu para fazer tudo):
   - **favorito**: campo fixo de todo documento (migração 17, coluna `favorito` em `itens`), estrela na página e
     na linha da tabela; marcar não mexe no "atualizado" nem na linha do tempo; `favorito` no MCP

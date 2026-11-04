@@ -9,6 +9,8 @@ import { useAoReaparecer, useVisivel } from "../visivel";
 import { dataHora } from "../visao";
 import { MenuPasta } from "./MenuPasta";
 import { DocumentoWord, Planilha } from "./Documentos";
+import { repasseDaMoldura } from "../moldura";
+import { verImagem } from "./VerImagem";
 import "../documentos.css";
 
 /** Abre o explorador numa janela ao lado, na pasta (e, se vier, já mostrando um arquivo). */
@@ -364,7 +366,10 @@ function Previa({ caminho, aoVoltar }: { caminho: string; aoVoltar: () => void }
         ) : info.especie === "pdf" ? (
           <Pdf key={versao} url={urlDo(caminho) + `&v=${versao}`} />
         ) : info.especie === "imagem" ? (
-          <div className="ex-centro"><img src={urlDo(caminho) + `&v=${versao}`} alt={nomeDe(caminho)} /></div>
+          <div className="ex-centro">
+            <img src={urlDo(caminho) + `&v=${versao}`} alt={nomeDe(caminho)} title="Clique para ver em tela cheia" style={{ cursor: "zoom-in" }}
+              onClick={() => verImagem([{ src: urlDo(caminho) + `&v=${versao}`, nome: nomeDe(caminho) }])} />
+          </div>
         ) : info.especie === "video" ? (
           <div className="ex-centro"><video src={urlDo(caminho)} controls /></div>
         ) : info.especie === "audio" ? (
@@ -386,7 +391,7 @@ function Previa({ caminho, aoVoltar }: { caminho: string; aoVoltar: () => void }
 function Moldura({ html }: { html: string }) {
   const cs = getComputedStyle(document.documentElement);
   const v = (n: string) => cs.getPropertyValue(`--${n}`).trim();
-  const doc = `<!doctype html><html><head><meta charset="utf-8"><base target="_blank"><style>
+  const doc = `<!doctype html><html><head><meta charset="utf-8"><base target="_blank">${repasseDaMoldura()}<style>
     body{margin:0;padding:18px 22px 40px;font:14.5px/1.65 "Inter Variable","Segoe UI",system-ui,sans-serif;color:${v("texto")};background:${v("bg")}}
     h1,h2,h3{font-family:"Fraunces Variable",Georgia,serif;font-weight:600;line-height:1.25;margin:1.2em 0 .4em}
     h1{font-size:26px} h2{font-size:21px} h3{font-size:17px}
@@ -396,7 +401,7 @@ function Moldura({ html }: { html: string }) {
     table{border-collapse:collapse} td,th{border:1px solid ${v("borda-forte")};padding:5px 9px}
     img{max-width:100%} hr{border:0;border-top:1px dashed ${v("borda-forte")}}
   </style></head><body>${html}</body></html>`;
-  return <iframe className="ex-moldura" sandbox="allow-popups" srcDoc={doc} title="Markdown" />;
+  return <iframe className="ex-moldura" sandbox="allow-popups allow-scripts" srcDoc={doc} title="Markdown" />;
 }
 
 /** PDF pelo pdf.js (igual no Windows e no Linux). As páginas ficam uma embaixo da outra, mas só as que estão à vista

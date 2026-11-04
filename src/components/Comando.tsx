@@ -66,8 +66,8 @@ export function descreverTela(ws: W.Workspaces, bancadas: Bancadas | null, visoe
     // no painel certo (tela: fechar/focar com janela, abrir com painel)
     l.push(`Painéis: ${e.metades.length} (0 = esquerda${e.metades.length > 1 ? ", 1 = direita" : ""}); foco no painel ${e.foco}.`);
     e.metades.forEach((m, i) => {
-      const js = m.janelas.map((j, pos) => `posição ${pos + 1}, janela "${j.id}"${j.id === ativa?.id ? " [em foco]" : ""}: "${j.titulo ?? "…"}" — ${descreverRota(rotaDe(j))}`);
-      l.push(`Painel ${i}${e.metades.length > 1 ? ` (${LADOS[i]})` : ""}, modo ${m.modo}: ${js.length ? js.join(" · ") : "vazio"}.`);
+      const js = m.janelas.map((j, pos) => `posição ${pos + 1}, janela "${j.id}"${j.id === ativa?.id ? " [em foco]" : ""}${j.fixada ? " [fixada]" : ""}${j.id === e.expandida ? " [expandida]" : ""}: "${j.titulo ?? "…"}" — ${descreverRota(rotaDe(j))}`);
+      l.push(`Painel ${i}${e.metades.length > 1 ? ` (${LADOS[i]})` : ""}${m.escondida ? " [escondido pelo Paulo]" : ""}, modo ${m.modo}: ${js.length ? js.join(" · ") : "vazio"}.`);
     });
   }
   return l.join("\n");
@@ -126,7 +126,8 @@ export function ComandoAgente({ descricao }: { descricao: string }) {
     window.setTimeout(() => caixa.current?.focus(), 0);
   }, [aberto]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => fim.current?.scrollIntoView({ block: "end" }), [conversa, aberto, trabalhando]);
+  // com chaves: no WebView2 novo o scrollIntoView devolve uma Promise, e o React a chamaria como limpeza ao fechar
+  useEffect(() => { fim.current?.scrollIntoView({ block: "end" }); }, [conversa, aberto, trabalhando]);
   useEffect(() => {
     if (!trabalhando) return;
     const t = window.setInterval(() => setTique((n) => n + 1), 1000);

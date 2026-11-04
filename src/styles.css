@@ -411,40 +411,53 @@ body.redimensionando .sidebar { transition: none; }
 
 /* ---------- painel de trabalho: metades, abas, tile, fita ---------- */
 
-.painel { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+/* como no VS Code: faixa de abas colada em cima, janelas encostadas, metades separadas por uma linha fina (o fundo
+   do painel é a cor da borda, e é ela que aparece no vão de 1 px) */
+.painel { position: relative; flex: 1; min-height: 0; overflow: hidden; background: var(--borda); }
 .metade-cabeca {
-  position: absolute; top: 0; display: flex; align-items: center; gap: 6px; padding: 0 4px 4px; z-index: 2;
-  border-radius: 10px; transition: background 0.15s;
+  position: absolute; top: 0; display: flex; align-items: stretch; gap: 0; padding: 0 4px 0 0; z-index: 2;
+  background: var(--bg-fundo); border-bottom: 1px solid var(--borda); box-sizing: border-box; transition: background 0.15s;
 }
+.metade-cabeca > .btn-icone, .metade-cabeca > .seletor-modo, .metade-cabeca > .fita-nav, .metade-cabeca > span { align-self: center; }
+.metade-cabeca > .btn-icone { color: var(--texto-3); }
+.metade-cabeca > .btn-icone:hover { color: var(--texto); }
+.metade-cabeca .expandida-voltar { color: var(--acento) !important; }
 .metade-cabeca.soltar { background: var(--acento-suave); }
 .seletor-modo { flex-shrink: 0; }
 .seletor-modo .btn-icone { width: auto; padding: 0 4px; gap: 1px; display: flex; align-items: center; }
 /* com o painel dividido, a metade com o foco se destaca pelo botão de arrumação */
-.metade-cabeca.focada .seletor-modo .btn-icone { color: var(--acento); }
+.metade-cabeca.dividido.focada .seletor-modo .btn-icone { color: var(--acento); }
 .metade-cabeca .botao-abas { flex-shrink: 0; }
-.abas { flex: 1; min-width: 0; display: flex; gap: 3px; overflow-x: auto; scrollbar-width: none; align-self: stretch; align-items: center; }
+.abas { flex: 1; min-width: 0; display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; align-self: stretch; align-items: stretch; }
 .aba {
-  display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px 0 10px; border-radius: 8px; max-width: 220px;
-  color: var(--texto-2); font-size: 12.5px; cursor: pointer; white-space: nowrap; flex-shrink: 0; border: 1px solid transparent;
+  display: flex; align-items: center; gap: 6px; padding: 0 5px 0 11px; max-width: 220px; margin-bottom: -1px;
+  color: var(--texto-3); font-size: 12.5px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  border-right: 1px solid var(--borda); background: var(--bg-fundo); position: relative;
 }
-.aba:hover { background: var(--hover); color: var(--texto); }
-.aba.ativa { background: var(--bg); color: var(--texto); border-color: var(--borda); box-shadow: 0 1px 2px rgba(0,0,0,.06); }
-.aba.empilhada { margin-left: -2px; border-left: 2px solid var(--borda-forte); border-radius: 0 8px 8px 0; }
+/* hover: um tom entre a inativa e a ativa; o × aparece no lugar já reservado (nada pula) */
+.aba:hover { background: color-mix(in srgb, var(--bg-fundo) 50%, var(--bg)); color: var(--texto-2); }
+/* a ativa tem o fundo do conteúdo: parece a mesma folha do que está embaixo */
+.aba.ativa { background: var(--bg); color: var(--texto-2); }
+.metade-cabeca.focada .aba.ativa { color: var(--texto); }
+.metade-cabeca.focada .aba.ativa::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--acento); }
+.aba.empilhada { border-left: 2px solid var(--borda-forte); }
 .aba.soltar-antes { box-shadow: inset 3px 0 0 var(--acento); }
 .aba-rotulo { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .aba button { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 5px; color: var(--texto-3); flex-shrink: 0; }
+.aba .aba-fechar { visibility: hidden; }
+.aba.ativa .aba-fechar, .aba:hover .aba-fechar { visibility: visible; }
 .aba button:hover { background: var(--hover); color: var(--t-red); }
+.aba .aba-pino { color: var(--acento); }
+.aba .aba-pino:hover { color: var(--texto); }
+.aba.expandida .aba-rotulo { font-weight: 600; }
 .j-emoji { font-size: 13px; line-height: 1; }
 .fita-nav { display: flex; gap: 1px; }
 /* alça para arrastar entre as metades (e entre o principal e a pilha do tile) */
 .alca-painel { position: absolute; top: 0; bottom: 0; cursor: ew-resize; z-index: 3; border-radius: 3px; }
 .alca-painel:hover, .alca-painel:active { background: var(--acento-suave); }
-.metade-vazia { position: absolute; display: grid; place-items: center; text-align: center; padding: 16px; color: var(--texto-3); font-size: 13.5px; border: 1px dashed var(--borda-forte); border-radius: 14px; }
+.metade-vazia { position: absolute; display: grid; place-items: center; text-align: center; padding: 16px; color: var(--texto-3); font-size: 13.5px; background: var(--bg); }
 
-.janela {
-  position: absolute; display: flex; flex-direction: column; background: var(--bg); border-radius: 14px;
-  box-shadow: var(--sombra-folha); overflow: hidden;
-}
+.janela { position: absolute; display: flex; flex-direction: column; background: var(--bg); overflow: hidden; }
 .painel.animar .janela { transition: left .18s ease, top .18s ease, width .18s ease, height .18s ease; }
 /* a fita desliza como a do Niri (o corte acompanha, senão a janela some antes de chegar) */
 .painel.animar .janela.na-fita { transition: left .26s cubic-bezier(.2, .8, .2, 1), top .26s cubic-bezier(.2, .8, .2, 1), width .26s cubic-bezier(.2, .8, .2, 1), height .26s cubic-bezier(.2, .8, .2, 1), clip-path .26s cubic-bezier(.2, .8, .2, 1); }
@@ -452,11 +465,11 @@ body.redimensionando .sidebar { transition: none; }
 .janela.moldura { isolation: isolate; }
 .janela.moldura.ativa::after {
   content: ""; position: absolute; inset: 0; z-index: 20; pointer-events: none;
-  border: 2px solid var(--acento); border-radius: inherit;
+  border: 1px solid var(--acento);
 }
 .janela-cabeca {
-  display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 4px 0 10px; flex-shrink: 0;
-  border-bottom: 1px solid var(--borda); color: var(--texto-2); font-size: 12.5px; cursor: grab; user-select: none;
+  display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 4px 0 10px; flex-shrink: 0; background: var(--bg-fundo);
+  border-bottom: 1px solid var(--borda); color: var(--texto-3); font-size: 12.5px; cursor: grab; user-select: none;
 }
 .janela-cabeca .aba-rotulo { flex: 1; }
 .janela.ativa .janela-cabeca { color: var(--texto); }
@@ -1288,3 +1301,29 @@ body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grab
 .secao-visao-titulo { display: flex; align-items: center; gap: 6px; font-weight: 650; font-size: 13.5px; color: var(--texto); padding: 4px 2px; margin-bottom: 6px; }
 .secao-visao-conta { font-size: 11px; color: var(--texto-3); background: var(--hover); border-radius: 999px; padding: 0 7px; }
 .secao-visao-vazia { color: var(--texto-3); font-size: 13px; padding: 6px 4px 2px 22px; }
+
+/* ---------- visualizador de imagem em tela cheia ---------- */
+.ver-imagem { position: fixed; inset: 0; z-index: 1000; background: rgba(8, 10, 14, .9); color: #e8e8ea; }
+.ver-imagem-palco { position: absolute; inset: 0 0 46px 0; overflow: hidden; cursor: grab; touch-action: none; }
+.ver-imagem-palco:active { cursor: grabbing; }
+.ver-imagem-palco img { position: absolute; left: 50%; top: 50%; max-width: none; max-height: none; user-select: none; box-shadow: 0 6px 30px rgba(0,0,0,.5); image-rendering: auto; }
+.ver-imagem button { display: grid; place-items: center; color: #d8d8dc; border-radius: 8px; }
+.ver-imagem button:hover { background: rgba(255,255,255,.12); color: #fff; }
+.ver-imagem-fechar { position: absolute; top: 12px; right: 14px; width: 38px; height: 38px; background: rgba(0,0,0,.35); }
+.ver-imagem-seta { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 64px; background: rgba(0,0,0,.3); }
+.ver-imagem-seta.esq { left: 12px; } .ver-imagem-seta.dir { right: 12px; }
+.ver-imagem-barra { position: absolute; left: 0; right: 0; bottom: 0; height: 46px; display: flex; align-items: center; gap: 4px; padding: 0 14px; background: rgba(0,0,0,.45); font-size: 13px; }
+.ver-imagem-barra button { width: 32px; height: 32px; }
+.ver-imagem-barra .ver-imagem-pct { width: auto; padding: 0 8px; font-variant-numeric: tabular-nums; font-size: 12.5px; }
+.ver-imagem-nome { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 45%; }
+.ver-imagem-info { color: #a8a8b0; margin-left: 10px; font-variant-numeric: tabular-nums; }
+.ver-imagem-barra .espaco { flex: 1; }
+/* imagem no texto do documento: clique abre o visualizador */
+.editor .ProseMirror img { cursor: zoom-in; max-width: 100%; border-radius: 6px; }
+/* autocomplete de caminho do /image, /link, /file */
+.menu-caminho-lista { max-height: 300px; overflow-y: auto; }
+.menu-caminho .menu-item { gap: 8px; }
+.menu-caminho .caminho-icone { width: 18px; text-align: center; flex-shrink: 0; }
+.menu-caminho .caminho-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+.menu-caminho .menu-item.escolher { color: var(--texto-2); border-top: 1px solid var(--borda); }
+.menu-caminho .menu-vazio { padding: 6px 10px; color: var(--texto-3); font-size: 12.5px; }

@@ -117,7 +117,7 @@ const DO_TERMINAL = new Set(["fechar-janela", "visao-geral"]);
  *  (andar na fita, mover, dividir...) e os de `FORA_DO_TERMINAL`. */
 export function doPainel(e: KeyboardEvent): boolean {
   // Ctrl+Alt+letra/número é o AltGr do teclado (ABNT2: ?, °, ¹...): fica com o terminal
-  if (e.ctrlKey && e.altKey && /^(Key|Digit)/.test(e.code)) return false;
+  if (e.ctrlKey && e.altKey && !e.shiftKey && /^(Key|Digit)/.test(e.code)) return false;
   return ATALHOS.some((a) => (FORA_DO_TERMINAL.has(a.id) || a.grupo === "Painel de trabalho" || a.grupo === "Workspaces") && !DO_TERMINAL.has(a.id) && bate(a.id, e));
 }
 

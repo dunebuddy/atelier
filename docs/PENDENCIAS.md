@@ -38,6 +38,23 @@ Como usar:
     Delete apaga só do texto (o arquivo fica em `insumos/`);
   - talvez depois: redimensionar arrastando a borda (o markdown puro não guarda tamanho; precisaria de `<img width>`).
   Esforço: pequeno a médio, quase todo em `Editor.tsx`. Sem migração e sem mudança no MCP.
+- **Comandos de barra em inglês + autocomplete de arquivo** (04/11, o Paulo: "prefiro barra image... as pessoas vão
+  tentar barra image primeiro"; "como aparece o autocomplete no editor de código").
+  - Hoje: `COMANDOS` em `Editor.tsx` tem `id` em português (`lista`, `tarefa`, `citacao`, `codigo`, `divisor`,
+    `tabela`, `diagrama`, `agora`, `item`) e `nome` em português; o filtro acha pelo começo do `id` ou por pedaço do
+    nome. (Bug no caminho: "Lista ao vivo" repete o `id` `lista`.)
+  - **Comando principal em inglês**, mostrado na dica (`/image`, `/link`, `/file`, `/table`, `/todo`, `/quote`,
+    `/code`, `/divider`, `/diagram`, `/now`, `/h1`...), e o português continua achando (`/imagem`, `/tabela`...):
+    cada comando ganha uma lista de apelidos. O nome descritivo na lista segue em português.
+  - **`/image`, `/link`, `/file`: autocomplete de caminho**, como no editor de código: depois do comando (`/image `),
+    o menu lista arquivos e pastas a partir da **pasta do documento** (`insumos/`, `artefatos/`...), filtrando
+    enquanto digita; `/` entra na pasta, `..` sobe; Tab completa, Enter insere (`/image` → `![](insumos/x.png)`,
+    só imagens; `/link` e `/file` → link para o arquivo).
+  - Na raiz do autocomplete, além das pastas, os **documentos relacionados** (pai, filhos, ligados), cada um levando à
+    pasta dele, para pegar imagem de outro documento (o caminho inserido aí é absoluto, ou relativo com `../`).
+  - Documento sem pasta: começa pelos relacionados e oferece "escolher arquivo…" (diálogo).
+  - Precisa de uma rota de listar pasta (o Explorador já lista; reaproveitar `explorador.rs`).
+  Junta bem com "Imagem no documento" acima: fazer os dois na mesma versão.
 ### Pedidos do agente (de `pedidos-ao-atelier.md`)
 
 Revisão crítica de 2026-11-02 (o Paulo pediu: dizer o que não faz sentido, o que já existe e o que engessa o app).

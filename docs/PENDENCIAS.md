@@ -44,6 +44,16 @@ Como usar:
     Delete apaga só do texto (o arquivo fica em `insumos/`);
   - talvez depois: redimensionar arrastando a borda (o markdown puro não guarda tamanho; precisaria de `<img width>`).
   Esforço: pequeno a médio, quase todo em `Editor.tsx`. Sem migração e sem mudança no MCP.
+- **Ctrl+\ esconde a metade direita, não junta** (04/11, o Paulo: "não é para sumir com o painel... fica escondido,
+  o painel só esconde"). Hoje `dividir` em `painel.ts`, com duas metades, chama `juntar`: as janelas da direita
+  **vão para a esquerda** e a metade deixa de existir. Pedido:
+  - Ctrl+\ com duas metades: **esconde** a direita (`metades[1].escondida = true`, gravado com o workspace); as
+    janelas dela ficam lá, intactas; Ctrl+\ de novo mostra a direita como estava (janelas, ativa, proporção);
+  - com a direita escondida, abrir algo "na direita" (Ctrl+2, `tela` com metade direita, "abrir ao lado" em outra
+    metade) mostra a metade de novo;
+  - juntar de verdade continua existindo, mas só como ação explícita no menu/paleta ("Juntar as metades");
+  - o `estado` do MCP diz que a direita está escondida.
+  Esforço: pequeno (`painel.ts` + quem desenha as metades em `Painel.tsx`).
 - **Fixar (pinar) uma janela aberta** (04/11, o Paulo: "se o documento está pinado, nada feche ele, a menos que eu
   feche... cliquei num link, abre outra janela; cliquei numa visão, abre outra janela").
   Pré-análise: as janelas de cada metade vivem em `painel.ts` (`EstadoPainel` → `metades[].janelas`); quem troca o

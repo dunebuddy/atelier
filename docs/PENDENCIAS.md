@@ -21,6 +21,12 @@ Como usar:
 > (0.2.4 a 0.2.9) ou em "Ideias, sem data". Pedido novo entra aqui e ganha lugar lá.
 
 ### Bugs
+- **Fechar o Comando quebra a tela** (04/11, 0.2.12: "O atelier quebrou ao desenhar a tela. l is not a function").
+  Causa achada (`erros.log` + a mesma build, `index-BbB5uSmH.js`): em `Comando.tsx:129`,
+  `useEffect(() => fim.current?.scrollIntoView(...))` devolve o retorno do `scrollIntoView`, e no WebView2 novo ele
+  devolve uma **Promise**; o React acha que é a função de limpeza e, ao fechar (muda `aberto`), chama a Promise.
+  Correção: chaves no efeito (`() => { ...; }`). Os outros efeitos sem chaves devolvem `undefined` (conferido), mas
+  vale trocar todos para chaves, por garantia.
 ### Melhorias pedidas
 - **Imagem no documento** (04/11, o Paulo: "dá o teu jeito aí pra gente poder colocar imagem no documento").
   Pré-análise: o editor **já mostra** imagem (`Imagem` em `EditorBlocos.tsx`, `![](caminho)` relativo à pasta do

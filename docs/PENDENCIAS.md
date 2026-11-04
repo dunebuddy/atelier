@@ -60,6 +60,18 @@ Como usar:
     Ctrl+Alt+Shift+J = **a janela com foco** toma o espaço todo (esquerda ou direita, e também esconde as outras
     janelas da mesma metade no modo tile/fita). Nomes na lista de atalhos deixando isso claro.
   Esforço: pequeno (`painel.ts` + quem desenha as metades em `Painel.tsx`).
+- **Abas e metades com o visual do VS Code** (04/11, o Paulo mandou um print do VS Code com dois grupos lado a lado:
+  "tá vendo como ele organiza direitinho os botõezinhos"; "é só questão de CSS"). No lugar das "pílulas" separadas:
+  - **faixa de abas colada**, da altura de uma linha (~35 px), sem margem nem cantos arredondados, encostada no topo
+    da metade; cada aba = ícone + título (cortado com "…") + ×; abas separadas só por uma linha fina;
+  - **aba ativa** com o fundo do conteúdo (parece "a mesma folha" do que está embaixo) e texto mais claro; as outras
+    com fundo um tom mais escuro e texto apagado; o × aparece na ativa e no hover das outras;
+  - **ações da metade à direita da própria faixa** (no VS Code: dividir, bloquear, ⋯), ícones pequenos e discretos,
+    alinhados; é ali que entram o alfinete (fixar) e o menu da janela;
+  - **metades separadas por uma linha fina de 1 px**, sem vão nem cartão; o conteúdo começa logo abaixo da faixa;
+  - a metade com foco se distingue sutilmente (no VS Code, a aba ativa do grupo sem foco fica um pouco mais apagada).
+  O Paulo vai mandar outro print com o mouse em cima (como fica o hover). Esforço: CSS, mais um ajuste no JSX das
+  abas em `Painel.tsx` se as ações da metade estiverem em outro lugar. Vale nos três modos (abas, tile, fita).
 - **Ctrl+Alt+Shift+J não funciona com o foco dentro da janela** (04/11, o Paulo: "se tiver com foco, não está
   funcionando; eu tenho que clicar no título do painel"). Suspeita: o `foco` do `EstadoPainel` só muda ao clicar na
   aba/título, não ao clicar ou digitar **dentro** da janela (editor, tabela, terminal); aí o atalho maximiza a janela

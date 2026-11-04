@@ -13,20 +13,7 @@ Como usar:
 
 ## Próxima versão
 
-**0.2.14** (em andamento, 04/11 à noite; o Paulo disse que ainda vem mais coisa para ela):
-- **Relatório bonito, com layout e agente** (feito, falta só soltar): HTML e PDF com 4 layouts (`src/relatorio.ts`:
-  Executivo com capa, números e sumário · Fichas · Tabela compacta · Documento corrido), cores do tipo e chips das
-  opções, prévia ao vivo ao lado das opções; **texto de cada documento** inteiro ou pelo agente (resumo em 1
-  parágrafo, tópicos, só decisões, instrução livre) e a linha do tempo resumida; **ajuste final** do relatório inteiro
-  por instrução; **escolha do agente e do modelo** (um para os campos, barato: `haiku`; outro para o ajuste:
-  `sonnet`), estimativa de tokens/tempo, "Ver com o agente" antes de salvar, Parar, cache (não paga de novo).
-  Backend: `/api/redigir` (só texto, sem ferramentas) e `agentes::para_texto` / `flag_modelo`. Ficou para depois:
-  modelo de relatório salvo com nome e `gerar_relatorio` no MCP.
-- **Botão "Agente" do documento: popover** (04/11, o Paulo: "aparece essa tela horrível... só o Claude Code aparece
-  como agente, os outros são discriminados"; "um pop-upzinho, que nem quando clico no botão do terminal"; "não precisa
-  mostrar o caminho"; "incluindo os apps de desktop"). O caminho do executável espremia o nome até sumir. Agora é um
-  popover junto do botão (como o do terminal): só os agentes instalados e ligados, "Só o terminal" e os apps de
-  desktop (Claude, ChatGPT/Codex...) abrindo na pasta do documento.
+(vazio — escolher da caixa de entrada)
 
 ## Caixa de entrada
 
@@ -118,6 +105,20 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.14** (2026-11-04, à noite):
+  - **Relatório bonito, com layout e agente**: HTML e PDF com 4 layouts (`src/relatorio.ts`:
+  Executivo com capa, números e sumário · Fichas · Tabela compacta · Documento corrido), cores do tipo e chips das
+  opções, prévia ao vivo ao lado das opções; **texto de cada documento** inteiro ou pelo agente (resumo em 1
+  parágrafo, tópicos, só decisões, instrução livre) e a linha do tempo resumida; **ajuste final** do relatório inteiro
+  por instrução; **escolha do agente e do modelo** (um para os campos, barato: `haiku`; outro para o ajuste:
+  `sonnet`), estimativa de tokens/tempo, "Ver com o agente" antes de salvar, Parar, cache (não paga de novo).
+  Backend: `/api/redigir` (só texto, sem ferramentas) e `agentes::para_texto` / `flag_modelo`. Ficou para depois:
+  modelo de relatório salvo com nome e `gerar_relatorio` no MCP.
+  - **Botão "Agente" do documento: popover** (04/11, o Paulo: "aparece essa tela horrível... só o Claude Code aparece
+  como agente, os outros são discriminados"; "um pop-upzinho, que nem quando clico no botão do terminal"; "não precisa
+  mostrar o caminho"; "incluindo os apps de desktop"). O caminho do executável espremia o nome até sumir. Agora é um
+  popover junto do botão (como o do terminal): só os agentes instalados e ligados, "Só o terminal" e os apps de
+  desktop (Claude, ChatGPT/Codex...) abrindo na pasta do documento.
 - **0.2.13** (2026-11-04, à noite; o Paulo fechou o dia e pediu para juntar tudo):
   - **imagem no documento**: colar um print (Ctrl+V) entra como imagem (`insumos/`, caminho relativo); arrastar
     arquivos do sistema para cima do texto entra no ponto onde soltou (imagem como imagem, o resto como link);

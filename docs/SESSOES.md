@@ -502,3 +502,9 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 ### Ponto de parada (2026-11-04)
 - Fica nas pendências: atalhos em dois tempos com Ctrl+K. A conferir no uso: imagem colada/arrastada no app instalado
   (o soltar do Tauri), o repasse de teclas das molduras no WebView2, as abas novas nos temas claros.
+- 0.2.14 (2026-11-04, noite): relatório com layout (`src/relatorio.ts`, `Exportar.tsx` com prévia, texto por agente,
+  ajuste final, agente e modelo escolhíveis; backend `/api/redigir` + `agentes::para_texto`/`flag_modelo`/
+  `modelos_sugeridos`); botão Agente do documento como popover (`EscolherAgente` em `Terminal.tsx`, com `ancora`).
+
+### Ponto de parada (2026-11-04, fim)
+- Pendências: atalhos em dois tempos com Ctrl+K. Do relatório ficou: modelo salvo com nome e `gerar_relatorio` no MCP.

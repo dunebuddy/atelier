@@ -1,15 +1,17 @@
 import { IndicadorDitado } from "./Ditado";
 import { useEffect, useRef, useState } from "react";
 import {
-  ChevronDown, Cpu, GalleryHorizontalEnd, HardDrive, LayoutDashboard, LayoutPanelLeft, MemoryStick, PanelTop, Pencil, Power, Trash2,
+  Archive, ArchiveRestore, ChevronDown, ChevronRight, Cpu, GalleryHorizontalEnd, HardDrive, LayoutDashboard, LayoutPanelLeft, MemoryStick, PanelTop, Pencil, Power, Trash2,
 } from "lucide-react";
 import { rotaDe } from "../painel";
 import { api, BASE } from "../api";
-import { GERAL, InfoWorkspace, itemDa, sessoesDe, Workspaces } from "../workspaces";
+import { GERAL, InfoWorkspace, itemDa, sessoesDe, workspaceDaSessao, Workspaces } from "../workspaces";
+import { guardar, ler } from "../ui";
 import { Popover, usePopover } from "./Popover";
 import { Marca } from "./Marca";
 import { CarinhaAgente } from "./Avisos";
-import { estadoDe } from "../agentes";
+import { Interruptor } from "./Automacao";
+import { estadoDe, filaDeEspera } from "../agentes";
 
 /** Pede para abrir o workspace de um item (ou o "Geral", sem id). */
 /** O ícone do workspace: o da bancada (fixo, nunca some) é a marca do atelier; o de um documento, o ícone dele. */
@@ -55,18 +57,51 @@ export function abrirWorkspace(item?: { id: number; titulo: string; icone?: stri
   window.dispatchEvent(new CustomEvent("atelier:workspace", { detail: item ?? null }));
 }
 
+/** Arquivar sozinho os workspaces parados (Configurações → Automação). Vale para todas as bancadas desta máquina. */
+interface AutoArquivar { ativo: boolean; dias: number }
+const lerAuto = (): AutoArquivar => {
+  const v = ler<AutoArquivar | number>("workspaces.autoArquivar", { ativo: false, dias: 30 });
+  return typeof v === "number" ? { ativo: v > 0, dias: v || 30 } : v;
+};
+/** Quantos dias parado até arquivar (0 = desligado). */
+export const diasAutoArquivar = () => { const a = lerAuto(); return a.ativo ? a.dias : 0; };
+
+export function DiasAutoArquivar() {
+  const [a, setA] = useState(lerAuto);
+  const mudar = (n: AutoArquivar) => { setA(n); guardar("workspaces.autoArquivar", n); window.dispatchEvent(new Event("atelier:auto-arquivar")); };
+  return (
+    <div className="auto-bloco">
+      <div className="auto-cabeca">
+        <Archive size={16} />
+        <strong>Arquivar workspaces parados</strong>
+        <Interruptor ligado={a.ativo} aoMudar={(v) => mudar({ ...a, ativo: v })} />
+      </div>
+      <p className="dica">
+        Tira da lista de workspaces o que ficou fechado e sem ser aberto por muito tempo. As janelas ficam guardadas: ele
+        vai para “Arquivados”, no fim da lista, e abrir de novo desarquiva. O da bancada e os abertos nunca são arquivados.
+      </p>
+      <div className={`auto-campos${a.ativo ? "" : " desligado"}`}>
+        <label>Depois de <input type="number" min={1} value={a.dias} onChange={(e) => mudar({ ...a, dias: Math.max(1, Number(e.target.value) || 1) })} /> dias parado</label>
+      </div>
+    </div>
+  );
+}
+
 const mb = (b: number) => (b >= 1024 ** 3 ? `${(b / 1024 ** 3).toFixed(1)} GB` : `${Math.round(b / 1024 ** 2)} MB`);
 
 /** Na barra de título: o workspace atual; o menu troca, fecha (para os terminais) ou esquece. */
-export function SeletorWorkspace({ ws, trocar, fechar, esquecer, renomear }: {
+export function SeletorWorkspace({ ws, trocar, fechar, esquecer, renomear, arquivar, desarquivar }: {
   ws: Workspaces;
   trocar: (chave: string) => void;
   fechar: (chave: string) => void;
   esquecer: (chave: string) => void;
   renomear: (chave: string, nome: string) => void;
+  arquivar: (chave: string) => void;
+  desarquivar: (chave: string) => void;
 }) {
   const pop = usePopover();
   const [editando, setEditando] = useState<string | null>(null);
+  const [verArquivados, setVerArquivados] = useState(false);
   const info = ws.info[ws.ativo] ?? { titulo: "?" };
   // status dos agentes: redesenha quando um hook avisa
   const [, setN] = useState(0);
@@ -83,7 +118,14 @@ export function SeletorWorkspace({ ws, trocar, fechar, esquecer, renomear }: {
   // no botão: o mais importante entre todos os workspaces abertos
   const todos = ws.abertos.flatMap((k) => (ws.estados[k] ? sessoesDe(ws.estados[k]) : []));
   const geral = { estado: estadoDe(todos.map((s) => s.sessao)), temAgente: todos.some((s) => !!s.programa) };
-  const chaves = Object.keys(ws.estados).sort((a, b) => (a === GERAL ? -1 : b === GERAL ? 1 : (ws.info[a]?.titulo ?? "").localeCompare(ws.info[b]?.titulo ?? "")));
+  // os ativos (abertos) primeiro, o da bancada na frente; depois os fechados; os arquivados à parte, no fim
+  const porNome = (a: string, b: string) => (a === GERAL ? -1 : b === GERAL ? 1 : (ws.info[a]?.titulo ?? "").localeCompare(ws.info[b]?.titulo ?? ""));
+  const todas = Object.keys(ws.estados);
+  const arquivados = todas.filter((k) => ws.info[k]?.arquivado).sort(porNome);
+  const chaves = [
+    ...todas.filter((k) => ws.abertos.includes(k) && !ws.info[k]?.arquivado).sort(porNome),
+    ...todas.filter((k) => !ws.abertos.includes(k) && !ws.info[k]?.arquivado).sort(porNome),
+  ];
   return (
     <>
       <button className="bt-btn seletor-ws" title="Workspace (Ctrl+Alt+PgUp / PgDn troca entre os abertos)" onClick={pop.abrir}>
@@ -113,11 +155,33 @@ export function SeletorWorkspace({ ws, trocar, fechar, esquecer, renomear }: {
                   <button className="btn-icone mini" title="Fechar (para os terminais; as janelas ficam guardadas)" onClick={(e) => { e.stopPropagation(); fechar(k); }}><Power size={12} /></button>
                 )}
                 {k !== GERAL && (
+                  <button className="btn-icone mini" title="Arquivar (sai da lista e para os terminais; as janelas ficam guardadas)" onClick={(e) => { e.stopPropagation(); arquivar(k); }}><Archive size={12} /></button>
+                )}
+                {k !== GERAL && (
                   <button className="btn-icone mini" title="Esquecer (some da lista; o workspace do documento volta vazio)" onClick={(e) => { e.stopPropagation(); esquecer(k); }}><Trash2 size={12} /></button>
                 )}
               </div>
             );
           })}
+          {arquivados.length > 0 && (
+            <>
+              <button className="menu-item ws-arquivados" onClick={() => setVerArquivados((v) => !v)}>
+                {verArquivados ? <ChevronDown size={13} /> : <ChevronRight size={13} />} Arquivados ({arquivados.length})
+              </button>
+              {verArquivados && arquivados.map((k) => {
+                const i = ws.info[k] ?? { titulo: k };
+                return (
+                  <div key={k} className="menu-item ws-linha arquivada" title="Clique para abrir (desarquiva)" onClick={() => { trocar(k); pop.fechar(); }}>
+                    <span className="ws-ponto" />
+                    <span className="ws-titulo"><IconeWs k={k} icone={i.icone} />{i.titulo}</span>
+                    <span className="dir" style={{ fontSize: 11 }}>{i.arquivado ? `desde ${new Date(i.arquivado).toLocaleDateString("pt-BR")}` : ""}</span>
+                    <button className="btn-icone mini" title="Desarquivar (volta para a lista, fechado)" onClick={(e) => { e.stopPropagation(); desarquivar(k); }}><ArchiveRestore size={12} /></button>
+                    <button className="btn-icone mini" title="Esquecer (some de vez; o workspace do documento volta vazio)" onClick={(e) => { e.stopPropagation(); esquecer(k); }}><Trash2 size={12} /></button>
+                  </div>
+                );
+              })}
+            </>
+          )}
           <div className="menu-sep" />
           <button className="menu-item" onClick={() => { pop.fechar(); verWorkspaces(); }}>
             <LayoutDashboard size={14} /> Ver todos <span className="dir"><kbd>Ctrl Shift O</kbd></span>
@@ -196,7 +260,41 @@ function IndicadorDisco({ ativo }: { ativo: string }) {
   );
 }
 
-export function BarraStatus({ ws }: { ws: Workspaces }) {
+/** A fila dos agentes que esperam você (terminaram ou pedem ação), um por workspace, o mais antigo à esquerda. */
+function FilaAgentes({ ws, irAoAgente }: { ws: Workspaces; irAoAgente: (sessao: number) => void }) {
+  const [, setN] = useState(0);
+  useEffect(() => {
+    const f = () => setN((n) => n + 1);
+    window.addEventListener("atelier:agentes", f);
+    return () => window.removeEventListener("atelier:agentes", f);
+  }, []);
+  const vistos = new Set<string>();
+  const fila: { k: string; sessao: number; estado: "esperando" | "terminou" }[] = [];
+  for (const f of filaDeEspera()) {
+    const k = workspaceDaSessao(ws, f.sessao);
+    // só os abertos: fechar ou arquivar o workspace para os terminais (o agente dele já não espera ninguém)
+    if (!k || vistos.has(k) || !ws.abertos.includes(k)) continue;
+    vistos.add(k);
+    fila.push({ k, sessao: f.sessao, estado: f.estado as "esperando" | "terminou" });
+  }
+  if (!fila.length) return null;
+  return (
+    <span className="bs-fila">
+      {fila.map((f) => {
+        const titulo = ws.info[f.k]?.titulo ?? f.k;
+        return (
+          <button key={f.k} className={`bs-pilula ${f.estado}`} onClick={() => irAoAgente(f.sessao)}
+            title={`${titulo}: ${f.estado === "esperando" ? "um agente está esperando você" : "um agente terminou"} (clique para ir até ele)`}>
+            <CarinhaAgente estado={f.estado} temAgente />
+            <span className="bs-pilula-nome">{titulo}</span>
+          </button>
+        );
+      })}
+    </span>
+  );
+}
+
+export function BarraStatus({ ws, irAoAgente }: { ws: Workspaces; irAoAgente: (sessao: number) => void }) {
   const [m, setM] = useState<Medida | null>(null);
   const pop = usePopover();
   useEffect(() => {
@@ -207,7 +305,12 @@ export function BarraStatus({ ws }: { ws: Workspaces }) {
     const t = window.setInterval(() => { if (!document.hidden) medir(); }, 3000);
     return () => { vivo = false; window.clearInterval(t); };
   }, []);
-  if (!m) return <footer className="barra-status" />;
+  const botaoWs = (
+    <button className="bs-ws" title="Workspaces: ver todos (Ctrl+Shift+O)" onClick={() => window.dispatchEvent(new Event("atelier:ver-workspaces"))}>
+      <LayoutPanelLeft size={13} />
+    </button>
+  );
+  if (!m) return <footer className="barra-status">{botaoWs}<FilaAgentes ws={ws} irAoAgente={irAoAgente} /></footer>;
 
   const pct = Math.min(100, (m.ram / m.ram_maquina) * 100);
   const porWs = ws.abertos.map((k) => {
@@ -219,10 +322,9 @@ export function BarraStatus({ ws }: { ws: Workspaces }) {
 
   return (
     <footer className="barra-status">
-      <button className="bs-ws" title="Workspace aberto agora (cada documento tem o seu; o da bancada é o geral). Clique para ver todos (Ctrl+R)" onClick={() => window.dispatchEvent(new Event("atelier:ver-workspaces"))}>
-        <LayoutPanelLeft size={12} /> <span className="rotulo-fraco">Workspace:</span> <span>{ws.info[ws.ativo]?.titulo}</span>
-      </button>
-      <span style={{ flex: 1 }} />
+      {botaoWs}
+      <FilaAgentes ws={ws} irAoAgente={irAoAgente} />
+      <span style={{ flex: 1, minWidth: 8 }} />
       <IndicadorDitado interfaceRam={m.interface} />
       <IndicadorDisco ativo={ws.ativo} />
       <button className="bs-medida" onClick={pop.abrir} title={`Memória: ${mb(m.ram)} de ${mb(m.ram_maquina)} da máquina · CPU ${m.cpu.toFixed(0)}% (clique para ver por workspace)`}>
@@ -287,10 +389,11 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
   const [m, setM] = useState<Medida | null>(null);
   const [busca, setBusca] = useState("");
   // os abertos primeiro (o atual na frente), depois os guardados
+  // os arquivados não entram
   const ordem = [
     ...ws.abertos,
     ...Object.keys(ws.estados).filter((k) => !ws.abertos.includes(k)).sort((a, b) => (ws.info[a]?.titulo ?? "").localeCompare(ws.info[b]?.titulo ?? "")),
-  ].filter((k) => ws.estados[k] && (ws.info[k]?.titulo ?? k).toLowerCase().includes(busca.trim().toLowerCase()));
+  ].filter((k) => ws.estados[k] && !ws.info[k]?.arquivado && (ws.info[k]?.titulo ?? k).toLowerCase().includes(busca.trim().toLowerCase()));
   const [sel, setSel] = useState(() => Math.max(0, ordem.indexOf(ws.ativo)));
   const grade = useRef<HTMLDivElement>(null);
 
@@ -350,6 +453,7 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
               <div className="ws-cartao-cabeca">
                 <span className="ws-cartao-icone">{k === GERAL ? <Marca tamanho={18} /> : info.icone ?? "📄"}</span>
                 <NomeWs info={info} editando={editando === k} aoGravar={(n) => renomear(k, n)} aoSair={() => setEditando(null)} classe="ws-cartao-titulo" />
+                {k === ws.ativo && <span className="ws-selo-atual">atual</span>}
                 <button className="btn-icone mini ws-lapis" title="Renomear" onClick={(ev) => { ev.stopPropagation(); setEditando(k); }}><Pencil size={12} /></button>
                 {aberto && k !== ws.ativo && (
                   <button className="btn-icone mini" title="Fechar (para os terminais; as janelas ficam guardadas)" onClick={(ev) => { ev.stopPropagation(); fecharWs(k); }}><Power size={12} /></button>

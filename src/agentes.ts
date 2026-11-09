@@ -6,11 +6,37 @@ export type EstadoAgente = "esperando" | "trabalhando" | "terminou" | "parado";
 
 const ORDEM: EstadoAgente[] = ["esperando", "trabalhando", "terminou", "parado"];
 const estados = new Map<number, EstadoAgente>();
+/** desde quando a sessão está no estado de agora (a fila da barra de status: quem espera há mais tempo vem antes) */
+const desde = new Map<number, number>();
+/** já atendidas: a pessoa foi até o agente; saem da fila até ele mudar de estado de novo */
+const atendidas = new Set<number>();
 
 export function marcarAgente(sessao: number, estado: EstadoAgente) {
-  if (estados.get(sessao) === estado) return;
+  // o mesmo estado de novo: só importa se já tinha sido atendido (o agente pediu de novo: volta para a fila)
+  if (estados.get(sessao) === estado && !atendidas.has(sessao)) return;
   estados.set(sessao, estado);
+  desde.set(sessao, Date.now());
+  atendidas.delete(sessao);
   window.dispatchEvent(new Event("atelier:agentes"));
+}
+
+/** Esperam você: terminaram ou pedem uma ação, e ninguém foi ver ainda. A mais antiga primeiro. */
+export function filaDeEspera(): { sessao: number; estado: EstadoAgente; desde: number }[] {
+  return [...estados.entries()]
+    .filter(([s, e]) => (e === "esperando" || e === "terminou") && !atendidas.has(s))
+    .map(([s, e]) => ({ sessao: s, estado: e, desde: desde.get(s) ?? 0 }))
+    .sort((a, b) => a.desde - b.desde);
+}
+
+/** A pessoa foi até estes agentes: saem da fila (o "terminou" vira "parado"; o "esperando" continua, mas atendido). */
+export function atender(sessoes: number[]) {
+  let mudou = false;
+  for (const s of sessoes) {
+    const e = estados.get(s);
+    if (e === "terminou") { estados.set(s, "parado"); mudou = true; }
+    if (e === "esperando" && !atendidas.has(s)) { atendidas.add(s); mudou = true; }
+  }
+  if (mudou) window.dispatchEvent(new Event("atelier:agentes"));
 }
 
 export function estadoDaSessao(sessao: number): EstadoAgente | undefined {

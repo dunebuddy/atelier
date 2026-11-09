@@ -52,7 +52,7 @@ export function PilhaDeAvisos() {
   };
   const agendar = (n: Notificacao) => {
     const cfg = configuracao();
-    const temAcao = !!(n.desfazer || n.rota);
+    const temAcao = !!(n.desfazer || n.rota || n.agente != null);
     if (temAcao && cfg.acaoFica) return;
     // erro fica um pouco mais
     const ms = (cfg.segundos + (n.nivel === "erro" ? 3 : 0)) * 1000;
@@ -83,6 +83,7 @@ export function PilhaDeAvisos() {
   const agir = (n: Notificacao) => {
     marcarLida(n.id);
     if (n.rota) abrir(n.rota);
+    if (n.agente != null) irAoAgente(n.agente);
     fechar(n.id);
   };
 
@@ -97,7 +98,7 @@ export function PilhaDeAvisos() {
           onMouseEnter={() => { window.clearTimeout(timers.current.get(n.id)); timers.current.delete(n.id); }}
           onMouseLeave={() => agendar(n)}
           onClick={() => agir(n)}
-          title={n.rota ? "Clique para abrir" : "Clique para fechar"}
+          title={n.agente != null ? "Clique para ir até o agente" : n.rota ? "Clique para abrir" : "Clique para fechar"}
         >
           <div className="ca-cabeca">
             <Icone n={n} />
@@ -178,7 +179,11 @@ export function Sino() {
             {lista.map((n) => (
               <div key={n.id} className={`sino-item${n.lida ? "" : " nova"}${n.nivel === "erro" ? " erro" : ""}`}>
                 <Icone n={n} />
-                <div className="sino-texto" onClick={() => { if (n.rota) { abrir(n.rota); marcarLida(n.id); pop.fechar(); } }} style={n.rota ? { cursor: "pointer" } : undefined}>
+                <div className="sino-texto" onClick={() => {
+                  if (n.rota) abrir(n.rota);
+                  if (n.agente != null) irAoAgente(n.agente);
+                  if (n.rota || n.agente != null) { marcarLida(n.id); pop.fechar(); }
+                }} style={n.rota || n.agente != null ? { cursor: "pointer" } : undefined}>
                   <div>{n.de ? <strong>{n.de}: </strong> : null}{n.msg}</div>
                   <div className="sino-quando">{quando(n.quando)}</div>
                 </div>
@@ -295,6 +300,11 @@ const DICAS: Record<EstadoAgente | "sem", string> = {
 export function CarinhaAgente({ estado, temAgente }: { estado: EstadoAgente | null; temAgente: boolean }) {
   const e = estado ?? (temAgente ? "parado" : "sem");
   return <span className={`carinha ${CORES[e]}`} title={DICAS[e]}><Bot size={13} /></span>;
+}
+
+/** Vai até o agente desta sessão (o App troca de workspace e foca o terminal dele). */
+export function irAoAgente(sessao: number) {
+  window.dispatchEvent(new CustomEvent("atelier:ir-agente", { detail: sessao }));
 }
 
 /** Para a API do agente avisar pela tela (o caso do `nao_consigo`). */

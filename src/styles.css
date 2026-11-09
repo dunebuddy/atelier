@@ -151,9 +151,9 @@ kbd {
 /* ---------- moldura ---------- */
 
 .app { display: flex; flex-direction: column; height: 100%; }
-/* sem folga embaixo: os painéis encostam na barra de status, que é uma faixa própria (linha fina em cima) com a
-   pílula no meio da altura; com a barra lateral escondida, a folga da esquerda é a mesma da direita */
-.corpo-app { flex: 1; display: flex; min-height: 0; padding: 0 8px 0 0; }
+/* a área dos painéis é um bloco com os quatro cantos arredondados (pedido do Paulo, 0.2.15): folga embaixo igual à
+   da direita; com a barra lateral escondida, a folga da esquerda é a mesma da direita */
+.corpo-app { flex: 1; display: flex; min-height: 0; padding: 0 8px 8px 0; }
 .corpo-app.sem-barra { padding-left: 8px; }
 
 .barra-titulo {
@@ -284,15 +284,27 @@ body.redimensionando .sidebar { transition: none; }
 .seletor-ws .ws-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
 .ws-conta { font-size: 10.5px; background: var(--acento-suave); color: var(--acento); border-radius: 999px; padding: 0 6px; }
 .ws-linha { cursor: pointer; }
-.ws-linha.atual { font-weight: 600; }
+/* o workspace atual salta à vista: fundo de acento e uma barra à esquerda (na visão geral, borda e fundo) */
+.ws-linha.atual { font-weight: 600; background: var(--acento-suave); box-shadow: inset 3px 0 0 var(--acento); }
+.ws-linha.arquivada { color: var(--texto-3); }
+.ws-arquivados { color: var(--texto-3); font-size: 12px; }
 .ws-titulo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
 .ws-ponto { width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--texto-3); flex-shrink: 0; }
 .ws-ponto.vivo { background: var(--t-green); border-color: var(--t-green); }
 .barra-status { height: 26px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 11.5px; color: var(--texto-3); border-top: 1px solid var(--borda); margin-top: 8px; }
-.bs-ws { display: flex; align-items: center; gap: 5px; height: 18px; padding: 0 6px; border-radius: 6px; color: var(--texto-3); font-size: 11.5px; line-height: 1; min-width: 0; }
+.bs-ws { display: flex; align-items: center; height: 20px; padding: 0 5px; border-radius: 6px; color: var(--texto-3); flex-shrink: 0; }
 .bs-ws:hover { background: var(--hover); color: var(--texto); }
-.bs-ws span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bs-ws .rotulo-fraco { color: var(--texto-3); opacity: .8; }
+/* fila dos agentes esperando: as pílulas dividem o espaço e vão apertando (o nome corta em "…") */
+.bs-fila { display: flex; align-items: center; gap: 4px; min-width: 0; flex: 0 1 auto; overflow: hidden; }
+.bs-pilula {
+  display: flex; align-items: center; gap: 4px; height: 19px; padding: 0 8px 0 4px; border-radius: 999px; min-width: 44px;
+  flex: 0 1 auto; max-width: 240px; font-size: 11.5px; line-height: 1; color: var(--texto-2);
+  border: 1px solid var(--borda); background: var(--bg-elev);
+}
+.bs-pilula:hover { border-color: var(--acento); color: var(--texto); }
+.bs-pilula.esperando { border-color: color-mix(in srgb, var(--t-red) 55%, var(--borda)); }
+.bs-pilula .carinha { flex-shrink: 0; }
+.bs-pilula-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .bs-medida { display: flex; align-items: center; gap: 5px; height: 18px; line-height: 1; color: var(--texto-3); font-size: 11.5px; padding: 0 6px; border-radius: 6px; font-variant-numeric: tabular-nums; }
 .bs-medida:hover { background: var(--hover); color: var(--texto); }
 .bs-barra { width: 64px; height: 6px; border-radius: 3px; background: var(--hover); overflow: hidden; display: inline-block; }
@@ -321,7 +333,8 @@ body.redimensionando .sidebar { transition: none; }
 .ws-cartao-cabeca { display: flex; align-items: center; gap: 8px; }
 .ws-cartao-icone { font-size: 20px; }
 .ws-cartao-titulo { flex: 1; min-width: 0; font-weight: 650; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ws-cartao.atual .ws-cartao-titulo::after { content: " · atual"; font-weight: 400; color: var(--acento); font-size: 12px; }
+.ws-cartao.atual { background: color-mix(in srgb, var(--acento) 9%, var(--bg)); border: 1px solid color-mix(in srgb, var(--acento) 60%, var(--borda)); }
+.ws-selo-atual { flex-shrink: 0; font-weight: 600; color: var(--acento); font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--acento-suave); }
 .ws-esboco { flex: 1; display: flex; gap: 6px; min-height: 0; }
 .ws-metade { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 5px; border-radius: 9px; background: var(--bg-fundo); }
 .ws-modo { color: var(--texto-3); display: flex; }
@@ -413,7 +426,7 @@ body.redimensionando .sidebar { transition: none; }
 
 /* como no VS Code: faixa de abas colada em cima, janelas encostadas, metades separadas por uma linha fina (o fundo
    do painel é a cor da borda, e é ela que aparece no vão de 1 px) */
-.painel { position: relative; flex: 1; min-height: 0; overflow: hidden; background: var(--borda); }
+.painel { position: relative; flex: 1; min-height: 0; overflow: hidden; background: var(--borda); border-radius: 12px; box-shadow: 0 0 0 1px var(--borda); }
 .metade-cabeca {
   position: absolute; top: 0; display: flex; align-items: stretch; gap: 0; padding: 0 4px 0 0; z-index: 2;
   background: var(--bg-fundo); border-bottom: 1px solid var(--borda); box-sizing: border-box; transition: background 0.15s;
@@ -734,7 +747,7 @@ tr:hover .celula .vazio, .prop-valor .vazio { opacity: 1; }
 .opcoes-editor { padding: 2px 0 10px 36px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .opcoes-editor .tag { cursor: pointer; }
 .cartao { border: 1px solid var(--borda); border-radius: 12px; padding: 14px 16px; background: var(--bg-elev); margin-bottom: 10px; }
-.cartao .props { display: grid; grid-template-columns: 170px 1fr; row-gap: 2px; }
+.cartao .props { display: grid; grid-template-columns: 170px minmax(0, 1fr); row-gap: 2px; }
 .seletor-emoji { display: grid; grid-template-columns: repeat(8, 30px); gap: 2px; padding: 4px; }
 .seletor-emoji button { font-size: 18px; height: 30px; border-radius: 7px; }
 .seletor-emoji button:hover { background: var(--hover); }
@@ -987,8 +1000,11 @@ button.quando.editada:hover { color: var(--acento); }
 .rel-abrir svg { opacity: 0; transition: opacity .12s; }
 .rel-abrir:hover svg { opacity: 1; }
 .rel-conta { font-size: 11px; font-weight: 600; color: var(--texto-2); background: var(--hover); border-radius: 999px; padding: 0 6px; line-height: 16px; }
-.rel-lista { display: flex; flex-direction: column; gap: 4px; }
-.rel-chip { display: flex; align-items: center; border: 1px solid var(--borda); border-radius: 8px; background: var(--bg-elev); min-width: 0; }
+/* a lista e a pílula nunca passam da largura da ficha: o título é que encolhe (com "…"); os botões ficam */
+.rel-lista { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; max-width: 100%; }
+.rel-chip { display: flex; align-items: center; border: 1px solid var(--borda); border-radius: 8px; background: var(--bg-elev); min-width: 0; max-width: 100%; }
+.rel-chip > :not(:first-child) { flex-shrink: 0; }
+.rel-chip .id-item, .rel-chip > button:first-child > span:first-child { flex-shrink: 0; }
 .rel-chip > button:first-child { display: flex; align-items: center; gap: 6px; padding: 3px 8px; flex: 1; min-width: 0; text-align: left; }
 .rel-chip:hover { border-color: var(--acento); }
 .rel-chip.na-lixeira { opacity: .55; text-decoration: line-through; }

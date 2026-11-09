@@ -105,6 +105,16 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.15** (2026-11-09) · Workspaces e fila de agentes, todos pedidos de 09/11:
+  - **Fila de agentes na barra de status:** botão fixo só com o ícone dos workspaces (abre a visão geral) e uma
+    pílula por workspace aberto com agente esperando ou que terminou (carinha colorida + nome, a mais antiga à
+    esquerda; os nomes apertam com "…"). Clicar vai ao workspace com o foco no terminal do agente, e a pílula sai.
+  - **Notificação de agente** com o nome do workspace em destaque; clicar (toast ou sininho) vai até o agente.
+  - **Workspaces:** o atual em destaque na lista de cima (fundo + barra de acento) e na visão geral (fundo, borda e
+    selo "atual"); abertos primeiro; **arquivar** (grupo "Arquivados" recolhido no fim, desarquivar, abrir
+    desarquiva); **arquivar sozinho** os parados há N dias (Automação, desligado por padrão, 30 dias).
+  - **Pílula de relação** não vaza mais da ficha (título com "…", botões sempre no lugar).
+  - **Área de trabalho** com os quatro cantos arredondados de volta.
 - **0.2.14** (2026-11-04, à noite):
   - **Relatório bonito, com layout e agente**: HTML e PDF com 4 layouts (`src/relatorio.ts`:
   Executivo com capa, números e sumário · Fichas · Tabela compacta · Documento corrido), cores do tipo e chips das

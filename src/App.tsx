@@ -2,7 +2,7 @@ import { abrirCodigo } from "./components/Mencoes";
 import { abrirJanelaDaBancada, ABRIR_AO_CARREGAR, BANCADA_DA_JANELA, bancadaNaQuery, codificarBancada, decodificarBancada, mesmaBancada } from "./janela";
 import { desfazerAgora, notificarFalta, PilhaDeAvisos } from "./components/Avisos";
 import { notificar } from "./notificacoes";
-import { EstadoAgente, marcarAgente, verSessoes } from "./agentes";
+import { atender, EstadoAgente, marcarAgente, verSessoes } from "./agentes";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, BASE, Bancadas, Esquema, Preferencias, TemaArquivo, Visao } from "./api";
 import { aplicarTema } from "./tema";
@@ -22,7 +22,7 @@ import { EstadoPainel, janelaAtiva, rotaDe } from "./painel";
 import { avisar, falhou, guardar, ler, Rota, Tema } from "./ui";
 import * as W from "./workspaces";
 import { bate, definirAtalhos, doPainel } from "./atalhos";
-import { BarraStatus, SeletorWorkspace, VisaoGeralWorkspaces } from "./components/Workspaces";
+import { BarraStatus, diasAutoArquivar, SeletorWorkspace, VisaoGeralWorkspaces } from "./components/Workspaces";
 
 // só carrega quando abre (é grande e quase nunca está na tela)
 const Configuracoes = lazy(() => import("./components/Configuracoes").then((m) => ({ default: m.Configuracoes })));
@@ -112,6 +112,37 @@ export default function App() {
   useEffect(() => {
     if (bancadaAtual) setWs(W.carregar(bancadaAtual));
   }, [bancadaAtual]);
+  // arquivar sozinho os workspaces parados (ao abrir a bancada, ao mudar a configuração e de hora em hora)
+  useEffect(() => {
+    if (!bancadaAtual) return;
+    const rodar = () => {
+      const dias = diasAutoArquivar();
+      const w = wsRef.current;
+      const r = w ? W.autoArquivar(w, dias) : null;
+      if (!r?.arquivados.length) return;
+      setWs((x) => (x ? W.autoArquivar(x, dias).w : x));
+      const um = r.arquivados.length === 1;
+      notificar({
+        msg: `${um ? "arquivei o workspace" : "arquivei os workspaces"} ${r.arquivados.map((t) => `“${t}”`).join(", ")}, parado${um ? "" : "s"} há mais de ${dias} dias. ${um ? "Está" : "Estão"} em “Arquivados”, na lista de workspaces.`,
+        nivel: "info", assunto: "app",
+      });
+    };
+    const t0 = window.setTimeout(rodar, 2000);
+    const t = window.setInterval(rodar, 3_600_000);
+    window.addEventListener("atelier:auto-arquivar", rodar);
+    return () => { window.clearTimeout(t0); window.clearInterval(t); window.removeEventListener("atelier:auto-arquivar", rodar); };
+  }, [bancadaAtual]);
+  // ir até um agente (a pílula da barra de status, a notificação): o workspace dele, o foco no terminal, sai da fila
+  const irAoAgente = useCallback((sessao: number) => {
+    setVerWs(false);
+    setWs((w) => (w ? W.irAoAgente(w, sessao) : w));
+    atender([sessao]);
+  }, []);
+  useEffect(() => {
+    const f = (e: Event) => irAoAgente((e as CustomEvent<number>).detail);
+    window.addEventListener("atelier:ir-agente", f);
+    return () => window.removeEventListener("atelier:ir-agente", f);
+  }, [irAoAgente]);
   // terminal e agente nascem na pasta do workspace: a do item (criada na hora, se ainda não tem) ou a raiz da bancada
   const wsAtivo = ws?.ativo;
   useEffect(() => {
@@ -371,7 +402,6 @@ export default function App() {
         if (d.estado === "trabalhando") return;
         const w = wsRef.current;
         const k = w ? Object.keys(w.estados).find((x) => W.sessoesDe(w.estados[x]).some((t) => t.sessao === d.sessao)) : undefined;
-        const onde = k && w ? ` em “${w.info[k]?.titulo ?? k}”` : "";
         // o agente que você está olhando agora (app em foco, workspace dele aberto, terminal dele à vista) não vira
         // toast: vai só para o sininho, e a carinha muda de cor
         const est = k && w && k === w.ativo ? w.estados[k] : null;
@@ -383,7 +413,14 @@ export default function App() {
             return (m.modo === "tile" && !est.maximizada) || m.ativa === j.id;
           });
         });
-        notificar({ msg: d.estado === "esperando" ? `um agente está esperando você${onde}.` : `um agente terminou${onde}.`, nivel: d.estado === "esperando" ? "aviso" : "info", assunto: "agente", de: "Agente" }, aVista);
+        // olhando para ele: já foi atendido (não entra na fila da barra de status)
+        if (aVista) atender([d.sessao]);
+        // quem manda é o workspace (o nome dele em destaque); clicar vai até o agente
+        notificar({
+          msg: d.estado === "esperando" ? "um agente está esperando você." : "um agente terminou.",
+          nivel: d.estado === "esperando" ? "aviso" : "info", assunto: "agente",
+          de: k && w ? (w.info[k]?.titulo ?? k) : "Agente", agente: k ? d.sessao : undefined,
+        }, aVista);
         return;
       }
     }
@@ -634,6 +671,8 @@ export default function App() {
             fechar={(k) => setWs((w) => (w ? W.fechar(w, k) : w))}
             esquecer={(k) => setWs((w) => (w ? W.esquecer(w, k) : w))}
             renomear={(k, n) => setWs((w) => (w ? W.renomear(w, k, n) : w))}
+            arquivar={(k) => setWs((w) => (w ? W.arquivar(w, k) : w))}
+            desarquivar={(k) => setWs((w) => (w ? W.desarquivar(w, k) : w))}
           />
         }
         aoApagarItem={
@@ -695,7 +734,7 @@ export default function App() {
         </Suspense>
       )}
       <ComandoAgente descricao={descricaoTela} />
-      <BarraStatus ws={ws} />
+      <BarraStatus ws={ws} irAoAgente={irAoAgente} />
       <CapturaGlobal prefs={prefs} />
       <VisualizadorDeImagem />
       <EscolherAgente />

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { DatabaseBackup, EyeOff, FolderOpen, Keyboard, Minimize2, PanelBottomClose, Power, Trash2 } from "lucide-react";
 import { api, Preferencias } from "../api";
 import { avisar, falhou } from "../ui";
+import { DiasAutoArquivar } from "./Workspaces";
 import { dataHora } from "../visao";
 
 /** Configurações do que roda sozinho. Tudo começa desligado. */
@@ -72,6 +73,8 @@ export function SecaoAutomacao({ prefs, mudar }: { prefs: Preferencias; mudar: (
           <label>Depois de <input type="number" min={1} value={l.dias} onChange={(e) => mudar({ lixeira: { ...l, dias: Math.max(1, Number(e.target.value) || 1) } })} /> dias na lixeira</label>
         </div>
       </div>
+
+      <DiasAutoArquivar />
     </>
   );
 }

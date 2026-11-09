@@ -508,3 +508,15 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 
 ### Ponto de parada (2026-11-04, fim)
 - Pendências: atalhos em dois tempos com Ctrl+K. Do relatório ficou: modelo salvo com nome e `gerar_relatorio` no MCP.
+- 0.2.15 (2026-11-09): pedidos do dia numa versão. `agentes.ts` ganhou a fila (`filaDeEspera`, `atender`, `desde`;
+  o mesmo estado de novo recoloca na fila quem já foi atendido); `workspaces.ts` ganhou `arquivado` no
+  `InfoWorkspace`, `arquivar`/`desarquivar`/`autoArquivar`, `workspaceDaSessao` e `irAoAgente` (abre o workspace e
+  ativa a janela do terminal). Barra de status: botão só com o ícone + `FilaAgentes` (pílulas por workspace aberto).
+  Notificação de agente: `de` = nome do workspace e `agente` = sessão; o clique dispara `atelier:ir-agente`.
+  Auto-arquivar: cartão em Automação (`DiasAutoArquivar`, chave `workspaces.autoArquivar`, desligado por padrão).
+  CSS: `.painel` com raio 12 e folga embaixo; `.rel-lista`/`.rel-chip` encolhem dentro da ficha.
+
+### Ponto de parada (2026-11-09)
+- 0.2.15 feita e testada sem janela (fila, clique na pílula e no toast, arquivar, auto-arquivar, destaque, pílula
+  de relação). Versão e tag com o ok do Paulo. A conferir no uso: a fila com agentes de verdade
+  (hooks), os cantos arredondados nos temas claros.

@@ -18,8 +18,10 @@ export interface InfoWorkspace {
   /** o título atual do documento (o workspace acompanha quando o documento muda de nome) */
   doc?: string;
   icone?: string;
-  /** quando foi aberto pela última vez (para a poda do que fica guardado) */
+  /** quando foi aberto pela última vez (para a poda do que fica guardado e o arquivar sozinho) */
   usado?: number;
+  /** arquivado em (sai das listas; as janelas ficam guardadas; abrir de novo desarquiva) */
+  arquivado?: number;
 }
 
 /** O que fica guardado entre uma sessão e outra: os workspaces de item usados por último e, em cada janela, os
@@ -63,14 +65,17 @@ export function carregar(bancada: string): Workspaces {
   const estados: Record<string, EstadoPainel> = {};
   for (const [k, e] of Object.entries(g.estados)) estados[k] = P.restaurar(e, k === GERAL ? { v: "inicio" } : { v: "item", id: itemDa(k) ?? 0 });
   const ativo = estados[g.ativo] ? g.ativo : GERAL;
+  // os de antes do "usado" começam a contar agora (senão o arquivar sozinho levaria todos de uma vez)
+  for (const [k, i] of Object.entries(g.info ?? {})) if (i && i.usado == null) g.info[k] = { ...i, usado: Date.now() };
   return { ativo, estados, info: { ...g.info, [GERAL]: { ...g.info?.[GERAL], titulo: g.info?.[GERAL]?.nome || "Bancada" } }, abertos: [ativo] };
 }
 
 export function salvar(bancada: string, w: Workspaces) {
-  // ficam: o da bancada, os abertos agora e os de item usados por último
-  const deItem = Object.keys(w.estados).filter((k) => k !== GERAL && !w.abertos.includes(k));
+  // ficam: o da bancada, os abertos agora, os arquivados (guardar é o motivo de arquivar) e os de item usados por último
+  const arquivados = Object.keys(w.estados).filter((k) => w.info[k]?.arquivado);
+  const deItem = Object.keys(w.estados).filter((k) => k !== GERAL && !w.abertos.includes(k) && !w.info[k]?.arquivado);
   deItem.sort((a, b) => (w.info[b]?.usado ?? 0) - (w.info[a]?.usado ?? 0));
-  const ficam = new Set([GERAL, ...w.abertos, ...deItem.slice(0, GUARDAR_WORKSPACES)]);
+  const ficam = new Set([GERAL, ...w.abertos, ...arquivados, ...deItem.slice(0, GUARDAR_WORKSPACES)]);
   const estados = Object.fromEntries(Object.entries(w.estados).filter(([k]) => ficam.has(k)).map(([k, e]) => [k, podarJanelas(e)]));
   const info = Object.fromEntries(Object.entries(w.info).filter(([k]) => ficam.has(k)));
   guardar(chaveGuardada(bancada), { ativo: w.ativo, estados, info });
@@ -84,7 +89,7 @@ export function abrir(w: Workspaces, chave: string, info?: InfoWorkspace): Works
     ...w,
     ativo: chave,
     estados,
-    info: { ...w.info, [chave]: { ...juntarInfo(w.info[chave] ?? { titulo: chave }, info), usado: Date.now() } },
+    info: { ...w.info, [chave]: { ...juntarInfo(w.info[chave] ?? { titulo: chave }, info), usado: Date.now(), arquivado: undefined } },
     abertos: w.abertos.includes(chave) ? w.abertos : [...w.abertos, chave],
   };
 }
@@ -129,6 +134,50 @@ export function esquecer(w: Workspaces, chave: string): Workspaces {
   const { [chave]: _e, ...estados } = f.estados;
   const { [chave]: _i, ...info } = f.info;
   return { ...f, estados, info };
+}
+
+/** Arquiva: fecha (os terminais param) e tira das listas; as janelas ficam guardadas. O da bancada não arquiva. */
+export function arquivar(w: Workspaces, chave: string, quando = Date.now()): Workspaces {
+  if (chave === GERAL || !w.estados[chave]) return w;
+  const f = fechar(w, chave);
+  return { ...f, info: { ...f.info, [chave]: { ...(f.info[chave] ?? { titulo: chave }), arquivado: quando } } };
+}
+
+/** Volta para as listas (fechado; abrir é outra coisa). */
+export function desarquivar(w: Workspaces, chave: string): Workspaces {
+  const i = w.info[chave];
+  if (!i?.arquivado) return w;
+  return { ...w, info: { ...w.info, [chave]: { ...i, arquivado: undefined, usado: Date.now() } } };
+}
+
+export const arquivado = (w: Workspaces, chave: string) => !!w.info[chave]?.arquivado;
+
+/** Arquivar sozinho os parados há `dias` (0 = nunca): só os fechados, nunca o da bancada nem o atual. */
+export function autoArquivar(w: Workspaces, dias: number): { w: Workspaces; arquivados: string[] } {
+  if (!dias || dias <= 0) return { w, arquivados: [] };
+  const limite = Date.now() - dias * 86_400_000;
+  const quais = Object.keys(w.estados).filter((k) =>
+    k !== GERAL && k !== w.ativo && !w.abertos.includes(k) && !w.info[k]?.arquivado && (w.info[k]?.usado ?? 0) < limite);
+  let novo = w;
+  for (const k of quais) novo = arquivar(novo, k);
+  return { w: novo, arquivados: quais.map((k) => w.info[k]?.titulo ?? k) };
+}
+
+/** Onde está o terminal desta sessão (qual workspace). */
+export function workspaceDaSessao(w: Workspaces, sessao: number): string | undefined {
+  return Object.keys(w.estados).find((k) => sessoesDe(w.estados[k]).some((t) => t.sessao === sessao));
+}
+
+/** Vai para o workspace do agente e põe o foco no terminal dele. */
+export function irAoAgente(w: Workspaces, sessao: number): Workspaces {
+  const k = workspaceDaSessao(w, sessao);
+  if (!k) return w;
+  const aberto = abrir(w, k);
+  const e = aberto.estados[k];
+  const mi = e.metades.findIndex((m) => m.janelas.some((j) => { const r = P.rotaDe(j); return r.v === "terminal" && r.sessao === sessao; }));
+  if (mi < 0) return aberto;
+  const j = e.metades[mi].janelas.find((x) => { const r = P.rotaDe(x); return r.v === "terminal" && r.sessao === sessao; })!;
+  return { ...aberto, estados: { ...aberto.estados, [k]: P.ativar(e, mi, j.id) } };
 }
 
 /** Próximo/anterior entre os abertos. */

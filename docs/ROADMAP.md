@@ -231,6 +231,17 @@ Recursos novos e maiores; precisam de conversa antes (a linguagem da consulta, a
   também roda e salva.
 - **Fórmulas:** propriedade calculada de outras (soma, texto junto...), e contagem/soma sobre uma lista dinâmica.
 
+## 0.2.15 · Workspaces e fila de agentes · **saiu em 2026-11-09**
+
+Pedidos de 09/11; o detalhe de cada um está em [`PENDENCIAS.md`](PENDENCIAS.md), "Próxima versão".
+
+- **Workspaces:** o atual com destaque (fundo e borda) na lista de cima e na visão geral; abertos primeiro;
+  arquivar (sai da lista, guarda tudo) e auto-arquivar o parado há X dias.
+- **Fila de agentes na barra de status:** botão fixo dos workspaces à esquerda e uma pílula por agente esperando
+  (a mais antiga à esquerda); clicar vai até ele e tira da fila.
+- **Notificação de agente** com o nome do workspace; o clique leva ao agente.
+- Acabamento: pílula de relação que vazava da ficha; área dos painéis com os quatro cantos arredondados.
+
 ## Ideias, sem data (fora do roadmap)
 
 - Abrir com: Cursor, Goose, OpenCode desktop (só se fizer falta).

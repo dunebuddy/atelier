@@ -18,6 +18,8 @@ export interface Notificacao {
   de?: string;
   /** clicar abre isto (um documento, um workspace...) */
   rota?: Rota;
+  /** clicar vai até este agente (a sessão do terminal dele): o workspace dele, com o foco no terminal */
+  agente?: number;
   /** "Desfazer" (só enquanto o app está aberto; não vai para o histórico guardado) */
   desfazer?: () => Promise<unknown> | void;
 }

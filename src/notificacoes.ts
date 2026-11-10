@@ -30,7 +30,7 @@ export interface ConfigNotificacoes {
   posicao: Posicao;
   /** quanto tempo fica o toast sem ação */
   segundos: number;
-  /** toast com ação (desfazer, abrir, instalar) fica até a pessoa mexer */
+  /** toast com "Desfazer" fica até a pessoa mexer (abrir ou ir até o agente não segura) */
   acaoFica: boolean;
   /** não mostra toast: só guarda no histórico */
   soGuardar: boolean;

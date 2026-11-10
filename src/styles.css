@@ -1209,7 +1209,17 @@ body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grab
 .pilha-avisos.baixo-esquerda { left: 18px; bottom: 34px; flex-direction: column-reverse; }
 .pilha-avisos.cima-direita { right: 18px; top: 52px; }
 .pilha-avisos.cima-esquerda { left: 18px; top: 52px; }
-.pilha-avisos .cartao-aviso, .pilha-avisos .cartao-aviso.toast { position: static; transform: none; left: auto; right: auto; bottom: auto; width: auto; min-width: 0; max-width: none; cursor: pointer; }
+.pilha-avisos .cartao-aviso, .pilha-avisos .cartao-aviso.toast { position: relative; overflow: hidden; transform: none; left: auto; right: auto; bottom: auto; width: auto; min-width: 0; max-width: none; cursor: pointer; }
+
+/* a barrinha do tempo do toast: 3 px encostada embaixo, diminuindo até ele fechar; com o mouse em cima o tempo
+   para e recomeça cheio ao sair (o mesmo que o timer faz) */
+.toast-tempo {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--acento); opacity: .7;
+  transform-origin: left; animation: toast-tempo linear forwards;
+}
+.cartao-aviso.erro .toast-tempo { background: var(--t-red); }
+.cartao-aviso:hover .toast-tempo { animation: none; }
+@keyframes toast-tempo { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 
 /* sininho */
 .sino { position: relative; }

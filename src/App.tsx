@@ -2,7 +2,7 @@ import { abrirCodigo } from "./components/Mencoes";
 import { abrirJanelaDaBancada, ABRIR_AO_CARREGAR, BANCADA_DA_JANELA, bancadaNaQuery, codificarBancada, decodificarBancada, mesmaBancada } from "./janela";
 import { desfazerAgora, notificarFalta, PilhaDeAvisos } from "./components/Avisos";
 import { notificar } from "./notificacoes";
-import { atender, EstadoAgente, marcarAgente, verSessoes } from "./agentes";
+import { atender, deveAvisar, EstadoAgente, marcarAgente, verSessoes } from "./agentes";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, BASE, Bancadas, Esquema, Preferencias, TemaArquivo, Visao } from "./api";
 import { aplicarTema } from "./tema";
@@ -399,7 +399,8 @@ export default function App() {
       case "agente": {
         if (d.sessao == null || !d.estado) return;
         marcarAgente(d.sessao, d.estado as EstadoAgente);
-        if (d.estado === "trabalhando") return;
+        // o mesmo aviso repetido (sem ninguém ter ido ver) não vira outro toast
+        if (d.estado === "trabalhando" || !deveAvisar(d.sessao, d.estado as EstadoAgente)) return;
         const w = wsRef.current;
         const k = w ? Object.keys(w.estados).find((x) => W.sessoesDe(w.estados[x]).some((t) => t.sessao === d.sessao)) : undefined;
         // o agente que você está olhando agora (app em foco, workspace dele aberto, terminal dele à vista) não vira

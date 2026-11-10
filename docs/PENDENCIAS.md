@@ -105,6 +105,14 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.16** (2026-11-10) · Toasts, pedidos de 10/11:
+  - **Toast de agente não chega mais duas vezes:** o hook ignora o `Notification` de "ainda parado" (`idle_prompt`,
+    ~60 s depois da mesma espera) e o app só avisa de novo o mesmo estado depois que alguém foi ver o agente ou ele
+    mudou de estado (`deveAvisar` em `agentes.ts`).
+  - **Toast de agente some sozinho:** só o "Desfazer" segura o toast na tela; clicar para abrir ou ir até o agente
+    não segura (a notificação fica no sininho).
+  - **Barrinha de tempo:** 3 px encostada embaixo do toast, diminuindo até ele fechar; com o mouse em cima o tempo
+    para e recomeça cheio ao sair.
 - **0.2.15** (2026-11-09) · Workspaces e fila de agentes, todos pedidos de 09/11:
   - **Fila de agentes na barra de status:** botão fixo só com o ícone dos workspaces (abre a visão geral) e uma
     pílula por workspace aberto com agente esperando ou que terminou (carinha colorida + nome, a mais antiga à

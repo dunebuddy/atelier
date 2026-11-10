@@ -38,6 +38,15 @@ function Icone({ n }: { n: Notificacao }) {
   return <Info size={16} className="ca-icone" />;
 }
 
+/** Quanto tempo o toast fica na tela (null: fica até a pessoa mexer). Só o "Desfazer" segura o toast: clicar para
+ *  abrir ou ir até o agente não conta como ação (a notificação continua no sininho). */
+function duracao(n: Notificacao): number | null {
+  const cfg = configuracao();
+  if (n.desfazer && cfg.acaoFica) return null;
+  // erro fica um pouco mais
+  return (cfg.segundos + (n.nivel === "erro" ? 3 : 0)) * 1000;
+}
+
 /** Os toasts, num canto só (o mesmo dos cartões de versão nova, que entram aqui por portal). */
 export function PilhaDeAvisos() {
   useNotificacoes();
@@ -51,12 +60,8 @@ export function PilhaDeAvisos() {
     setToasts((l) => l.filter((x) => x.id !== id));
   };
   const agendar = (n: Notificacao) => {
-    const cfg = configuracao();
-    const temAcao = !!(n.desfazer || n.rota || n.agente != null);
-    if (temAcao && cfg.acaoFica) return;
-    // erro fica um pouco mais
-    const ms = (cfg.segundos + (n.nivel === "erro" ? 3 : 0)) * 1000;
-    timers.current.set(n.id, window.setTimeout(() => fechar(n.id), ms));
+    const ms = duracao(n);
+    if (ms != null) timers.current.set(n.id, window.setTimeout(() => fechar(n.id), ms));
   };
 
   useEffect(() => {
@@ -105,6 +110,8 @@ export function PilhaDeAvisos() {
             <span className="ca-msg">{n.de ? <strong>{n.de}: </strong> : null}{n.msg}</span>
             <button className="btn-icone" title="Fechar (fica no sininho)" onClick={(e) => { e.stopPropagation(); fechar(n.id); }}><X size={14} /></button>
           </div>
+          {/* a barrinha do tempo: diminui até o toast fechar; com o mouse em cima volta cheia (o tempo recomeça) */}
+          {duracao(n) != null && <div className="toast-tempo" style={{ animationDuration: `${duracao(n)}ms` }} />}
           {n.desfazer && (
             <div className="ca-acoes">
               <button className="btn" onClick={(e) => { e.stopPropagation(); n.desfazer?.(); marcarLida(n.id); fechar(n.id); }}>Desfazer <kbd>Ctrl Z</kbd></button>
@@ -225,7 +232,7 @@ export function SecaoNotificacoes() {
           {[3, 5, 8, 12, 20].map((s) => <option key={s} value={s}>{s} segundos</option>)}
         </select>
       </div>
-      <label className="linha-config"><span>Aviso com ação (desfazer, abrir) fica até eu mexer</span>
+      <label className="linha-config"><span>Aviso com “Desfazer” fica até eu mexer</span>
         <input type="checkbox" checked={c.acaoFica} onChange={(e) => mudarConfiguracao({ acaoFica: e.target.checked })} />
       </label>
       <label className="linha-config"><span>Não mostrar na tela, só guardar no sininho</span>

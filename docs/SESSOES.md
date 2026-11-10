@@ -520,3 +520,10 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 - 0.2.15 feita e testada sem janela (fila, clique na pílula e no toast, arquivar, auto-arquivar, destaque, pílula
   de relação). Versão e tag com o ok do Paulo. A conferir no uso: a fila com agentes de verdade
   (hooks), os cantos arredondados nos temas claros.
+- 0.2.16 (2026-11-10): toasts. `atelier-mcp hook esperando` lê só o `notification_type` da entrada e ignora
+  `idle_prompt`; `agentes.ts` ganhou `deveAvisar` (último estado avisado por sessão; `atender` e a troca de estado
+  limpam). `Avisos.tsx`: `duracao(n)` (só `desfazer` segura com `acaoFica`) e `.toast-tempo` (barra de 3 px, CSS).
+
+### Ponto de parada (2026-11-10)
+- Pendência nova respondida sem código: arquivados de workspace ficam no seletor ("Arquivados (n)", no fim).
+  A conferir no uso: um aviso só por espera com agente de verdade (o hook novo vai com o `atelier-mcp` da versão).

@@ -16,13 +16,19 @@ const VERSAO_PROTOCOLO: &str = "2025-06-18";
 
 /// `atelier-mcp hook <trabalhando|esperando|terminou>`: o hook dos agentes (instalado em Integrações). Só age dentro
 /// de um terminal do atelier (`ATELIER_SESSAO`); avisa a API e sai sempre com sucesso, rápido, para nunca travar o
-/// agente (com o app fechado, não faz nada). O que o agente manda pela entrada (a conversa) não é lido nem enviado.
+/// agente (com o app fechado, não faz nada). Da entrada do agente só se olha o `notification_type` do "esperando";
+/// nada dela é enviado.
 fn hook(evento: &str) {
     let Some(sessao) = std::env::var("ATELIER_SESSAO").ok().and_then(|s| s.parse::<u64>().ok()) else { return };
     let estado = match evento {
         "trabalhando" | "esperando" | "terminou" => evento,
         _ => return,
     };
+    // o Claude Code manda Notification de novo ~60 s depois ("idle_prompt", ainda parado): é a mesma espera (ou o
+    // fim de turno, que o Stop já avisou), e virava um segundo toast
+    if estado == "esperando" && tipo_da_notificacao().as_deref() == Some("idle_prompt") {
+        return;
+    }
     let corpo = json!({ "sessao": sessao, "estado": estado }).to_string();
     let Ok(mut s) = std::net::TcpStream::connect_timeout(&std::net::SocketAddr::from(([127, 0, 0, 1], atelier_core::api::porta())), std::time::Duration::from_millis(500)) else { return };
     s.set_write_timeout(Some(std::time::Duration::from_millis(500))).ok();
@@ -31,6 +37,14 @@ fn hook(evento: &str) {
     let _ = s.write_all(req.as_bytes());
     let mut lixo = [0u8; 256];
     let _ = std::io::Read::read(&mut s, &mut lixo);
+}
+
+/// O `notification_type` do JSON que o Claude Code manda pela entrada do hook (lê no máximo 64 KB).
+fn tipo_da_notificacao() -> Option<String> {
+    let mut texto = String::new();
+    std::io::Read::read_to_string(&mut std::io::Read::take(std::io::stdin(), 65_536), &mut texto).ok()?;
+    let v: Value = serde_json::from_str(&texto).ok()?;
+    v.get("notification_type")?.as_str().map(String::from)
 }
 
 fn main() {

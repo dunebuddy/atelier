@@ -11,7 +11,18 @@ const desde = new Map<number, number>();
 /** já atendidas: a pessoa foi até o agente; saem da fila até ele mudar de estado de novo */
 const atendidas = new Set<number>();
 
+/** o último estado que virou notificação, por sessão (o mesmo aviso repetido não vira outro toast) */
+const avisado = new Map<number, EstadoAgente>();
+
+/** Avisar (toast/sininho) deste estado? Não, se já avisou dele e ninguém foi ver nem o agente mudou de estado. */
+export function deveAvisar(sessao: number, estado: EstadoAgente): boolean {
+  if (avisado.get(sessao) === estado) return false;
+  avisado.set(sessao, estado);
+  return true;
+}
+
 export function marcarAgente(sessao: number, estado: EstadoAgente) {
+  if (avisado.has(sessao) && avisado.get(sessao) !== estado) avisado.delete(sessao);
   // o mesmo estado de novo: só importa se já tinha sido atendido (o agente pediu de novo: volta para a fila)
   if (estados.get(sessao) === estado && !atendidas.has(sessao)) return;
   estados.set(sessao, estado);
@@ -32,6 +43,7 @@ export function filaDeEspera(): { sessao: number; estado: EstadoAgente; desde: n
 export function atender(sessoes: number[]) {
   let mudou = false;
   for (const s of sessoes) {
+    avisado.delete(s);
     const e = estados.get(s);
     if (e === "terminou") { estados.set(s, "parado"); mudou = true; }
     if (e === "esperando" && !atendidas.has(s)) { atendidas.add(s); mudou = true; }

@@ -183,7 +183,7 @@ export interface Item {
   /** resumo dos itens que este aponta */
   relacionados?: Resumo[];
   /** itens que citam #código deste */
-  mencionado_em?: { id: number; codigo: string; titulo: string; tipo_id: number | null }[];
+  mencionado_em?: { id: number; codigo: string; titulo: string; tipo_id: number | null; props?: Props }[];
 }
 
 export interface Entrada {
@@ -211,6 +211,8 @@ export interface Resumo {
   titulo: string;
   tipo_id: number | null;
   na_lixeira?: boolean;
+  /** as propriedades, para mostrar o status ao lado */
+  props?: Props;
 }
 
 async function req<T>(metodo: string, caminho: string, corpo?: unknown): Promise<T> {

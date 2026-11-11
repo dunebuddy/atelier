@@ -527,3 +527,7 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 ### Ponto de parada (2026-11-10)
 - Pendência nova respondida sem código: arquivados de workspace ficam no seletor ("Arquivados (n)", no fim).
   A conferir no uso: um aviso só por espera com agente de verdade (o hook novo vai com o `atelier-mcp` da versão).
+- 0.2.17 (2026-11-11): pílula de status nas listas da ficha. Backend: `resumos` e `mencionado_em` levam `props`
+  (as `referencias` e as listas dinâmicas já levavam). `ChipItem` ganhou `comStatus` (primeira propriedade de status
+  do tipo que está preenchida, opções do tipo via `opcoesDe`); ligado em `ListaCurta` e em `ValorRelacao` fora da
+  tabela (`!linhaUnica`).

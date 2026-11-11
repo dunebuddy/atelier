@@ -510,14 +510,14 @@ pub fn ligar(conn: &Connection, de: i64, prop: i64, para: i64, desligar: bool, a
 
 /// Resumo dos itens com estes códigos (para mostrar as relações sem carregar cada item).
 pub fn resumos(conn: &Connection, cods: &[String]) -> Res<Vec<Value>> {
-    let mut st = conn.prepare("SELECT id, codigo, titulo, tipo_id, apagado_em IS NOT NULL FROM itens WHERE codigo = ?")?;
+    let mut st = conn.prepare("SELECT id, codigo, titulo, tipo_id, apagado_em IS NOT NULL, props FROM itens WHERE codigo = ?")?;
     let mut v = vec![];
     for c in cods {
         let c = c.trim().trim_start_matches('#').to_lowercase();
         if let Some(x) = st
             .query_row([&c], |r| {
                 Ok(json!({ "id": r.get::<_, i64>(0)?, "codigo": r.get::<_, String>(1)?, "titulo": r.get::<_, String>(2)?,
-                           "tipo_id": r.get::<_, Option<i64>>(3)?, "na_lixeira": r.get::<_, bool>(4)? }))
+                           "tipo_id": r.get::<_, Option<i64>>(3)?, "na_lixeira": r.get::<_, bool>(4)?, "props": json_col(r.get(5)?) }))
             })
             .optional()?
         {
@@ -604,12 +604,12 @@ pub fn referencias_do_item(conn: &Connection, id: i64) -> Res<(Value, Value)> {
     if !codigo.is_empty() {
         let padrao = codigo.to_lowercase();
         let mut st = conn.prepare(
-            "SELECT DISTINCT i.id, i.codigo, i.titulo, i.tipo_id, i.atualizado_em FROM mencoes m JOIN itens i ON i.id = m.item_id \
+            "SELECT DISTINCT i.id, i.codigo, i.titulo, i.tipo_id, i.atualizado_em, i.props FROM mencoes m JOIN itens i ON i.id = m.item_id \
              WHERE m.codigo = ?2 AND i.id <> ?1 AND i.apagado_em IS NULL ORDER BY i.atualizado_em DESC LIMIT 50",
         )?;
         men = st
             .query_map(params![id, padrao], |r| {
-                Ok(json!({ "id": r.get::<_, i64>(0)?, "codigo": r.get::<_, String>(1)?, "titulo": r.get::<_, String>(2)?, "tipo_id": r.get::<_, Option<i64>>(3)? }))
+                Ok(json!({ "id": r.get::<_, i64>(0)?, "codigo": r.get::<_, String>(1)?, "titulo": r.get::<_, String>(2)?, "tipo_id": r.get::<_, Option<i64>>(3)?, "props": json_col(r.get(5)?) }))
             })?
             .collect::<Result<_, _>>()?;
     }

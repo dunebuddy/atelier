@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
-  acrescentarOpcao, api, ConfigProp, Cor, corAleatoria, LISTAVEIS, Especie, Esquema, Item, Link as LinkItem, Opcao, opcoesDe, Propriedade, Valor,
+  acrescentarOpcao, api, ConfigProp, Cor, corAleatoria, LISTAVEIS, Especie, Esquema, Item, Link as LinkItem, Opcao, opcoesDe, Propriedade, Props, propsDoTipo, Valor,
  linkDoMolde } from "../api";
 import { abrir } from "../ui";
 import { lembrarResumo, useResumos } from "../resumos";
@@ -471,13 +471,26 @@ export function codigos(valor: Valor | undefined): string[] {
 }
 
 /** Chip de um item: abre com clique (Ctrl+clique: ao lado). */
-export function ChipItem({ esquema, r, codigo, remover }: {
+export function ChipItem({ esquema, r, codigo, remover, comStatus }: {
   esquema: Esquema;
-  r: { id: number; codigo: string; titulo: string; tipo_id: number | null; na_lixeira?: boolean } | null;
+  r: { id: number; codigo: string; titulo: string; tipo_id: number | null; na_lixeira?: boolean; props?: Props } | null;
   codigo?: string;
   remover?: () => void;
+  /** pílula do status ao lado (nas listas da ficha) */
+  comStatus?: boolean;
 }) {
   const t = esquema.tipos.find((x) => x.id === r?.tipo_id);
+  // o status do tipo dele, como nas listas: a primeira propriedade de status do tipo que está preenchida
+  let status: Opcao | null = null;
+  if (comStatus && r?.props && t) {
+    for (const p of propsDoTipo(esquema, t)) {
+      const v = p.especie === "status" ? r.props[String(p.id)] : null;
+      if (typeof v === "string" && v) {
+        status = opcoesDe(esquema, p, t.id).find((o) => o.nome === v) ?? { nome: v };
+        break;
+      }
+    }
+  }
   return (
     <span className={`rel-chip${r?.na_lixeira ? " na-lixeira" : ""}`}>
       <button
@@ -488,6 +501,7 @@ export function ChipItem({ esquema, r, codigo, remover }: {
         <span>{t?.icone ?? "·"}</span>
         <span className="id-item">#{r?.codigo ?? codigo}</span>
         <span className="rel-titulo">{r ? r.titulo || "Sem título" : "…"}</span>
+        {status && <Etiqueta opcao={status} status />}
       </button>
       {r && <BotaoWorkspace esquema={esquema} item={r} tam={11} classe="botao-ws rel-ws" />}
       {remover && <button className="rel-tirar" title="Desligar" onClick={(e) => { e.stopPropagation(); remover(); }}><X size={11} /></button>}
@@ -508,7 +522,7 @@ function ValorRelacao({ esquema, prop, valor, aoMudar, classe, proprio, linhaUni
       <div className={`${classe}${pop.ancora ? " editando" : ""}`} onClick={pop.abrir}>
         {lista.length === 0 ? <span className="vazio">Vazio</span> : (
           <Lado linhaUnica={linhaUnica} classe="rel-lista" dica={lista.map((c) => `#${c} ${resumos.get(c)?.titulo ?? ""}`.trim()).join("\n")}>
-            {lista.map((c) => <ChipItem key={c} esquema={esquema} r={resumos.get(c) ?? null} codigo={c} remover={() => tirar(c)} />)}
+            {lista.map((c) => <ChipItem key={c} esquema={esquema} r={resumos.get(c) ?? null} codigo={c} remover={() => tirar(c)} comStatus={!linhaUnica} />)}
           </Lado>
         )}
       </div>

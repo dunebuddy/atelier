@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
-import { Esquema, FiltroVisao, Item } from "../api";
+import { Esquema, FiltroVisao, Item, Props } from "../api";
 import { abrir } from "../ui";
 import { ChipItem } from "./Valor";
 
@@ -54,12 +54,12 @@ export function Relacoes({ esquema, item }: { esquema: Esquema; item: Item }) {
 }
 
 /** Os primeiros da lista e um "ver mais": com 100, a ficha não vira a página toda. */
-export function ListaCurta({ itens, esquema, limite = 8 }: { itens: { id: number; codigo: string; titulo: string; tipo_id: number | null }[]; esquema: Esquema; limite?: number }) {
+export function ListaCurta({ itens, esquema, limite = 8 }: { itens: { id: number; codigo: string; titulo: string; tipo_id: number | null; props?: Props }[]; esquema: Esquema; limite?: number }) {
   const [todos, setTodos] = useState(false);
   const vistos = todos ? itens : itens.slice(0, limite);
   return (
     <div className="rel-lista">
-      {vistos.map((r) => <ChipItem key={r.id} esquema={esquema} r={r} />)}
+      {vistos.map((r) => <ChipItem key={r.id} esquema={esquema} r={r} comStatus />)}
       {itens.length > limite && (
         <button className="rel-mais" onClick={() => setTodos((t) => !t)}>{todos ? "ver menos" : `ver mais ${itens.length - limite}`}</button>
       )}

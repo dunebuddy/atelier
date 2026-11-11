@@ -105,6 +105,10 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.17** (2026-11-11) · Pedido de 11/11:
+  - **Status nas listas da ficha:** cada documento em "Apontado por" (Filhos...), "Mencionado em", nas listas
+    dinâmicas e nas relações da ficha (Pai, Bloqueado por...) mostra a pílula do status, igual às listas. Na tabela
+    não muda nada.
 - **0.2.16** (2026-11-10) · Toasts, pedidos de 10/11:
   - **Toast de agente não chega mais duas vezes:** o hook ignora o `Notification` de "ainda parado" (`idle_prompt`,
     ~60 s depois da mesma espera) e o app só avisa de novo o mesmo estado depois que alguém foi ver o agente ou ele

@@ -13,6 +13,9 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { CaixaPrompt, cancelarPrompt, ContextoPrompt, PromptPendente } from "./PromptAgente";
 import { blocosDeTabela, BlocoCodigo, Imagem, TarefasCompactas } from "./EditorBlocos";
 import { verImagem } from "./VerImagem";
+import {
+  Bold, Code, Heading2, Heading3, Italic, Link2, List, ListChecks, ListOrdered, Paperclip, Quote, SquareCode, Strikethrough, Table as IconeTabela,
+} from "lucide-react";
 import { api, Entrada } from "../api";
 
 /** Abre no navegador do sistema (no app) ou numa aba nova (no navegador de teste). */
@@ -132,8 +135,12 @@ export type DocComPasta = { codigo: string; titulo: string; icone?: string; past
 export type InserirArquivos = (caminhos: string[], ponto?: { x: number; y: number }) => void;
 
 export function Editor({
-  valor, aoMudar, placeholder, aoMencao, aoColarArquivo, prompt, pasta, codigo, aoEscolherArquivo, relacionados, inserirRef,
+  valor, aoMudar, placeholder, aoMencao, aoColarArquivo, prompt, pasta, codigo, aoEscolherArquivo, relacionados, inserirRef, barra: comBarra, autoFoco,
 }: {
+  /** mostra a barra de botões (negrito, listas, código, link, arquivo...) em cima do texto */
+  barra?: boolean;
+  /** começa com o cursor no texto */
+  autoFoco?: boolean;
   /** "Escolher arquivo…" do autocomplete: abre o diálogo, traz para insumos/ e devolve os caminhos relativos */
   aoEscolherArquivo?: () => Promise<string[]>;
   /** documentos ligados a este que têm pasta (a raiz do autocomplete de caminho mostra) */
@@ -208,6 +215,7 @@ export function Editor({
       PromptPendente.configure({ aoCancelar: (id) => editorRef.current && cancelarPrompt(editorRef.current, id) }),
     ],
     content: valor,
+    autofocus: autoFoco ? "end" : false,
     editorProps: {
       handleKeyDown: (_view, ev) => {
         const m = menuRef.current;
@@ -458,6 +466,11 @@ export function Editor({
   const iSel = Math.min(sel, Math.max(0, (menu?.caminho ? opcoes.length : lista.length) - 1));
   return (
     <>
+      {comBarra && editor && (
+        <BarraEditor editor={editor} aoArquivo={aoEscolherArquivo ? () => {
+          aoEscolherRef.current?.().then((cs) => { const ed = editorRef.current; if (ed) cs.forEach((c) => inserirArquivo(ed, "file", c)); }).catch(() => {});
+        } : undefined} />
+      )}
       <EditorContent editor={editor} className="editor" />
       {pedindo && editor && prompt && (
         <CaixaPrompt editor={editor} pos={pedindo.pos} top={pedindo.top} left={pedindo.left} ctx={prompt} aoFechar={() => setPedindo(null)} />
@@ -492,5 +505,48 @@ export function Editor({
         </div>
       )}
     </>
+  );
+}
+
+/** Barra de botões do editor (opcional): formatação, listas, blocos, link e arquivo. */
+function BarraEditor({ editor, aoArquivo }: { editor: Ed; aoArquivo?: () => void }) {
+  const [link, setLink] = useState<string | null>(null);
+  const b = (titulo: string, ativo: boolean, faz: () => void, icone: React.ReactNode) => (
+    <button type="button" className={`barra-ed-btn${ativo ? " ativo" : ""}`} title={titulo}
+      onMouseDown={(e) => e.preventDefault()} onClick={faz}>{icone}</button>
+  );
+  const c = () => editor.chain().focus();
+  const P = { size: 15 };
+  const aplicarLink = () => {
+    const url = (link ?? "").trim();
+    if (url) c().extendMarkRange("link").setLink({ href: url }).run();
+    else c().extendMarkRange("link").unsetLink().run();
+    setLink(null);
+  };
+  return (
+    <div className="barra-ed">
+      {b("Negrito (Ctrl+B)", editor.isActive("bold"), () => c().toggleBold().run(), <Bold {...P} />)}
+      {b("Itálico (Ctrl+I)", editor.isActive("italic"), () => c().toggleItalic().run(), <Italic {...P} />)}
+      {b("Riscado", editor.isActive("strike"), () => c().toggleStrike().run(), <Strikethrough {...P} />)}
+      {b("Código no texto", editor.isActive("code"), () => c().toggleCode().run(), <Code {...P} />)}
+      <span className="barra-ed-sep" />
+      {b("Título médio", editor.isActive("heading", { level: 2 }), () => c().toggleHeading({ level: 2 }).run(), <Heading2 {...P} />)}
+      {b("Título pequeno", editor.isActive("heading", { level: 3 }), () => c().toggleHeading({ level: 3 }).run(), <Heading3 {...P} />)}
+      <span className="barra-ed-sep" />
+      {b("Lista", editor.isActive("bulletList"), () => c().toggleBulletList().run(), <List {...P} />)}
+      {b("Lista numerada", editor.isActive("orderedList"), () => c().toggleOrderedList().run(), <ListOrdered {...P} />)}
+      {b("Tarefas", editor.isActive("taskList"), () => c().toggleTaskList().run(), <ListChecks {...P} />)}
+      {b("Citação", editor.isActive("blockquote"), () => c().toggleBlockquote().run(), <Quote {...P} />)}
+      {b("Bloco de código", editor.isActive("codeBlock"), () => c().toggleCodeBlock().run(), <SquareCode {...P} />)}
+      {b("Tabela", editor.isActive("table"), () => c().insertTable({ rows: 3, cols: 2, withHeaderRow: true }).run(), <IconeTabela {...P} />)}
+      <span className="barra-ed-sep" />
+      {b("Link (selecione o texto antes)", editor.isActive("link"), () => setLink(link == null ? (editor.getAttributes("link").href ?? "") : null), <Link2 {...P} />)}
+      {aoArquivo && b("Arquivo do computador (vai para insumos/)", false, aoArquivo, <Paperclip {...P} />)}
+      {link != null && (
+        <input className="campo barra-ed-link" autoFocus placeholder="https://… (Enter aplica, vazio tira o link)" value={link}
+          onChange={(e) => setLink(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); aplicarLink(); } if (e.key === "Escape") setLink(null); }} />
+      )}
+    </div>
   );
 }

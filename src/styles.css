@@ -1369,3 +1369,12 @@ body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grab
 .exportar-opcoes textarea.campo { min-height: 52px; resize: vertical; }
 .modal.exportar.com-previa .modal-rodape { position: sticky; bottom: -1px; background: var(--bg); padding: 10px 0 2px; margin-top: 8px; border-top: 1px solid var(--borda); flex-wrap: wrap; gap: 6px; z-index: 2; }
 .modal.exportar.com-previa { background: var(--bg); }
+
+/* barra de botões do editor (opcional, ex.: checklist) */
+.barra-ed { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 4px; border: 1px solid var(--borda); border-bottom: 0; border-radius: 8px 8px 0 0; background: var(--bg-fundo); }
+.barra-ed-btn { width: 28px; height: 26px; display: grid; place-items: center; border: 0; border-radius: 6px; background: none; color: var(--texto-2); cursor: pointer; }
+.barra-ed-btn:hover { background: var(--hover); color: var(--texto); }
+.barra-ed-btn.ativo { background: var(--acento-suave); color: var(--acento); }
+.barra-ed-sep { width: 1px; height: 16px; background: var(--borda-forte); margin: 0 4px; }
+.barra-ed-link { flex: 1 1 220px; font-size: 12.5px; padding: 3px 8px; }
+

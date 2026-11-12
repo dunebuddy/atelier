@@ -531,3 +531,26 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   (as `referencias` e as listas dinâmicas já levavam). `ChipItem` ganhou `comStatus` (primeira propriedade de status
   do tipo que está preenchida, opções do tipo via `opcoesDe`); ligado em `ListaCurta` e em `ValorRelacao` fora da
   tabela (`!linhaUnica`).
+
+### Ponto de parada (2026-11-12)
+- 0.2.18: checklist nativo. Formato e lógica pura em `src/checklist.ts` (`lerChecklist`, `secoes`, `alvoDe`,
+  `donoDaPasta`); tela em `components/Checklist.tsx` + `checklist.css`, ligada no `Explorador` por `ehChecklist`
+  (a `Previa` ganhou "Ver como checklist"). A tela grava pelo `PUT /api/arquivo` com o `modificado`; se o arquivo
+  mudou fora, relê, reaplica a mesma mudança e grava de novo. `ui.abrir` ganhou `outro` (abre na outra metade:
+  `P.abrirNoOutro`). Núcleo: `core/src/checklist.rs` (`FORMATO`, `achar`, `resumo`, `marcar`, com teste); MCP:
+  ferramenta `checklist` e `checklists` no `ler_documento`. Testado sem janela: marcar, recarga após mudança
+  externa, links (documento e arquivo na outra metade), "Virar documento", agrupar, MCP `ler`/`marcar`.
+- Conversor do HTML antigo ficou fora do repo (era um caso só). O HTML antigo continua na pasta da demanda.
+- Primeira rodada de ajustes do Paulo na tela (mesmo dia): formato v2 (`tags` no lugar de `props`; `lerChecklist`
+  converte o antigo e passa `estado.links` para `passo.links`). Funções de edição puras em `checklist.ts` (`blocos`,
+  `criarPasso`, `apagarPasso`, `moverPasso`, `moverParaSecao`, `moverSecao`, `renomearSecao`, `dependeDe`,
+  `chaveDeCampo`, `relativo`). Seção = sequência de passos seguidos com o mesmo `grupo` (sem lista de seções à parte).
+  O desfazer guarda o checklist inteiro. Gravações em fila (`fila`/`pendentes`), e a releitura do disco espera a fila.
+- Rodadas seguintes, com o Paulo olhando no navegador embutido: comentários (`comentarios`, presos ao passo
+  seguinte por `antes_de`; a `descricao` antiga vira o primeiro), divisória "+ Seção / + Comentário" também no topo,
+  edição do card inteiro (lápis que vira Pronto no canto de cima), dados dentro do corpo, confirmação de apagar num
+  `Popover` (o `window.confirm` não aparece no navegador embutido; nada mais no checklist usa caixa do sistema),
+  `Editor` com `barra` (botões de formatação, link e arquivo) e `autoFoco`, usado no texto do card e nos comentários.
+  O texto passa pelo tiptap-markdown: tabela e blocos voltam iguais; endereço solto vira link.
+- 0.2.18 fechada com o ok do Paulo. A conferir no uso: o checklist no app instalado (o teste foi sem janela), colar
+  imagem no editor do card, e o agente usando `checklist` (formato/ler/marcar) de verdade.

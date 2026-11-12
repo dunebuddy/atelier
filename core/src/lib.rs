@@ -4,6 +4,7 @@ pub mod api;
 pub mod apps;
 pub mod arvore;
 pub mod bancada;
+pub mod checklist;
 pub mod consultas;
 pub mod db;
 pub mod disco;

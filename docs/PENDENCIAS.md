@@ -105,6 +105,52 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.18** (2026-11-12) · Checklist nativo do atelier (pedido de 12/11; o Paulo fechou a versão só com isso):
+  - arquivo **`*.checklist.json`** na pasta do documento: os passos (o agente escreve) e o estado (a tela grava) no
+    mesmo arquivo, ligados pelo `id` do passo. Clicar nele na árvore, no explorador ou na lista de arquivos da
+    ficha abre a **tela de checklist** ("Ver o JSON" mostra o texto cru);
+  - tela: progresso, passo seguinte em destaque, dependências ✅/⏳ ("aguarda 3, 5"; marcar com dependência pendente
+    pede confirmação), opcional com "Pular (não se aplica)", campos a coletar (com `{{campo}}` preenchido no texto),
+    observação por passo, Valores coletados, Observações, Feito, desfazer (botão e Ctrl+Z), **agrupar por** grupo ou
+    por qualquer prop, **mostrar** só um valor de prop. Blocos de código com "copiar"; `código` copia com um clique;
+    se o agente mexe no arquivo, a tela recarrega sozinha;
+  - **links por passo:** documentos (`#código`, com título e status), arquivos (relativos à pasta do checklist) e
+    sites. Documento e arquivo abrem **na outra metade** do painel, como referência. "+ Link" acrescenta (documento
+    pela busca, ou caminho/URL); "Virar documento" cria um documento do tipo escolhido (Passo em primeiro), filho do
+    documento da pasta, e o passo mostra o chip dele;
+  - MCP: ferramenta **`checklist`** (formato · ler · marcar); `ler_documento` traz `checklists` (feitos/total e os
+    próximos que podem andar); instruções do MCP e o CLAUDE.md das pastas novas apontam para o formato;
+  - **primeira rodada de ajustes do Paulo (12/11, olhando a tela):** sem checkbox (era fácil marcar sem querer):
+    botões **Pular** e **Fazer** à direita do passo, e **Pular** vale para qualquer passo; o passo feito fica no
+    lugar, apagado, com **Desfazer**; realce do cabeçalho reto embaixo; faixa embaixo do título com **tags** (do
+    checklist; o formato trocou `props` por `tags`, e o arquivo antigo é convertido sozinho) e **links**, com "+ tag" e
+    "+ link" (documento, arquivo do computador, que vai para `insumos/`, caminho ou site); "Virou o documento" numa
+    faixa própria, em destaque; **Dados deste passo** e **Observação** em dois painéis separados (o de dados com
+    rótulo à esquerda e caixa à direita); **Valores coletados** recolhível; **filtro por tags** no topo (e "Esconder
+    feitos"); dependências no card ("Depende de" com ✅/⏳ e "Libera"), com acrescentar e tirar; **editar o passo**
+    (título, texto, seção, opcional, dados que pede); **+ Passo** em cada seção, **Nova seção**, renomear e subir ou
+    descer seção, **arrastar** passo (inclusive para outra seção), apagar passo. Dependências apontam para o `id`:
+    reordenar não quebra nada. Gravações em fila (antes, duas seguidas podiam se cruzar com a releitura do disco);
+  - **segunda rodada (12/11):** o realce cobre o topo inteiro (cabeçalho e tags); fechado, o passo fica numa linha só
+    (tags, "🔗 n" e o documento criado ao lado do título); aberto, cada parte separada por tracejado: tags,
+    dependências (lista, com "Libera"), documento criado, painel **Passo** (com **Editar → Pronto** no mesmo canto,
+    e a edição de título, texto, seção e opcional dentro dele), **Dados deste passo** (editando: rótulo, × e
+    "+ dado"), **Links** (desceram para cá), **Observação** e o rodapé: ícones à esquerda (criar documento, apagar,
+    com dica do mouse) e **Ignorar / Fazer** à direita ("Pular" virou "Ignorar"). Seção: **+** ao lado do nome
+    acrescenta passo; entre seções, a divisória tracejada "+ Adicionar seção" aparece forte com o mouse;
+  - **terceira rodada (12/11):** sem recuo à esquerda no passo aberto; sem a setinha de expandir (clicar no topo
+    abre e fecha); os dados ficam dentro do corpo, depois do texto, e o cabeçalho "Passo" saiu; **edição do card
+    inteiro**: um lápis discreto no canto de cima (com o mouse, cresce e mostra "Editar") põe o card todo em edição,
+    com borda (título no próprio cabeçalho, texto, seção, opcional, dados), e vira **Pronto** no mesmo canto;
+  - **quarta rodada (12/11):** lápis e Pronto com a mesma altura (a tela não pula); a borda de destaque só na edição;
+    seção e opcional entre o título e as tags na edição; a descrição do topo se edita; apagar com **confirmação num
+    balão** dentro do app (a caixa do sistema não aparece no navegador embutido) e Desfazer no aviso; **comentários**
+    (blocos de markdown) entre as seções, criados pela divisória (**+ Seção** ou **+ Comentário**, também no topo),
+    editáveis e apagáveis; a descrição antiga virou o primeiro comentário. O texto do card e os comentários usam o
+    **editor visual** do atelier, que ganhou uma **barra de botões** opcional (negrito, itálico, riscado, código,
+    títulos, listas, tarefas, citação, bloco de código, tabela, link e arquivo do computador para `insumos/`);
+  - o checklist HTML que um agente tinha gerado para uma demanda de trabalho foi convertido para o formato novo
+    (52 passos, os mesmos ids, com links para os documentos e o guia ligados a ele).
 - **0.2.17** (2026-11-11) · Pedido de 11/11:
   - **Status nas listas da ficha:** cada documento em "Apontado por" (Filhos...), "Mencionado em", nas listas
     dinâmicas e nas relações da ficha (Pai, Bloqueado por...) mostra a pílula do status, igual às listas. Na tabela

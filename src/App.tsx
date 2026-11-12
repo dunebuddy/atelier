@@ -313,9 +313,9 @@ export default function App() {
   const abrirAoLado = useCallback((r: Rota) => setPainel((e) => P.abrirNova(e, r)), []);
   useEffect(() => {
     const f = (e: Event) => {
-      const d = (e as CustomEvent<{ rota: Rota; nova?: boolean }>).detail;
-      // Ctrl+Alt+clique (barra lateral, busca...): no outro painel
-      if (cliqueNoOutro()) setPainel((s) => P.abrirNoOutro(s, d.rota));
+      const d = (e as CustomEvent<{ rota: Rota; nova?: boolean; outro?: boolean }>).detail;
+      // Ctrl+Alt+clique (barra lateral, busca...) ou pedido explícito (referência do checklist): no outro painel
+      if (d.outro || cliqueNoOutro()) setPainel((s) => P.abrirNoOutro(s, d.rota));
       else (d.nova ? abrirAoLado : ir)(d.rota);
     };
     window.addEventListener("atelier:abrir", f);

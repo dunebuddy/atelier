@@ -19,9 +19,10 @@ export type Rota =
   /** árvore de pastas: clicar num arquivo abre ele numa janela ao lado */
   | { v: "pastas"; raiz: string; titulo?: string };
 
-/** Abre uma rota de qualquer lugar (um chip de relação, a barra lateral, o MCP). `nova`: ao lado, sem trocar a atual. */
-export function abrir(rota: Rota, nova = false) {
-  window.dispatchEvent(new CustomEvent("atelier:abrir", { detail: { rota, nova } }));
+/** Abre uma rota de qualquer lugar (um chip de relação, a barra lateral, o MCP). `nova`: ao lado, sem trocar a atual.
+ *  `outro`: na outra metade do painel (a referência fica à vista ao lado do que você está fazendo). */
+export function abrir(rota: Rota, nova = false, outro = false) {
+  window.dispatchEvent(new CustomEvent("atelier:abrir", { detail: { rota, nova, outro } }));
 }
 
 /** "claro" | "escuro" | "nord" ou o id de um tema em arquivo (~/atelier/temas) */

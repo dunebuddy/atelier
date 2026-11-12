@@ -145,7 +145,7 @@ Guarde os arquivos nessas subpastas e registre o andamento no documento com `ano
 TELA: com o app aberto, `tela` mostra as coisas para o usuário (abrir documento, visão, pasta, arquivo; metade esquerda ou \
 direita; workspaces; terminal; tema...); `tela` com acao \"estado\" diz o que está aberto agora. \
 QUANDO NÃO DER: se o usuário pedir algo que estas ferramentas não fazem, NÃO improvise por fora (arquivos, comandos, \
-banco): chame `nao_consigo` com o pedido e o que faltou, e diga a ele que ficou anotado. LINKS: para o usuário abrir um documento com um clique (de fora do atelier, numa mensagem), escreva atelier://doc/<código> (também atelier://visao/<nome> e atelier://bancada/<nome>). BANCADA: você trabalha na bancada em que nasceu (a do terminal do atelier, ou a da pasta onde está); trocar_bancada só pede, o usuário aceita na tela.";
+banco): chame `nao_consigo` com o pedido e o que faltou, e diga a ele que ficou anotado. CHECKLIST: roteiro de execução com muitos passos (sessão, implantação, migração) não vira um monte de documentos nem um app HTML: é um arquivo <nome>.checklist.json na pasta do documento, que o atelier mostra como checklist e onde grava o progresso; leia o formato com `checklist` acao \"formato\" antes de criar. LINKS: para o usuário abrir um documento com um clique (de fora do atelier, numa mensagem), escreva atelier://doc/<código> (também atelier://visao/<nome> e atelier://bancada/<nome>). BANCADA: você trabalha na bancada em que nasceu (a do terminal do atelier, ou a da pasta onde está); trocar_bancada só pede, o usuário aceita na tela.";
 
 fn ferramentas() -> Value {
     #[allow(non_snake_case)]
@@ -350,6 +350,19 @@ fn ferramentas() -> Value {
             "name": "restaurar_documento",
             "description": "Tira o documento da lixeira.",
             "inputSchema": { "type": "object", "properties": { "id": ID }, "required": ["id"] }
+        },
+        {
+            "name": "checklist",
+            "description": "Checklist do atelier: arquivo <nome>.checklist.json na pasta do documento, que a tela mostra como checklist e onde ela grava o progresso. Use para roteiros de execução (muitos passos curtos); etapa com vida própria é documento. Ações: formato (o formato do arquivo, com exemplo: LEIA ANTES de criar um) · ler (com id = código do documento: o resumo dos checklists da pasta dele; com arquivo: só aquele) · marcar (arquivo, passo = id do passo, feito true/false, pulado, obs). Para criar, escreva o arquivo (de costume em artefatos/) e mostre com `tela` abrir arquivo.",
+            "inputSchema": { "type": "object", "properties": {
+                "acao": { "type": "string", "enum": ["formato", "ler", "marcar"] },
+                "id": ID,
+                "arquivo": { "type": "string", "description": "caminho absoluto do .checklist.json" },
+                "passo": { "type": "string", "description": "marcar: o id do passo" },
+                "feito": { "type": "boolean", "description": "marcar: true marca, false desmarca (padrão true)" },
+                "pulado": { "type": "boolean", "description": "marcar: feito como \"não se aplica\"" },
+                "obs": { "type": "string", "description": "marcar: observação do passo (vazio apaga)" }
+            }, "required": ["acao"] }
         },
         {
             "name": "espaco_em_disco",
@@ -1001,6 +1014,14 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
             if !blocos.is_empty() {
                 v["listas_no_texto"] = json!(blocos);
             }
+            // os checklists da pasta (*.checklist.json), resumidos: progresso e o que já pode andar
+            if let Some(pasta) = it.pasta.as_deref().filter(|p| !p.is_empty()) {
+                let base = std::path::PathBuf::from(pasta);
+                let cks: Vec<Value> = atelier_core::checklist::achar(&base).iter().map(|p| atelier_core::checklist::resumo(p, Some(&base))).collect();
+                if !cks.is_empty() {
+                    v["checklists"] = json!(cks);
+                }
+            }
             Ok(v)
         }
         "criar_documento" => {
@@ -1295,6 +1316,34 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
                     (nome, px.clone())
                 }).collect::<Map<_, _>>()),
             })).collect::<Vec<_>>() }))
+        }
+        "checklist" => {
+            use atelier_core::checklist as ck;
+            use std::path::{Path, PathBuf};
+            match s(a, "acao").unwrap_or("") {
+                "formato" => Ok(json!({ "formato": ck::FORMATO })),
+                "ler" => {
+                    if let Some(arq) = s(a, "arquivo") {
+                        let p = Path::new(arq);
+                        return Ok(ck::resumo(p, p.parent()));
+                    }
+                    let id = id_de(&conn, a)?;
+                    let it = db::ler_item(&conn, id).map_err(e)?;
+                    let Some(pasta) = it.pasta.filter(|p| !p.is_empty()) else {
+                        return Ok(json!({ "checklists": [], "obs": "o documento não tem pasta" }));
+                    };
+                    let base = PathBuf::from(&pasta);
+                    Ok(json!({ "pasta": pasta, "checklists": ck::achar(&base).iter().map(|p| ck::resumo(p, Some(&base))).collect::<Vec<_>>() }))
+                }
+                "marcar" => {
+                    let arq = s(a, "arquivo").ok_or("informe o arquivo")?;
+                    let passo = s(a, "passo").ok_or("informe o passo (id)")?;
+                    let feito = a.get("feito").and_then(|v| v.as_bool()).unwrap_or(true);
+                    let pulado = a.get("pulado").and_then(|v| v.as_bool()).unwrap_or(false);
+                    ck::marcar(Path::new(arq), passo, feito, pulado, s(a, "obs"), autor)
+                }
+                outra => Err(format!("ação desconhecida: {outra:?} (formato, ler ou marcar)")),
+            }
         }
         "espaco_em_disco" => {
             use std::path::PathBuf;

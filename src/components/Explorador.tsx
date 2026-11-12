@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft, ArrowUp, ChevronDown, ChevronRight, Code2, Eye, File, FileSpreadsheet, FileText, Film, Folder, FolderOpen, Image, Music, Pencil,
-  RefreshCw, Save, Table,
+  ListChecks, RefreshCw, Save, Table,
 } from "lucide-react";
 import { api, BASE, Entrada } from "../api";
 import { abrir, avisar, falhou } from "../ui";
@@ -11,6 +11,8 @@ import { MenuPasta } from "./MenuPasta";
 import { DocumentoWord, Planilha } from "./Documentos";
 import { repasseDaMoldura } from "../moldura";
 import { verImagem } from "./VerImagem";
+import { ChecklistTela } from "./Checklist";
+import { ehChecklist } from "../checklist";
 import "../documentos.css";
 
 /** Abre o explorador numa janela ao lado, na pasta (e, se vier, já mostrando um arquivo). */
@@ -23,8 +25,9 @@ const separador = (c: string) => (c.includes("\\") ? "\\" : "/");
 const pai = (c: string) => c.slice(0, Math.max(c.lastIndexOf("\\"), c.lastIndexOf("/")));
 const nomeDe = (c: string) => c.split(/[\\/]/).filter(Boolean).pop() ?? c;
 
-function Icone({ especie }: { especie: string }) {
+function Icone({ especie, nome }: { especie: string; nome?: string }) {
   const P = { size: 15, strokeWidth: 1.7 };
+  if (nome && ehChecklist(nome)) return <ListChecks {...P} />;
   switch (especie) {
     case "pasta": return <Folder {...P} />;
     case "pdf": case "markdown": case "documento": return <FileText {...P} />;
@@ -97,7 +100,7 @@ export function RamoPasta({ raiz, dir, nivel, recarga, titulo, abertasAntes, esc
             title={`${e.caminho}${e.modificado ? `\nmodificado ${dataHora(e.modificado)}` : ""}`}
           >
             {e.pasta ? (abertas.has(e.caminho) ? <ChevronDown size={13} /> : <ChevronRight size={13} />) : <span style={{ width: 13 }} />}
-            <Icone especie={e.especie} />
+            <Icone especie={e.especie} nome={e.nome} />
             <span className="ex-nome">{e.nome}</span>
             {!e.pasta && <span className="ex-meta">{tamanho(e.tamanho)}</span>}
           </button>
@@ -120,6 +123,9 @@ export function Explorador({ raiz, arquivo, titulo }: { raiz: string; arquivo?: 
     () => ({ raiz, titulo, dir: arquivo ? pai(arquivo) : raiz, arquivo: arquivo ?? null }),
   );
   const [entradas, setEntradas] = useState<Entrada[]>([]);
+  // checklist aberto como texto (o JSON cru), em vez da tela de checklist
+  const [comoTexto, setComoTexto] = useState(false);
+  useEffect(() => setComoTexto(false), [estado.arquivo]);
 
   const dir = estado?.dir;
   useEffect(() => {
@@ -178,8 +184,12 @@ export function Explorador({ raiz, arquivo, titulo }: { raiz: string; arquivo?: 
         <MenuPasta pasta={estado.dir} classe="btn-icone"><FolderOpen size={14} /></MenuPasta>
       </div>
 
-      {estado.arquivo ? (
-        <Previa key={estado.arquivo} caminho={estado.arquivo} aoVoltar={() => setEstado({ ...estado, arquivo: null })} />
+      {estado.arquivo && ehChecklist(estado.arquivo) && !comoTexto ? (
+        <ChecklistTela key={estado.arquivo} caminho={estado.arquivo} raiz={estado.raiz}
+          aoVoltar={() => setEstado({ ...estado, arquivo: null })} aoVerTexto={() => setComoTexto(true)} />
+      ) : estado.arquivo ? (
+        <Previa key={estado.arquivo} caminho={estado.arquivo} aoVoltar={() => setEstado({ ...estado, arquivo: null })}
+          aoVerChecklist={ehChecklist(estado.arquivo) ? () => setComoTexto(false) : undefined} />
       ) : (
         <div className="ex-lista">
           {estado.dir !== estado.raiz && (
@@ -194,7 +204,7 @@ export function Explorador({ raiz, arquivo, titulo }: { raiz: string; arquivo?: 
               onClick={() => setEstado({ ...estado, ...(e.pasta ? { dir: e.caminho, arquivo: null } : { arquivo: e.caminho }) })}
               title={`${e.caminho}${e.modificado ? `\nmodificado ${dataHora(e.modificado)}` : ""}`}
             >
-              <Icone especie={e.especie} />
+              <Icone especie={e.especie} nome={e.nome} />
               <span className="ex-nome">{e.nome}</span>
               {!e.pasta && <span className="ex-meta">{tamanho(e.tamanho)}</span>}
               {e.modificado && <span className="ex-meta">{dataHora(e.modificado)}</span>}
@@ -207,7 +217,7 @@ export function Explorador({ raiz, arquivo, titulo }: { raiz: string; arquivo?: 
   );
 }
 
-function Previa({ caminho, aoVoltar }: { caminho: string; aoVoltar: () => void }) {
+function Previa({ caminho, aoVoltar, aoVerChecklist }: { caminho: string; aoVoltar: () => void; aoVerChecklist?: () => void }) {
   const [info, setInfo] = useState<{ especie: string; tamanho: number; modificado: string | null } | null>(null);
   const [texto, setTexto] = useState<string | null>(null);
   const [editado, setEditado] = useState<string | null>(null);
@@ -319,6 +329,7 @@ function Previa({ caminho, aoVoltar }: { caminho: string; aoVoltar: () => void }
         </button>
         <span className="ex-meta">{tamanho(info.tamanho)}{info.modificado ? ` · modificado ${dataHora(info.modificado)}` : ""}</span>
         <span style={{ flex: 1 }} />
+        {aoVerChecklist && <button className="btn" onClick={aoVerChecklist}><ListChecks size={14} /> Ver como checklist</button>}
         {ehTexto && info.especie !== "texto" && (
           <button className="btn" onClick={() => setEditando((v) => !v)}>{editando ? <><Eye size={14} /> Ver</> : <><Pencil size={14} /> Editar</>}</button>
         )}

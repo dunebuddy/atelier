@@ -1,0 +1,209 @@
+/* Tela de checklist (*.checklist.json) */
+.ck:focus { outline: none; }
+.ck-folha { max-width: 920px; width: 100%; margin: 0 auto; padding: 18px 22px 60px; box-sizing: border-box; }
+.ck-cabeca { display: flex; align-items: center; gap: 10px; color: var(--acento); }
+.ck-h1 { flex: 1; min-width: 0; font-family: "Fraunces Variable", Georgia, serif; font-size: 24px; font-weight: 600; color: var(--texto); background: none; border: 0; border-radius: 6px; padding: 2px 4px; }
+.ck-h1:hover { background: var(--hover); }
+.ck-h1:focus { outline: none; background: var(--hover); }
+.ck-progresso { display: flex; align-items: center; gap: 10px; margin: 12px 0 6px; font-size: 13px; color: var(--texto-2); }
+.ck-barra { flex: 1; height: 7px; border-radius: 99px; background: var(--borda); overflow: hidden; }
+.ck-barra > div { height: 100%; background: var(--acento); transition: width .25s; }
+.ck-avisos { margin: 8px 0; display: block; font-size: 13px; }
+.ck-folha h2 { font-family: "Fraunces Variable", Georgia, serif; font-size: 18px; font-weight: 600; margin: 26px 0 8px; }
+.ck-h-recolhe button { border: 0; background: none; font: inherit; color: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 0; }
+.ck-conta { font-family: "Inter Variable", system-ui, sans-serif; font-size: 11px; font-weight: 500; opacity: .7; }
+.ck-vazio { color: var(--texto-3); font-size: 13.5px; padding: 6px 0; }
+.ck-nada { color: var(--texto-3); font-size: 12.5px; font-style: italic; }
+.ck-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--texto-2); cursor: pointer; }
+
+/* filtro por tags */
+.ck-filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0 4px; padding: 8px 10px; border: 1px solid var(--borda); border-radius: 10px; background: var(--bg-elev); }
+.ck-filtros-rot { font-size: 12px; color: var(--texto-3); margin-right: 2px; }
+.ck-filtros .ck-tag { cursor: pointer; border: 1px solid transparent; }
+.ck-filtros .ck-tag:not(.ligada) { opacity: .75; }
+.ck-filtros .ck-tag.ligada { border-color: currentColor; opacity: 1; font-weight: 600; }
+
+/* tags */
+.ck-tag { font-size: 11.5px; padding: 1px 7px; border-radius: 99px; background: var(--c-gray); color: var(--t-gray); display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; line-height: 18px; }
+.ck-tag.cor-gray { background: var(--c-gray); color: var(--t-gray); }
+.ck-tag.cor-brown { background: var(--c-brown); color: var(--t-brown); }
+.ck-tag.cor-orange { background: var(--c-orange); color: var(--t-orange); }
+.ck-tag.cor-yellow { background: var(--c-yellow); color: var(--t-yellow); }
+.ck-tag.cor-green { background: var(--c-green); color: var(--t-green); }
+.ck-tag.cor-blue { background: var(--c-blue); color: var(--t-blue); }
+.ck-tag.cor-purple { background: var(--c-purple); color: var(--t-purple); }
+.ck-tag.cor-pink { background: var(--c-pink); color: var(--t-pink); }
+.ck-tag.opcional { background: var(--c-purple); color: var(--t-purple); font-style: italic; }
+.ck-tag.aguarda { background: var(--c-yellow); color: var(--t-yellow); }
+.ck-tag.doc { background: var(--acento-suave); color: var(--acento); }
+.ck-tag-x { border: 0; background: none; color: inherit; cursor: pointer; padding: 0; margin-left: 1px; display: none; opacity: .7; }
+.ck-tag:hover .ck-tag-x, .ck-lista-deps li:hover .ck-tag-x { display: inline-flex; }
+.ck-tag-x:hover { opacity: 1; }
+
+/* seções */
+.ck-secao { margin-top: 6px; }
+.ck-grupo { display: flex; align-items: center; gap: 4px; margin: 10px 0 6px; }
+.ck-grupo-nome { font-size: 12px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--texto-3); background: none; border: 0; padding: 2px 4px; border-radius: 5px; text-align: left; cursor: text; }
+button.ck-grupo-nome:hover { background: var(--hover); color: var(--texto-2); }
+.ck-grupo .campo { font-size: 12.5px; padding: 3px 6px; max-width: 520px; }
+.ck-grupo-mais { width: 22px; height: 22px; color: var(--texto-3); flex: none; }
+.ck-grupo-mais:hover { color: var(--acento); }
+.ck-grupo-acoes { display: inline-flex; gap: 2px; opacity: 0; transition: opacity .15s; }
+.ck-grupo:hover .ck-grupo-acoes { opacity: 1; }
+.ck-grupo-acoes .btn-icone { width: 22px; height: 22px; }
+/* divisória entre seções: tracejado clarinho com um + no meio; com o mouse, escurece e mostra o texto */
+.ck-divisoria { display: flex; align-items: center; gap: 8px; margin: 14px 0 6px; opacity: .45; transition: opacity .15s; }
+.ck-divisoria::before, .ck-divisoria::after { content: ""; flex: 1; border-top: 1px dashed var(--borda-forte); }
+.ck-divisoria button { display: inline-flex; align-items: center; gap: 4px; border: 1px dashed var(--borda-forte); background: var(--bg); color: var(--texto-3); border-radius: 99px; padding: 1px 6px; font-size: 12px; cursor: pointer; }
+.ck-divisoria button span { display: none; }
+.ck-divisoria:hover { opacity: 1; }
+.ck-divisoria:hover::before, .ck-divisoria:hover::after { border-top-color: var(--texto-3); }
+.ck-divisoria:hover button { color: var(--acento); border-color: var(--acento); padding: 1px 10px; }
+.ck-divisoria:hover button span { display: inline; }
+.ck-nova-secao { margin: 14px 0 6px; max-width: 520px; }
+
+/* cartão do passo */
+.ck-passo { position: relative; border: 1px solid var(--borda); border-radius: 10px; background: var(--bg-elev); margin: 6px 0; }
+.ck-passo.feito { opacity: .62; }
+.ck-passo.feito:hover { opacity: .9; }
+.ck-passo.feito .ck-titulo { text-decoration: line-through; text-decoration-color: var(--texto-3); }
+.ck-passo.arrastando { opacity: .35; }
+.ck-passo.drop-antes::before, .ck-passo.drop-depois::after { content: ""; position: absolute; left: 6px; right: 6px; height: 3px; border-radius: 3px; background: var(--acento); }
+.ck-passo.drop-antes::before { top: -5px; }
+.ck-passo.drop-depois::after { bottom: -5px; }
+
+/* topo: cabeçalho + faixa de tags; o realce cobre os dois. Fechado, arredonda nos quatro cantos; aberto, só em cima */
+.ck-topo { cursor: pointer; border-radius: 9px; padding-bottom: 2px; }
+.ck-passo.aberto .ck-topo { border-radius: 9px 9px 0 0; padding-bottom: 6px; }
+.ck-topo:hover { background: var(--hover); }
+.ck-cab { display: flex; align-items: center; gap: 8px; padding: 6px 8px 4px 6px; flex-wrap: wrap; }
+.ck-alca { color: var(--texto-3); cursor: grab; display: inline-flex; opacity: .35; }
+.ck-passo:hover .ck-alca { opacity: 1; }
+.ck-num { font-size: 12px; color: var(--texto-3); min-width: 18px; text-align: right; font-variant-numeric: tabular-nums; }
+.ck-titulo { font-weight: 550; min-width: 0; }
+.ck-cab-tags { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; flex: 1; min-width: 0; }
+.ck-passo.aberto .ck-titulo { flex: 1; }
+.ck-estado { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; color: var(--t-green); background: var(--c-green); padding: 1px 7px; border-radius: 99px; white-space: nowrap; }
+.ck-estado.pulado { color: var(--t-gray); background: var(--c-gray); }
+.ck-cab-acoes { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
+.ck-cab-acoes .btn, .ck-rodape .btn { box-sizing: border-box; height: 26px; line-height: 1; padding: 0 9px; font-size: 12.5px; }
+.ck-cab-acoes .btn-icone { width: 24px; height: 24px; }
+.ck-faixa { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 0 14px; cursor: default; }
+.ck-mais-mini { display: inline-flex; align-items: center; gap: 2px; font-size: 11.5px; border: 1px dashed var(--borda-forte); color: var(--texto-3); background: none; border-radius: 99px; padding: 0 7px; line-height: 18px; cursor: pointer; opacity: .6; }
+.ck-mais-mini:hover, .ck-mais-mini:focus { opacity: 1; color: var(--acento); border-color: var(--acento); }
+
+/* partes do passo aberto, cada uma separada pelo tracejado */
+.ck-parte { border-top: 1px dashed var(--borda-forte); padding: 8px 14px; }
+.ck-parte-rot { font-size: 11.5px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--texto-3); margin: 2px 0 4px; }
+.ck-deps .ck-parte-rot + .ck-parte-rot, .ck-deps .ck-mais-mini + .ck-parte-rot { margin-top: 8px; }
+.ck-lista-deps { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 2px; font-size: 13px; }
+.ck-lista-deps li { display: flex; align-items: center; gap: 6px; padding: 2px 8px; border-left: 2px dotted var(--borda-forte); color: var(--texto-2); }
+.ck-lista-deps li.ok { color: var(--texto-3); }
+.ck-lista-deps.libera li { border-left-color: var(--acento-suave); }
+.ck-lista-pop { max-height: 300px; overflow: auto; }
+.ck-virou { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 10px; border-radius: 8px; background: var(--acento-suave); color: var(--acento); font-size: 12.5px; font-weight: 600; }
+.ck-links-lista { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ck-link { display: inline-flex; align-items: center; border: 1px solid var(--borda); border-radius: 8px; background: var(--bg); }
+.ck-link > button { border: 0; background: none; color: var(--texto); cursor: pointer; padding: 2px 8px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 4px; }
+.ck-link > button:hover { color: var(--acento); }
+.ck-link .ck-tirar { padding: 2px 5px; color: var(--texto-3); display: none; }
+.ck-link:hover .ck-tirar { display: inline-flex; }
+.ck-doc { display: inline-flex; }
+.ck-rodape { display: flex; align-items: center; gap: 4px; padding-top: 6px; padding-bottom: 8px; }
+.ck-rodape .btn-icone { color: var(--texto-3); }
+.ck-rodape .btn-icone:hover { color: var(--acento); }
+.ck-rodape .ck-apagar:hover { color: #c0392b; }
+
+.ck-md { font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.ck-md p, .ck-md ul, .ck-md ol { margin: .5em 0; }
+.ck-md code { background: var(--codigo); padding: 1px 5px; border-radius: 5px; font: 12.5px "Cascadia Code", Consolas, monospace; cursor: copy; }
+.ck-md pre { position: relative; background: var(--codigo); padding: 12px 14px; border-radius: 9px; overflow: auto; }
+.ck-md pre code { background: none; padding: 0; cursor: text; white-space: pre; }
+.ck-md .ck-copiar { position: absolute; top: 6px; right: 6px; font-size: 11px; border: 1px solid var(--borda-forte); background: var(--bg-elev); color: var(--texto-2); border-radius: 6px; padding: 1px 7px; cursor: pointer; }
+.ck-md table { border-collapse: collapse; margin: .5em 0; }
+.ck-md td, .ck-md th { border: 1px solid var(--borda-forte); padding: 4px 8px; text-align: left; }
+.ck-md a { color: var(--acento); cursor: pointer; }
+.ck-md blockquote { border-left: 3px solid var(--acento); margin: .6em 0; padding: 2px 12px; color: var(--texto-2); }
+
+/* painéis: texto do passo, dados e observação, cada um na sua caixa */
+.ck-painel { padding: 8px 12px 10px; border-radius: 9px; border: 1px solid var(--borda); background: var(--bg-fundo); }
+.ck-painel-cab { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; min-height: 24px; }
+.ck-painel-rot { font-size: 11.5px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--texto-3); }
+.ck-painel-btn { padding: 1px 9px; font-size: 12px; }
+.ck-painel-texto { background: none; }
+
+/* dados dentro do corpo: caixa própria, logo depois do texto */
+.ck-dados { margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: var(--acento-suave); border-left: 3px solid var(--acento); }
+.ck-dados .ck-painel-rot { display: block; margin-bottom: 6px; }
+.ck-painel textarea { width: 100%; min-height: 44px; resize: vertical; font: inherit; font-size: 13px; background: var(--bg-elev); box-sizing: border-box; }
+.ck-campos { display: grid; grid-template-columns: minmax(140px, 220px) 1fr; gap: 6px 10px; margin: 4px 0; }
+.ck-campos.com-x { grid-template-columns: minmax(140px, 220px) 1fr 28px; }
+.ck-campo { display: contents; }
+.ck-campo > span.ck-campo-rot { font-size: 13px; color: var(--texto-2); align-self: center; }
+.ck-campos .campo { background: var(--bg-elev); font-size: 13px; padding: 5px 8px; }
+.ck-dados-mais { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ck-dados-mais .campo { flex: 1 1 200px; font-size: 12.5px; padding: 4px 8px; }
+
+/* edição do passo (dentro do painel) */
+.ck-edicao { display: grid; gap: 10px; }
+.ck-ed-linha { display: grid; gap: 4px; font-size: 12.5px; color: var(--texto-2); }
+.ck-painel .ck-ed-corpo { min-height: 220px; font: 12.5px/1.5 "Cascadia Code", Consolas, monospace !important; resize: vertical; }
+.ck-ed-grade { display: flex; flex-wrap: wrap; gap: 14px; align-items: end; }
+.ck-ed-grade .ck-ed-linha { flex: 1 1 260px; }
+
+.ck-painel-valores { background: var(--acento-suave); border-left: 3px solid var(--acento); }
+.ck-obs-item { font-size: 13.5px; margin: 6px 0; }
+.ck-obs-item div { white-space: pre-wrap; color: var(--texto-2); }
+
+@media (max-width: 640px) {
+  .ck-folha { padding: 14px 12px 40px; }
+  .ck-campos, .ck-campos.com-x { grid-template-columns: 1fr; }
+}
+
+/* card em edição: borda em volta; lápis discreto no canto de cima, que cresce e mostra "Editar" com o mouse */
+.ck-passo.editando { border-color: var(--acento); box-shadow: 0 0 0 2px var(--acento-suave); }
+.ck-passo.editando .ck-topo:hover { background: none; }
+.ck-titulo-edit { flex: 1; min-width: 200px; font-weight: 550; padding: 3px 8px; }
+.ck-lapis { display: inline-flex; align-items: center; gap: 4px; box-sizing: border-box; height: 26px; line-height: 1; border: 1px solid transparent; background: none; color: var(--texto-3); border-radius: 7px; padding: 0 6px; font-size: 12.5px; cursor: pointer; opacity: .45; transition: opacity .15s; }
+.ck-lapis span { display: none; }
+.ck-passo:hover .ck-lapis { opacity: .8; }
+.ck-lapis:hover { opacity: 1; color: var(--acento); border-color: var(--borda-forte); background: var(--bg-elev); padding: 0 9px; }
+.ck-lapis:hover span { display: inline; }
+/* editando: seção e opcional entre o título e as tags, com o tracejado em cima e embaixo */
+.ck-linha-secao { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 6px; padding: 6px 14px; border-top: 1px dashed var(--borda-forte); border-bottom: 1px dashed var(--borda-forte); cursor: default; }
+.ck-linha-secao .ck-parte-rot { margin: 0; }
+.ck-linha-secao .campo { flex: 1 1 260px; width: auto; font-size: 12.5px; padding: 3px 6px; }
+/* descrição do checklist: lápis discreto no canto, como no card */
+.ck-descricao { position: relative; margin: 8px 0; padding: 4px 0; border-radius: 9px; }
+.ck-descricao .ck-md { padding-right: 40px; }
+.ck-descricao-acao { position: absolute; top: 2px; right: 0; }
+.ck-descricao:hover .ck-lapis { opacity: .8; }
+.ck-descricao.vazia { min-height: 30px; }
+.ck-descricao.vazia .ck-lapis { opacity: .55; }
+.ck-descricao.editando { padding: 34px 0 0; }
+.ck-descricao .ck-ed-corpo { width: 100%; min-height: 110px; box-sizing: border-box; resize: vertical; }
+.ck-btn-26 { box-sizing: border-box; height: 26px; line-height: 1; padding: 0 9px; font-size: 12.5px; }
+/* comentários: blocos de markdown entre as seções, com lápis e lixeira discretos no canto */
+.ck-comentario { position: relative; margin: 10px 0; padding: 6px 76px 6px 12px; border-left: 3px solid var(--borda-forte); border-radius: 0 8px 8px 0; }
+.ck-comentario:hover { background: var(--hover); }
+.ck-comentario.editando { padding: 34px 0 0; border-left-color: var(--acento); background: none; }
+.ck-comentario-acoes { position: absolute; top: 4px; right: 4px; display: inline-flex; gap: 2px; }
+.ck-comentario:hover .ck-lapis { opacity: .8; }
+.ck-comentario .ck-ed-corpo { width: 100%; min-height: 110px; box-sizing: border-box; resize: vertical; }
+/* divisória: + clarinho; com o mouse, escurece e mostra Seção / Comentário */
+.ck-div-mais { display: inline-flex; color: var(--texto-3); border: 1px dashed var(--borda-forte); border-radius: 99px; padding: 1px 6px; background: var(--bg); }
+.ck-divisoria > button { display: none !important; }
+.ck-divisoria:hover > button { display: inline-flex !important; }
+.ck-divisoria:hover .ck-div-mais { display: none; }
+/* confirmação de apagar */
+.ck-confirma { display: grid; gap: 8px; padding: 2px; }
+.ck-confirma-msg { font-weight: 600; font-size: 13.5px; }
+.ck-confirma-det { font-size: 12.5px; color: var(--texto-2); }
+.ck-confirma-acoes { display: flex; justify-content: flex-end; gap: 6px; }
+.ck-perigo { background: #c0392b; border-color: #c0392b; color: #fff; }
+.ck-perigo:hover { filter: brightness(1.1); background: #c0392b; }
+/* editor visual dentro do card e dos comentários */
+.ck-editor { margin: 2px 0; }
+.ck-editor .editor { min-height: 140px; border: 1px solid var(--borda); border-radius: 0 0 8px 8px; padding: 8px 12px; background: var(--bg-elev); }
+.ck-editor .editor .ProseMirror { font-size: 14px; line-height: 1.6; min-height: 120px; }
+

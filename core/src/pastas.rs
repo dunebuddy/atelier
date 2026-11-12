@@ -70,6 +70,9 @@ pub fn criar(conn: &Connection, bancada: &Path, nome_bancada: &str, id: i64, aut
             "- `artefatos/` — o que sai: scripts, documentos, entregas".into(),
             "- `rascunho/` — trabalho intermediário, pode apagar".into(),
             String::new(),
+            "Roteiro com muitos passos (sessão, implantação): um `artefatos/<nome>.checklist.json`, que o atelier mostra como".into(),
+            "checklist e onde grava o progresso. O formato: ferramenta `checklist` do MCP, ação \"formato\".".into(),
+            String::new(),
         ]
         .join("\n");
         std::fs::write(&leia, texto).map_err(|e| Erro::Invalido(format!("não gravei {leia:?}: {e}")))?;

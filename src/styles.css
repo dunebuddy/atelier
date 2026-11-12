@@ -1378,3 +1378,12 @@ body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grab
 .barra-ed-sep { width: 1px; height: 16px; background: var(--borda-forte); margin: 0 4px; }
 .barra-ed-link { flex: 1 1 220px; font-size: 12.5px; padding: 3px 8px; }
 
+/* confirmação de apagar workspace, na própria linha do seletor */
+.ws-confirma { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--texto-2); }
+.ws-confirma .btn { padding: 1px 8px; font-size: 12px; }
+.ws-confirma-sim { background: #c0392b; border-color: #c0392b; color: #fff; }
+/* visão geral: os arquivados ficam embaixo, depois de um traço */
+.ws-geral-traco { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; margin: 8px 0 2px; color: var(--texto-3); font-size: 12px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; }
+.ws-geral-traco::before, .ws-geral-traco::after { content: ""; flex: 1; border-top: 1px dashed var(--borda-forte); }
+.ws-cartao.arquivado { opacity: .55; }
+.ws-geral-topo .btn.ativo { background: var(--acento-suave); color: var(--acento); border-color: var(--acento); }

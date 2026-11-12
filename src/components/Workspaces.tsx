@@ -90,6 +90,24 @@ export function DiasAutoArquivar() {
 const mb = (b: number) => (b >= 1024 ** 3 ? `${(b / 1024 ** 3).toFixed(1)} GB` : `${Math.round(b / 1024 ** 2)} MB`);
 
 /** Na barra de título: o workspace atual; o menu troca, fecha (para os terminais) ou esquece. */
+/** Apagar (esquecer) um workspace desligado: pede confirmação ali mesmo, na linha (Sim / Não). */
+function ApagarWs({ aoApagar }: { aoApagar: () => void }) {
+  const [confirmando, setConfirmando] = useState(false);
+  if (!confirmando) {
+    return (
+      <button className="btn-icone mini" title="Apagar (some da lista; o workspace do documento volta vazio; o documento fica)"
+        onClick={(e) => { e.stopPropagation(); setConfirmando(true); }}><Trash2 size={12} /></button>
+    );
+  }
+  return (
+    <span className="ws-confirma" onClick={(e) => e.stopPropagation()}>
+      Apagar?
+      <button className="btn mini ws-confirma-sim" autoFocus onClick={() => { setConfirmando(false); aoApagar(); }}>Sim</button>
+      <button className="btn mini" onClick={() => setConfirmando(false)}>Não</button>
+    </span>
+  );
+}
+
 export function SeletorWorkspace({ ws, trocar, fechar, esquecer, renomear, arquivar, desarquivar }: {
   ws: Workspaces;
   trocar: (chave: string) => void;
@@ -151,15 +169,18 @@ export function SeletorWorkspace({ ws, trocar, fechar, esquecer, renomear, arqui
                 <button className="btn-icone mini ws-lapis" title="Renomear" onClick={(e) => { e.stopPropagation(); setEditando(k); }}><Pencil size={12} /></button>
                 {aberto && <CarinhaAgente {...agentesDe(k)} />}
                 <span className="dir" style={{ fontSize: 11 }}>{janelas} {janelas === 1 ? "janela" : "janelas"}</span>
-                {aberto && k !== ws.ativo && (
-                  <button className="btn-icone mini" title="Fechar (para os terminais; as janelas ficam guardadas)" onClick={(e) => { e.stopPropagation(); fechar(k); }}><Power size={12} /></button>
+                {/* ligado: só desligar (o atual vai para o da bancada; o da bancada, sendo o atual, não desliga).
+                    desligado: arquivar ou apagar */}
+                {aberto && !(k === GERAL && k === ws.ativo) && (
+                  <button className="btn-icone mini" onClick={(e) => { e.stopPropagation(); fechar(k); }}
+                    title={k === ws.ativo ? "Desligar (para os terminais; as janelas ficam guardadas) e ir para o workspace da bancada" : "Desligar (para os terminais; as janelas ficam guardadas)"}>
+                    <Power size={12} />
+                  </button>
                 )}
-                {k !== GERAL && (
-                  <button className="btn-icone mini" title="Arquivar (sai da lista e para os terminais; as janelas ficam guardadas)" onClick={(e) => { e.stopPropagation(); arquivar(k); }}><Archive size={12} /></button>
+                {!aberto && k !== GERAL && (
+                  <button className="btn-icone mini" title="Arquivar (sai da lista; as janelas ficam guardadas)" onClick={(e) => { e.stopPropagation(); arquivar(k); }}><Archive size={12} /></button>
                 )}
-                {k !== GERAL && (
-                  <button className="btn-icone mini" title="Esquecer (some da lista; o workspace do documento volta vazio)" onClick={(e) => { e.stopPropagation(); esquecer(k); }}><Trash2 size={12} /></button>
-                )}
+                {!aberto && k !== GERAL && <ApagarWs aoApagar={() => esquecer(k)} />}
               </div>
             );
           })}
@@ -176,7 +197,7 @@ export function SeletorWorkspace({ ws, trocar, fechar, esquecer, renomear, arqui
                     <span className="ws-titulo"><IconeWs k={k} icone={i.icone} />{i.titulo}</span>
                     <span className="dir" style={{ fontSize: 11 }}>{i.arquivado ? `desde ${new Date(i.arquivado).toLocaleDateString("pt-BR")}` : ""}</span>
                     <button className="btn-icone mini" title="Desarquivar (volta para a lista, fechado)" onClick={(e) => { e.stopPropagation(); desarquivar(k); }}><ArchiveRestore size={12} /></button>
-                    <button className="btn-icone mini" title="Esquecer (some de vez; o workspace do documento volta vazio)" onClick={(e) => { e.stopPropagation(); esquecer(k); }}><Trash2 size={12} /></button>
+                    <ApagarWs aoApagar={() => esquecer(k)} />
                   </div>
                 );
               })}
@@ -394,6 +415,14 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
     ...ws.abertos,
     ...Object.keys(ws.estados).filter((k) => !ws.abertos.includes(k)).sort((a, b) => (ws.info[a]?.titulo ?? "").localeCompare(ws.info[b]?.titulo ?? "")),
   ].filter((k) => ws.estados[k] && !ws.info[k]?.arquivado && (ws.info[k]?.titulo ?? k).toLowerCase().includes(busca.trim().toLowerCase()));
+  // os arquivados, à parte: só com "Mostrar arquivados", embaixo, depois de um traço
+  const [verArquivados, setVerArquivados] = useState(() => ler("workspaces.geral.arquivados", false));
+  const todosArquivados = Object.keys(ws.estados).filter((k) => ws.info[k]?.arquivado);
+  const arquivados = todosArquivados
+    .filter((k) => (ws.info[k]?.titulo ?? k).toLowerCase().includes(busca.trim().toLowerCase()))
+    .sort((a, b) => (ws.info[a]?.titulo ?? "").localeCompare(ws.info[b]?.titulo ?? ""));
+  // o que as setas percorrem: os ativos e, se à vista, os arquivados
+  const nav = verArquivados ? [...ordem, ...arquivados] : ordem;
   const [sel, setSel] = useState(() => Math.max(0, ordem.indexOf(ws.ativo)));
   const grade = useRef<HTMLDivElement>(null);
 
@@ -405,7 +434,7 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
     const t = window.setInterval(() => { if (!document.hidden) medir(); }, 2000);
     return () => { vivo = false; window.clearInterval(t); };
   }, []);
-  useEffect(() => setSel((s) => Math.min(s, Math.max(0, ordem.length - 1))), [ordem.length]);
+  useEffect(() => setSel((s) => Math.min(s, Math.max(0, nav.length - 1))), [nav.length]);
   useEffect(() => { grade.current?.querySelector(".ws-cartao.sel")?.scrollIntoView({ block: "nearest" }); }, [sel]);
 
   const colunas = () => {
@@ -414,14 +443,14 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
   };
   const tecla = (e: React.KeyboardEvent) => {
     if (editando) return;
-    const n = ordem.length;
+    const n = nav.length;
     if (e.key === "Escape") { e.preventDefault(); aoFechar(); }
     if (!n) return;
     if (e.key === "ArrowRight") { e.preventDefault(); setSel((s) => (s + 1) % n); }
     if (e.key === "ArrowLeft") { e.preventDefault(); setSel((s) => (s - 1 + n) % n); }
     if (e.key === "ArrowDown") { e.preventDefault(); setSel((s) => Math.min(n - 1, s + colunas())); }
     if (e.key === "ArrowUp") { e.preventDefault(); setSel((s) => Math.max(0, s - colunas())); }
-    if (e.key === "Enter") { e.preventDefault(); aoEscolher(ordem[sel]); }
+    if (e.key === "Enter") { e.preventDefault(); aoEscolher(nav[sel]); }
   };
 
   return (
@@ -432,10 +461,29 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
         <input autoFocus className="campo" placeholder="Filtrar pelo nome do documento…" value={busca} onChange={(e) => { setBusca(e.target.value); setSel(0); }} />
         {m && <span className="dica-inline">atelier: {mb(m.ram)} · CPU {m.cpu.toFixed(0)}%</span>}
         <span style={{ flex: 1 }} />
+        {todosArquivados.length > 0 && (
+          <button className={`btn${verArquivados ? " ativo" : ""}`} title="Mostra os arquivados embaixo, separados"
+            onClick={() => { const v = !verArquivados; setVerArquivados(v); guardar("workspaces.geral.arquivados", v); }}>
+            <Archive size={13} /> {verArquivados ? "Esconder" : "Mostrar"} arquivados ({todosArquivados.length})
+          </button>
+        )}
         <span className="dica-inline">← → ↑ ↓ escolhe · Enter vai · Esc fecha</span>
       </div>
       <div className="ws-grade" ref={grade}>
-        {ordem.map((k, i) => {
+        {ordem.map((k, i) => cartao(k, i))}
+        {ordem.length === 0 && <div className="vazio-grande">Nenhum workspace com esse nome.</div>}
+        {verArquivados && todosArquivados.length > 0 && (
+          <>
+            <div className="ws-geral-traco"><span>Arquivados ({arquivados.length})</span></div>
+            {arquivados.map((k, i) => cartao(k, ordem.length + i))}
+            {arquivados.length === 0 && <div className="vazio-grande">Nenhum arquivado com esse nome.</div>}
+          </>
+        )}
+      </div>
+    </div>
+  );
+
+  function cartao(k: string, i: number) {
           const info = ws.info[k] ?? { titulo: k };
           const e = ws.estados[k];
           const aberto = ws.abertos.includes(k);
@@ -446,7 +494,7 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
           return (
             <div
               key={k}
-              className={`ws-cartao${i === sel ? " sel" : ""}${k === ws.ativo ? " atual" : ""}${aberto ? "" : " guardado"}`}
+              className={`ws-cartao${i === sel ? " sel" : ""}${k === ws.ativo ? " atual" : ""}${aberto ? "" : " guardado"}${info.arquivado ? " arquivado" : ""}`}
               onMouseEnter={() => setSel(i)}
               onClick={() => editando !== k && aoEscolher(k)}
             >
@@ -455,8 +503,11 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
                 <NomeWs info={info} editando={editando === k} aoGravar={(n) => renomear(k, n)} aoSair={() => setEditando(null)} classe="ws-cartao-titulo" />
                 {k === ws.ativo && <span className="ws-selo-atual">atual</span>}
                 <button className="btn-icone mini ws-lapis" title="Renomear" onClick={(ev) => { ev.stopPropagation(); setEditando(k); }}><Pencil size={12} /></button>
-                {aberto && k !== ws.ativo && (
-                  <button className="btn-icone mini" title="Fechar (para os terminais; as janelas ficam guardadas)" onClick={(ev) => { ev.stopPropagation(); fecharWs(k); }}><Power size={12} /></button>
+                {aberto && !(k === GERAL && k === ws.ativo) && (
+                  <button className="btn-icone mini" onClick={(ev) => { ev.stopPropagation(); fecharWs(k); }}
+                    title={k === ws.ativo ? "Desligar (para os terminais; as janelas ficam guardadas) e ir para o workspace da bancada" : "Desligar (para os terminais; as janelas ficam guardadas)"}>
+                    <Power size={12} />
+                  </button>
                 )}
               </div>
               {/* esboço das metades e das janelas */}
@@ -482,7 +533,7 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
               </div>
               <div className="ws-cartao-pe">
                 <span className={`ws-ponto${aberto ? " vivo" : ""}`} />
-                <span>{aberto ? (k === ws.ativo ? "atual" : "aberto") : "guardado"}</span>
+                <span>{aberto ? (k === ws.ativo ? "atual" : "aberto") : info.arquivado ? `arquivado em ${new Date(info.arquivado).toLocaleDateString("pt-BR")}` : "guardado"}</span>
                 <span>· {janelas} {janelas === 1 ? "janela" : "janelas"}</span>
                 {ss.length > 0 && <span>· {ss.length} {ss.length === 1 ? "terminal" : "terminais"}</span>}
                 <span style={{ flex: 1 }} />
@@ -492,9 +543,5 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
               </div>
             </div>
           );
-        })}
-        {ordem.length === 0 && <div className="vazio-grande">Nenhum workspace com esse nome.</div>}
-      </div>
-    </div>
-  );
+  }
 }

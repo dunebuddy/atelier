@@ -105,6 +105,14 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.19** (2026-11-12) · Workspaces, pedidos de 12/11:
+  - **regras de desligar, arquivar e apagar:** o workspace atual só desliga, e desligar o atual leva ao da bancada
+    (que liga, se estava desligado: sempre há um workspace na tela, e ele está ligado); o da bancada, sendo o atual,
+    não desliga. Arquivar e apagar só aparecem (e só funcionam) em workspace desligado. Apagar pede confirmação na
+    própria linha (Sim / Não). Antes, Arquivar e Esquecer apareciam no atual, derrubavam os terminais dele sem aviso
+    e trocavam a tela;
+  - **visão geral (Ctrl+Shift+O):** botão "Mostrar arquivados (n)"; os arquivados aparecem embaixo, depois de um
+    traço, separados dos ativos, e entram nas setas do teclado; a escolha fica lembrada.
 - **0.2.18** (2026-11-12) · Checklist nativo do atelier (pedido de 12/11; o Paulo fechou a versão só com isso):
   - arquivo **`*.checklist.json`** na pasta do documento: os passos (o agente escreve) e o estado (a tela grava) no
     mesmo arquivo, ligados pelo `id` do passo. Clicar nele na árvore, no explorador ou na lista de arquivos da

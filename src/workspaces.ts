@@ -120,27 +120,31 @@ export function seguirDocumento(w: Workspaces, id: number, titulo: string, icone
   return { ...w, info: { ...w.info, [k]: { ...i, doc: titulo, titulo: i.nome || titulo, ...(icone != null ? { icone } : {}) } } };
 }
 
-/** Fecha (suspende): os terminais dele param, as janelas ficam guardadas. */
+/** Fecha (desliga): os terminais dele param, as janelas ficam guardadas. Desligar o atual leva ao da bancada (que
+ *  abre, se estava desligado): sempre há um workspace na tela, e ele está aberto. O da bancada, sendo o atual, não
+ *  desliga (não há para onde ir). */
 export function fechar(w: Workspaces, chave: string): Workspaces {
+  if (chave === GERAL && w.ativo === GERAL) return w;
   const abertos = w.abertos.filter((k) => k !== chave);
-  const ativo = w.ativo === chave ? abertos[abertos.length - 1] ?? GERAL : w.ativo;
+  const ativo = w.ativo === chave ? GERAL : w.ativo;
   return { ...w, abertos: abertos.includes(ativo) ? abertos : [...abertos, ativo], ativo };
 }
 
-/** Esquece: some da lista (o do item volta a ser vazio). O da bancada não sai. */
+/** Desligado = fora da lista dos abertos (e, portanto, não é o atual). Só desligado se arquiva ou esquece. */
+export const desligado = (w: Workspaces, chave: string) => !w.abertos.includes(chave) && w.ativo !== chave;
+
+/** Esquece: some da lista (o do item volta a ser vazio). Só desligado; o da bancada não sai. */
 export function esquecer(w: Workspaces, chave: string): Workspaces {
-  if (chave === GERAL) return w;
-  const f = fechar(w, chave);
-  const { [chave]: _e, ...estados } = f.estados;
-  const { [chave]: _i, ...info } = f.info;
-  return { ...f, estados, info };
+  if (chave === GERAL || !desligado(w, chave)) return w;
+  const { [chave]: _e, ...estados } = w.estados;
+  const { [chave]: _i, ...info } = w.info;
+  return { ...w, estados, info };
 }
 
-/** Arquiva: fecha (os terminais param) e tira das listas; as janelas ficam guardadas. O da bancada não arquiva. */
+/** Arquiva: tira das listas; as janelas ficam guardadas. Só desligado; o da bancada não arquiva. */
 export function arquivar(w: Workspaces, chave: string, quando = Date.now()): Workspaces {
-  if (chave === GERAL || !w.estados[chave]) return w;
-  const f = fechar(w, chave);
-  return { ...f, info: { ...f.info, [chave]: { ...(f.info[chave] ?? { titulo: chave }), arquivado: quando } } };
+  if (chave === GERAL || !w.estados[chave] || !desligado(w, chave)) return w;
+  return { ...w, info: { ...w.info, [chave]: { ...(w.info[chave] ?? { titulo: chave }), arquivado: quando } } };
 }
 
 /** Volta para as listas (fechado; abrir é outra coisa). */

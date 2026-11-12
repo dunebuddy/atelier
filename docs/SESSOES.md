@@ -554,3 +554,7 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   O texto passa pelo tiptap-markdown: tabela e blocos voltam iguais; endereço solto vira link.
 - 0.2.18 fechada com o ok do Paulo. A conferir no uso: o checklist no app instalado (o teste foi sem janela), colar
   imagem no editor do card, e o agente usando `checklist` (formato/ler/marcar) de verdade.
+- 0.2.19: `workspaces.ts` — `fechar` do atual vai para `GERAL` (e não desliga o `GERAL` atual), `desligado()`, e
+  `arquivar`/`esquecer` só agem em desligado. Seletor e visão geral seguem a regra; `ApagarWs` confirma na linha.
+  Visão geral: `verArquivados` (lembrado em `workspaces.geral.arquivados`), `nav` = ativos + arquivados à vista.
+  Lembrete: recarregar a tela religa só o workspace atual (de propósito; os terminais morrem no recarregamento).

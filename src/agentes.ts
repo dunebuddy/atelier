@@ -51,6 +51,13 @@ export function atender(sessoes: number[]) {
   if (mudou) window.dispatchEvent(new Event("atelier:agentes"));
 }
 
+/** A sessão do terminal que está com o foco agora (o app em foco e o cursor nele), ou null. */
+export function sessaoEmFoco(): number | null {
+  if (!document.hasFocus()) return null;
+  const t = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>(".pt-term[data-sessao]");
+  return t ? Number(t.dataset.sessao) : null;
+}
+
 export function estadoDaSessao(sessao: number): EstadoAgente | undefined {
   return estados.get(sessao);
 }

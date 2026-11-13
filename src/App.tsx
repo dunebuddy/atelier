@@ -2,7 +2,7 @@ import { abrirCodigo } from "./components/Mencoes";
 import { abrirJanelaDaBancada, ABRIR_AO_CARREGAR, BANCADA_DA_JANELA, bancadaNaQuery, codificarBancada, decodificarBancada, mesmaBancada } from "./janela";
 import { desfazerAgora, notificarFalta, PilhaDeAvisos } from "./components/Avisos";
 import { notificar } from "./notificacoes";
-import { atender, deveAvisar, EstadoAgente, marcarAgente, verSessoes } from "./agentes";
+import { atender, deveAvisar, EstadoAgente, marcarAgente, sessaoEmFoco, verSessoes } from "./agentes";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, BASE, Bancadas, Esquema, Preferencias, TemaArquivo, Visao } from "./api";
 import { aplicarTema } from "./tema";
@@ -406,7 +406,7 @@ export default function App() {
         // o agente que você está olhando agora (app em foco, workspace dele aberto, terminal dele à vista) não vira
         // toast: vai só para o sininho, e a carinha muda de cor
         const est = k && w && k === w.ativo ? w.estados[k] : null;
-        const aVista = document.hasFocus() && !verWs && !!est && est.metades.some((m, mi) => {
+        const aVista = sessaoEmFoco() === d.sessao || document.hasFocus() && !verWs && !!est && est.metades.some((m, mi) => {
           if (est.maximizada && mi !== est.foco) return false;
           return m.janelas.some((j) => {
             const r = P.rotaDe(j);

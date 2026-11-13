@@ -5,7 +5,7 @@ import { Unicode11Addon } from "@xterm/addon-unicode11";
 import "@xterm/xterm/css/xterm.css";
 import { BASE } from "../api";
 import { bate, doPainel } from "../atalhos";
-import { estadoDaSessao, marcarAgente } from "../agentes";
+import { atender, estadoDaSessao, marcarAgente, sessaoEmFoco } from "../agentes";
 import { BANCADA_DA_JANELA } from "../janela";
 
 // O terminal em si (xterm ligado ao processo pelo WebSocket). Fica num arquivo à parte para ser carregado só quando
@@ -80,7 +80,8 @@ export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; ao
     // também lia a área de transferência e mandava, e colava duas vezes. Ctrl+C copia quando há seleção (senão manda
     // o Ctrl+C para o programa)
     // o sino do terminal (vários agentes tocam quando esperam você) acende o workspace; digitar responde
-    term.onBell(() => marcarAgente(aba.id, "esperando"));
+    // (com o cursor neste terminal você já está vendo: não entra na fila da barra de status)
+    term.onBell(() => { marcarAgente(aba.id, "esperando"); if (sessaoEmFoco() === aba.id) atender([aba.id]); });
     term.onData(() => { if (estadoDaSessao(aba.id) === "esperando") marcarAgente(aba.id, "trabalhando"); });
     term.attachCustomKeyEventHandler((e) => {
       if (e.type !== "keydown") return true;
@@ -119,5 +120,6 @@ export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; ao
     if (visivel) queueMicrotask(() => ajustar.current());
   }, [visivel]);
 
-  return <div className="pt-term" ref={caixa} style={{ display: visivel ? "block" : "none" }} />;
+  // pôr o foco no terminal é ir até o agente: sai da fila da barra de status na hora, sem precisar clicar na pílula
+  return <div className="pt-term" ref={caixa} data-sessao={aba.id} onFocus={() => atender([aba.id])} style={{ display: visivel ? "block" : "none" }} />;
 }

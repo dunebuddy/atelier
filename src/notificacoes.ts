@@ -30,8 +30,6 @@ export interface ConfigNotificacoes {
   posicao: Posicao;
   /** quanto tempo fica o toast sem ação */
   segundos: number;
-  /** toast com "Desfazer" fica até a pessoa mexer (abrir ou ir até o agente não segura) */
-  acaoFica: boolean;
   /** não mostra toast: só guarda no histórico */
   soGuardar: boolean;
   /** a partir de que nível mostra toast */
@@ -41,7 +39,7 @@ export interface ConfigNotificacoes {
 }
 
 const PADRAO: ConfigNotificacoes = {
-  posicao: "baixo-direita", segundos: 5, acaoFica: true, soGuardar: false, nivel: "tudo",
+  posicao: "baixo-direita", segundos: 5, soGuardar: false, nivel: "tudo",
   assuntos: { app: true, agente: true, atualizacao: true },
 };
 

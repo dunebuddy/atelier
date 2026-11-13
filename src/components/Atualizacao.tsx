@@ -99,7 +99,7 @@ export function AvisoAtualizacao({ prefs }: { prefs: Preferencias | null }) {
   const pilha = document.getElementById("pilha-avisos");
   if (atualizado) {
     return pilha && createPortal(
-      <div className="cartao-aviso" role="status">
+      <div className="cartao-aviso" role="status" onContextMenu={(e) => { e.preventDefault(); setAtualizado(null); }}>
         <div className="ca-cabeca">
           <CircleCheck size={16} className="ca-icone" />
           <span className="ca-titulo">Atualizado para a versão {__VERSAO__}</span>
@@ -117,7 +117,7 @@ export function AvisoAtualizacao({ prefs }: { prefs: Preferencias | null }) {
   const baixando = progresso !== null;
   if (!pilha) return null;
   return createPortal(
-    <div className="cartao-aviso" role="dialog" aria-label="Versão nova">
+    <div className="cartao-aviso" role="dialog" aria-label="Versão nova" onContextMenu={(e) => { e.preventDefault(); if (!baixando) setFechado(true); }}>
       <div className="ca-cabeca">
         <Sparkles size={16} className="ca-icone" />
         <span className="ca-titulo">Tem versão nova do atelier: {achada.versao}</span>

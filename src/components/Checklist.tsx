@@ -274,7 +274,12 @@ export function ChecklistTela({ caminho, raiz, aoVoltar, aoVerTexto }: { caminho
       e.por = "Paulo";
       if (pular) e.pulado = true; else delete e.pulado;
     });
-    setAbertos((a) => ({ ...a, [p.id]: false }));
+    // fecha este e abre o próximo que falta (o seguinte na ordem; no fim, volta ao começo), trazendo-o à vista
+    const d2 = docRef.current!;
+    const i = d2.passos.findIndex((x) => x.id === p.id);
+    const prox = [...d2.passos.slice(i + 1), ...d2.passos.slice(0, i)].find((x) => !feito(d2, x.id));
+    setAbertos((a) => ({ ...a, [p.id]: false, ...(prox ? { [prox.id]: true } : {}) }));
+    if (prox) window.setTimeout(() => document.querySelector(`[data-passo="${prox.id}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }), 50);
     if (falta.length) {
       const nums = falta.map((id) => d.passos.findIndex((x) => x.id === id) + 1).join(", ");
       avisar(`Feito: ${p.titulo}. Atenção: ainda faltavam os passos ${nums}, de que ele depende.`, desfazer);
@@ -574,7 +579,7 @@ function CartaoPasso({ ctx, p, proximo, aberto, alternar, editando, setEditando,
   ) : (
     <>
       <button className="btn" onClick={() => marcar(p, true)} title="Não se aplica: marca como ignorado"><SkipForward size={13} /> Ignorar</button>
-      <button className="btn primario" onClick={() => marcar(p)}><Check size={13} /> Fazer</button>
+      <button className="btn primario" onClick={() => marcar(p)}><Check size={13} /> Pronto</button>
     </>
   );
   const etiquetas = (comX: boolean) => (
@@ -592,6 +597,7 @@ function CartaoPasso({ ctx, p, proximo, aberto, alternar, editando, setEditando,
 
   return (
     <div
+      data-passo={p.id}
       className={`ck-passo${proximo ? " proximo" : ""}${ok ? " feito" : ""}${aberto ? " aberto" : ""}${editando ? " editando" : ""}${arrastar?.estado?.id === p.id ? " arrastando" : ""}${comDrop}`}
       draggable={!!arrastar && !editando}
       onDragStart={(ev) => { if (!arrastar) return; ev.dataTransfer.effectAllowed = "move"; ev.dataTransfer.setData("text/plain", p.id); arrastar.inicio(); }}
@@ -732,7 +738,8 @@ function CartaoPasso({ ctx, p, proximo, aberto, alternar, editando, setEditando,
               {(abrirConfirma) => <button className="btn-icone ck-apagar" title="Apagar o passo" onClick={abrirConfirma}><Trash2 size={14} /></button>}
             </ConfirmarApagar>
             <span style={{ flex: 1 }} />
-            {encerrar}
+            {/* editando, o Pronto de cima termina a edição: o de marcar o passo some para não confundir */}
+            {!editando && encerrar}
           </div>
         </>
       )}

@@ -296,14 +296,19 @@ body.redimensionando .sidebar { transition: none; }
 .bs-ws:hover { background: var(--hover); color: var(--texto); }
 /* fila dos agentes esperando: as pílulas dividem o espaço e vão apertando (o nome corta em "…") */
 .bs-fila { display: flex; align-items: center; gap: 4px; min-width: 0; flex: 0 1 auto; overflow: hidden; }
+/* a pílula chama a atenção: vermelha (o mesmo vermelho em todos os temas, texto e carinha brancos para o contraste),
+   pisca 3 vezes quando aparece e depois fica pulsando de leve enquanto alguém espera você */
 .bs-pilula {
   display: flex; align-items: center; gap: 4px; height: 19px; padding: 0 8px 0 4px; border-radius: 999px; min-width: 44px;
-  flex: 0 1 auto; max-width: 240px; font-size: 11.5px; line-height: 1; color: var(--texto-2);
-  border: 1px solid var(--borda); background: var(--bg-elev);
+  flex: 0 1 auto; max-width: 240px; font-size: 11.5px; font-weight: 600; line-height: 1; color: #fff;
+  border: 1px solid #b42318; background: #d92d20;
+  animation: pilula-pisca .45s ease-in-out 3, pilula-pulsa 2.4s ease-in-out 1.35s infinite;
 }
-.bs-pilula:hover { border-color: var(--acento); color: var(--texto); }
-.bs-pilula.esperando { border-color: color-mix(in srgb, var(--t-red) 55%, var(--borda)); }
-.bs-pilula .carinha { flex-shrink: 0; }
+.bs-pilula:hover { background: #b42318; color: #fff; }
+.bs-pilula .carinha, .bs-pilula .carinha.esperando, .bs-pilula .carinha.terminou { flex-shrink: 0; color: inherit; }
+@keyframes pilula-pisca { 50% { background: #fff; color: #d92d20; } }
+@keyframes pilula-pulsa { 50% { box-shadow: 0 0 0 3px rgba(217, 45, 32, .35); } }
+@media (prefers-reduced-motion: reduce) { .bs-pilula { animation: none; } }
 .bs-pilula-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .bs-medida { display: flex; align-items: center; gap: 5px; height: 18px; line-height: 1; color: var(--texto-3); font-size: 11.5px; padding: 0 6px; border-radius: 6px; font-variant-numeric: tabular-nums; }
 .bs-medida:hover { background: var(--hover); color: var(--texto); }
@@ -1211,6 +1216,26 @@ body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grab
 .pilha-avisos.cima-esquerda { left: 18px; top: 52px; }
 .pilha-avisos .cartao-aviso, .pilha-avisos .cartao-aviso.toast { position: relative; overflow: hidden; transform: none; left: auto; right: auto; bottom: auto; width: auto; min-width: 0; max-width: none; cursor: pointer; }
 
+/* os toasts empilhados: o que some primeiro na frente; atrás dele, só as bordas (até CAMADAS, no Avisos.tsx), cada
+   uma subindo um pouco menos que a anterior (--y), menor (--s) e mais apagada (--o), como um horizonte. Mouse em cima:
+   abrem em lista, o que some primeiro perto do canto. */
+.pilha-toasts { display: flex; flex-direction: column; gap: 8px; }
+.cima-direita .pilha-toasts, .cima-esquerda .pilha-toasts { flex-direction: column-reverse; }
+.pilha-toasts.aberta { max-height: calc(100vh - 120px); overflow-y: auto; }
+.pilha-toasts.junta { display: grid; }
+.pilha-toasts.junta > .toast {
+  grid-area: 1 / 1; align-self: end; transform-origin: top center; opacity: var(--o); z-index: 0;
+  transform: translateY(calc(var(--y) * -1px)) scale(var(--s));
+  transition: transform .2s ease, opacity .2s ease;
+}
+.pilha-toasts.junta > .toast:not(.atras) { z-index: 1; }
+.cima-direita .pilha-toasts.junta > .toast, .cima-esquerda .pilha-toasts.junta > .toast {
+  align-self: start; transform-origin: bottom center; transform: translateY(calc(var(--y) * 1px)) scale(var(--s));
+}
+.pilha-toasts.junta > .toast.atras { height: var(--altura-frente); }
+.pilha-toasts.junta > .toast.atras > * { visibility: hidden; }
+.pilha-toasts.junta > .toast.longe { opacity: 0; pointer-events: none; }
+
 /* a barrinha do tempo do toast: 3 px encostada embaixo, diminuindo até ele fechar; com o mouse em cima o tempo
    para e recomeça cheio ao sair (o mesmo que o timer faz) */
 .toast-tempo {
@@ -1218,7 +1243,7 @@ body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grab
   transform-origin: left; animation: toast-tempo linear forwards;
 }
 .cartao-aviso.erro .toast-tempo { background: var(--t-red); }
-.cartao-aviso:hover .toast-tempo { animation: none; }
+.pilha-toasts.parada .toast-tempo { animation-play-state: paused; }
 @keyframes toast-tempo { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 
 /* sininho */

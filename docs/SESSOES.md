@@ -558,3 +558,21 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   `arquivar`/`esquecer` só agem em desligado. Seletor e visão geral seguem a regra; `ApagarWs` confirma na linha.
   Visão geral: `verArquivados` (lembrado em `workspaces.geral.arquivados`), `nav` = ativos + arquivados à vista.
   Lembrete: recarregar a tela religa só o workspace atual (de propósito; os terminais morrem no recarregamento).
+
+## 2026-11-13 — toasts
+- Toast com Desfazer não contava nem sumia: `duracao()` devolvia null com `acaoFica` (padrão true). `acaoFica` saiu
+  (config e tela); Desfazer = +5 s, erro = +3 s. `onContextMenu` fecha o toast (e os cartões de `Atualizacao.tsx`).
+  Testado com `bun run teste`. Sem versão: esperando o Paulo juntar mais coisas.
+- Toasts empilhados: `.pilha-toasts` dentro da pilha (os cartões de versão ficam fora dela). Junta = grid com todos
+  na mesma célula, `--k` (quantos na frente) dá recuo e escala, os de trás com a altura do da frente
+  (`--altura-frente`, medida no `useLayoutEffect`). Aberta (hover) = lista, o mais novo perto do canto. O hover agora é
+  da pilha toda: para e recomeça os timers de todos.
+- Pilha em horizonte: `camada(k)` dá `--y` (soma de 9·0,72^j), `--s` e `--o`; acima de `CAMADAS` (5) some (`.longe`).
+  Ordem por `falta()` (o que some primeiro por último no DOM = frente). Pausa guarda o que falta (`fim`/`resta`) e a
+  barrinha usa `animation-delay` negativo + `animation-play-state: paused`. Cuidado: `.cartao-aviso.toast` tem
+  `z-index: 100`; na pilha junta ele é zerado, senão os de trás cobrem o da frente.
+- Pílula: `sessaoEmFoco()` (agentes.ts) = terminal com o foco (`.pt-term[data-sessao]`); `onFocus` do terminal chama
+  `atender`; o `onBell` com o foco nele também. Cores fixas (#d92d20) para valer em todos os temas.
+- Código único: `bancada::codigo_em_uso` abre os outros bancos só para ler (sem `db::abrir`, que migra e cria pasta).
+- 0.2.20 fechada com o ok do Paulo ("pode resolver isso tudo e subir uma versão nova"). Ficaram na caixa de entrada:
+  janelinha destacada e links `atelier://` (colar na busca, link de arquivo, Copiar link, bug do `atelier://item/`).

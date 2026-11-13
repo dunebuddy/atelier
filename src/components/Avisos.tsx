@@ -1,7 +1,8 @@
 // Pilha de toasts (no canto configurado), sininho com o histórico, Configurações → Notificações e os hooks dos agentes.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Bell, Bot, CircleAlert, Info, Sparkles, Trash2, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import type { CSSProperties } from "react";
 import { BASE } from "../api";
 import { abrir, falhou } from "../ui";
 import { Popover, usePopover } from "./Popover";
@@ -38,13 +39,20 @@ function Icone({ n }: { n: Notificacao }) {
   return <Info size={16} className="ca-icone" />;
 }
 
-/** Quanto tempo o toast fica na tela (null: fica até a pessoa mexer). Só o "Desfazer" segura o toast: clicar para
- *  abrir ou ir até o agente não conta como ação (a notificação continua no sininho). */
-function duracao(n: Notificacao): number | null {
+/** Quanto tempo o toast fica na tela. Todo toast conta e some sozinho (a notificação continua no sininho, com o
+ *  Desfazer); o que tem "Desfazer" e o de erro ficam um pouco mais. */
+function duracao(n: Notificacao): number {
   const cfg = configuracao();
-  if (n.desfazer && cfg.acaoFica) return null;
-  // erro fica um pouco mais
-  return (cfg.segundos + (n.nivel === "erro" ? 3 : 0)) * 1000;
+  return (cfg.segundos + (n.desfazer ? 5 : 0) + (n.nivel === "erro" ? 3 : 0)) * 1000;
+}
+
+/** Quantas camadas aparecem atrás do toast da frente (o resto da pilha fica escondido). */
+const CAMADAS = 5;
+/** A camada k (0 = a da frente): quanto sobe e quanto encolhe. Cada uma sobe menos que a anterior, como um horizonte. */
+function camada(k: number) {
+  let y = 0;
+  for (let j = 0; j < k; j++) y += 9 * 0.72 ** j;
+  return { "--y": y.toFixed(2), "--s": (1 - 0.03 * k).toFixed(3), "--o": (1 - 0.13 * k).toFixed(2) } as CSSProperties;
 }
 
 /** Os toasts, num canto só (o mesmo dos cartões de versão nova, que entram aqui por portal). */
@@ -52,17 +60,46 @@ export function PilhaDeAvisos() {
   useNotificacoes();
   const [toasts, setToasts] = useState<Notificacao[]>([]);
   const timers = useRef(new Map<number, number>());
+  // a hora em que cada toast some (contando) e o que falta (parado, com o mouse em cima da pilha)
+  const fim = useRef(new Map<number, number>());
+  const resta = useRef(new Map<number, number>());
+  const pausada = useRef(false);
   const c = configuracao();
+  // empilhados (o que some primeiro na frente, os de trás só como camadas); mouse em cima abre em lista e para o tempo
+  const [aberta, setAberta] = useState(false);
+  const pilhaRef = useRef<HTMLDivElement>(null);
+  const [alturaFrente, setAlturaFrente] = useState(0);
+  useLayoutEffect(() => {
+    const frente = pilhaRef.current?.lastElementChild as HTMLElement | null;
+    setAlturaFrente(frente?.offsetHeight ?? 0);
+  }, [toasts]);
 
   const fechar = (id: number) => {
     window.clearTimeout(timers.current.get(id));
     timers.current.delete(id);
+    fim.current.delete(id);
+    resta.current.delete(id);
     setToasts((l) => l.filter((x) => x.id !== id));
   };
-  const agendar = (n: Notificacao) => {
-    const ms = duracao(n);
-    if (ms != null) timers.current.set(n.id, window.setTimeout(() => fechar(n.id), ms));
+  const correr = (id: number, ms: number) => {
+    window.clearTimeout(timers.current.get(id));
+    resta.current.delete(id);
+    fim.current.set(id, Date.now() + ms);
+    timers.current.set(id, window.setTimeout(() => fechar(id), ms));
   };
+  // parar guarda o que falta; voltar continua de onde parou (não recomeça)
+  const pausar = () => {
+    pausada.current = true;
+    timers.current.forEach((t) => window.clearTimeout(t));
+    timers.current.clear();
+    fim.current.forEach((f, id) => resta.current.set(id, Math.max(0, f - Date.now())));
+    fim.current.clear();
+  };
+  const retomar = () => {
+    pausada.current = false;
+    [...resta.current].forEach(([id, ms]) => correr(id, ms));
+  };
+  const falta = (n: Notificacao) => resta.current.get(n.id) ?? Math.max(0, (fim.current.get(n.id) ?? Date.now()) - Date.now());
 
   useEffect(() => {
     // avisar()/falhou() do app chegam como evento e viram notificação
@@ -73,8 +110,9 @@ export function PilhaDeAvisos() {
     const nova = (e: Event) => {
       const n = (e as CustomEvent<Notificacao>).detail;
       if (!viraToast(n)) return;
-      setToasts((l) => [...l.filter((x) => x.id !== n.id), n].slice(-5));
-      agendar(n);
+      setToasts((l) => [...l.filter((x) => x.id !== n.id), n].slice(-10));
+      if (pausada.current) resta.current.set(n.id, duracao(n));
+      else correr(n.id, duracao(n));
     };
     window.addEventListener("atelier:aviso", aviso);
     window.addEventListener("atelier:notificacao", nova);
@@ -85,6 +123,9 @@ export function PilhaDeAvisos() {
   const comDesfazer = [...toasts].reverse().find((t) => t.desfazer);
   desfazerNaTela = comDesfazer ? () => { comDesfazer.desfazer?.(); marcarLida(comDesfazer.id); fechar(comDesfazer.id); } : null;
 
+  // a ordem: o que some primeiro fica na frente (o último, perto do canto); os que somem depois vão para trás
+  const ordem = [...toasts].sort((a, b) => falta(b) - falta(a) || a.id - b.id);
+
   const agir = (n: Notificacao) => {
     marcarLida(n.id);
     if (n.rota) abrir(n.rota);
@@ -94,31 +135,45 @@ export function PilhaDeAvisos() {
 
   return (
     <div id="pilha-avisos" className={`pilha-avisos ${c.posicao}`}>
-      {toasts.map((n) => (
+      {toasts.length > 0 && (
+      <div
+        ref={pilhaRef}
+        className={`pilha-toasts${aberta || toasts.length === 1 ? " aberta" : " junta"}${aberta ? " parada" : ""}`}
+        style={{ "--altura-frente": `${alturaFrente}px` } as CSSProperties}
+        // mouse em cima abre a pilha e segura todos; saiu, junta de novo e todos voltam a contar
+        onMouseEnter={() => { pausar(); setAberta(true); }}
+        onMouseLeave={() => { retomar(); setAberta(false); }}
+      >
+      {ordem.map((n, i) => {
+        const k = ordem.length - 1 - i;
+        return (
         <div
           key={n.id}
-          className={`cartao-aviso toast${n.nivel === "erro" ? " erro" : ""}`}
+          className={`cartao-aviso toast${n.nivel === "erro" ? " erro" : ""}${k > 0 ? " atras" : ""}${k > CAMADAS ? " longe" : ""}`}
+          style={camada(Math.min(k, CAMADAS))}
           role={n.nivel === "erro" ? "alert" : "status"}
-          // mouse em cima segura o toast; saiu, volta a contar
-          onMouseEnter={() => { window.clearTimeout(timers.current.get(n.id)); timers.current.delete(n.id); }}
-          onMouseLeave={() => agendar(n)}
           onClick={() => agir(n)}
-          title={n.agente != null ? "Clique para ir até o agente" : n.rota ? "Clique para abrir" : "Clique para fechar"}
+          // botão direito em qualquer canto fecha (fica no sininho)
+          onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); fechar(n.id); }}
+          title={`${n.agente != null ? "Clique para ir até o agente" : n.rota ? "Clique para abrir" : "Clique para fechar"} · botão direito fecha`}
         >
           <div className="ca-cabeca">
             <Icone n={n} />
             <span className="ca-msg">{n.de ? <strong>{n.de}: </strong> : null}{n.msg}</span>
             <button className="btn-icone" title="Fechar (fica no sininho)" onClick={(e) => { e.stopPropagation(); fechar(n.id); }}><X size={14} /></button>
           </div>
-          {/* a barrinha do tempo: diminui até o toast fechar; com o mouse em cima volta cheia (o tempo recomeça) */}
-          {duracao(n) != null && <div className="toast-tempo" style={{ animationDuration: `${duracao(n)}ms` }} />}
+          {/* a barrinha do tempo: diminui até o toast fechar; com o mouse em cima para onde está */}
+          <div className="toast-tempo" style={{ animationDuration: `${duracao(n)}ms`, animationDelay: `-${duracao(n) - falta(n)}ms` }} />
           {n.desfazer && (
             <div className="ca-acoes">
               <button className="btn" onClick={(e) => { e.stopPropagation(); n.desfazer?.(); marcarLida(n.id); fechar(n.id); }}>Desfazer <kbd>Ctrl Z</kbd></button>
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
+      </div>
+      )}
     </div>
   );
 }
@@ -232,9 +287,6 @@ export function SecaoNotificacoes() {
           {[3, 5, 8, 12, 20].map((s) => <option key={s} value={s}>{s} segundos</option>)}
         </select>
       </div>
-      <label className="linha-config"><span>Aviso com “Desfazer” fica até eu mexer</span>
-        <input type="checkbox" checked={c.acaoFica} onChange={(e) => mudarConfiguracao({ acaoFica: e.target.checked })} />
-      </label>
       <label className="linha-config"><span>Não mostrar na tela, só guardar no sininho</span>
         <input type="checkbox" checked={c.soGuardar} onChange={(e) => mudarConfiguracao({ soGuardar: e.target.checked })} />
       </label>

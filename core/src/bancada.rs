@@ -399,6 +399,23 @@ mod testes {
     }
 }
 
+/// O código já está em uso em alguma bancada desta máquina? O código do documento é único no atelier inteiro, não só
+/// na bancada (o link `atelier://doc/<código>` não diz a bancada). Abre os bancos só para ler, sem migrar nem criar.
+pub fn codigo_em_uso(codigo: &str) -> bool {
+    if cfg!(test) {
+        return false; // os testes não olham as bancadas de verdade
+    }
+    use rusqlite::{Connection, OpenFlags};
+    carregar().bancadas.iter().any(|b| {
+        let banco = banco_da(&b.caminho);
+        banco.exists()
+            && Connection::open_with_flags(&banco, OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX)
+                .ok()
+                .and_then(|conn| conn.query_row("SELECT 1 FROM itens WHERE codigo = ?", [codigo], |_| Ok(())).ok())
+                .is_some()
+    })
+}
+
 /// Em que bancada mora o documento deste código (para um link `atelier://doc/<código>` abrir a janela certa).
 pub fn achar_codigo(codigo: &str) -> Option<Bancada> {
     let c = codigo.trim().trim_start_matches('#').to_lowercase();

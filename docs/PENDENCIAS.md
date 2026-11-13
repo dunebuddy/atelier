@@ -20,6 +20,35 @@ Como usar:
 > **Triagem de 2026-11-02:** tudo o que está abaixo já tem lugar na segunda rodada do [`ROADMAP.md`](ROADMAP.md)
 > (0.2.4 a 0.2.9) ou em "Ideias, sem data". Pedido novo entra aqui e ganha lugar lá.
 
+- **Destacar uma aba numa janelinha** (13/11, Paulo): "acompanhar uma aplicação de passo a passo seria melhor se eu
+  pudesse destacar o checklist e colocar do lado da janela onde estou trabalhando, e o atelier é muito grande para
+  isso". Vale para qualquer aba, o checklist é o caso que motivou.
+  *Pré-análise:* dá para aproveitar o que a 0.2.8 fez para "bancada em nova janela" (`abrirJanelaDaBancada` em
+  `src/janela.ts` e o comando `abrir_janela_bancada` no núcleo, que já abrem outra janela com `?bancada=`/`?abrir=`).
+  Falta: (1) um modo **janela solta** (`?solta=<rota>`), que mostra só o conteúdo da aba, sem menu lateral, abas nem
+  barra de título grande, com um tamanho inicial estreito (uns 480×800) e lembrado; (2) o comando no núcleo aceitar
+  esse modo (outro rótulo de janela, título = nome da aba); (3) "Destacar em janela" no menu da aba (e talvez
+  arrastar a aba para fora); (4) opção **sempre por cima** na janelinha, para o checklist não sumir atrás do que ele
+  está fazendo; (5) as duas janelas veem o mesmo arquivo: o checklist já relê do disco quando muda por fora, então
+  marcar o passo numa aparece na outra. No teste sem janela vira uma aba do navegador; o "sempre por cima" só dá
+  para conferir no app de verdade. Tamanho: médio (uma versão só para isso).
+- **Links `atelier://` mais úteis, como um "ARN" de tudo** (13/11, Paulo): "não tem um canto para abrir esse cara",
+  "era legal qualquer coisa dentro do atelier ter esse ARN, por exemplo achar um MD", e a dúvida "não tem a bancada:
+  se eu estiver na outra bancada, tem que abrir a outra".
+  *Como está hoje (conferido no código):* o `atelier://` **está registrado** no Windows (plugin deep-link e
+  instalador); clicar num link fora do app (navegador, Teams, nota) abre o atelier no documento. **A bancada já é
+  resolvida:** `achar_codigo` (`core/src/bancada.rs`) procura o código na bancada ativa e depois nas outras, e abre a
+  janela da bancada certa (a da 0.2.8). Dentro do app, a busca (Ctrl P) acha pelo código (`b9b2cb3` ou `#b9b2cb3`),
+  mas **só na bancada aberta** e **não aceita colar o link inteiro**.
+  *O que falta:* (1) **colar o link na busca** (Ctrl P) abre, inclusive de outra bancada (indo pelo mesmo caminho do
+  clique de fora); colar o código sozinho também procura nas outras bancadas; (2) **link de arquivo**:
+  `atelier://doc/<código>/<caminho na pasta>` (ex.: `.../artefatos/sessao-andre.checklist.json`) abre o arquivo na
+  pasta do documento; "Copiar link" no menu do arquivo; (3) **"Copiar link"** à mão no documento, na visão e no
+  arquivo (hoje o link aparece mais pelo agente); (4) **bancada no link, opcional**: o código é aleatório (7 hexa) e a
+  chance de repetir entre bancadas é mínima, mas um `atelier://doc/<código>?bancada=<nome>` desempata e avisa se a
+  bancada não está nesta máquina; (5) **bug:** o Exportar gera `atelier://item/<código>` (`Exportar.tsx`), que a tela
+  não sabe abrir: trocar para `doc/` e aceitar `item/` como apelido.
+
 ### Bugs
 ### Melhorias pedidas
 - **Atalhos em dois tempos com Ctrl+K (como VS Code / tmux)** (04/11, o Paulo: "os atalhos que batem... Ctrl+K e aí o
@@ -105,6 +134,22 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.20** (2026-11-13) · Toasts, pílula dos agentes e checklist, pedidos de 13/11:
+  - **toasts contam e somem sozinhos:** o com **Desfazer** (ex.: "itens apagados") ficava parado, sem barrinha, por
+    causa da opção "Aviso com Desfazer fica até eu mexer" (ligada por padrão). Agora todo toast conta; o com Desfazer
+    fica 5 s a mais (o Desfazer continua no sininho). A opção saiu das Configurações;
+  - **botão direito** em qualquer canto do toast fecha (também nos cartões de versão nova e de atualizado);
+  - **toasts empilhados em horizonte:** em vez de subirem pela tela, ficam um atrás do outro; na frente fica sempre o
+    que some primeiro; atrás, só as bordas, até 5 camadas, cada uma subindo um pouco menos que a anterior, menor e mais
+    apagada. Mouse em cima abre em lista (o que some primeiro perto do canto, com rolagem se não couber) e para o
+    tempo de todos; tirou o mouse, juntam e continuam de onde pararam. Na tela ficam até 10;
+  - **pílula dos agentes chama a atenção:** vermelha (texto e carinha brancos), pisca 3 vezes ao aparecer e depois
+    pulsa de leve. **Pôr o foco no terminal do agente** já tira a pílula (sem clicar nela); e o sino do terminal com o
+    cursor nele não acende a pílula (antes, o agente que você estava olhando entrava na fila);
+  - **checklist:** o botão de marcar o passo diz **Pronto**; marcar (Pronto ou Ignorar) fecha o passo e abre o próximo
+    que falta, rolando a tela até ele. Editando o passo, o Pronto de marcar some do rodapé (o de cima termina a edição);
+  - **código do documento único no atelier inteiro:** ao sortear o código, o atelier confere também as outras
+    bancadas (o link `atelier://doc/<código>` não diz a bancada). As bancadas de hoje não tinham código repetido.
 - **0.2.19** (2026-11-12) · Workspaces, pedidos de 12/11:
   - **regras de desligar, arquivar e apagar:** o workspace atual só desliga, e desligar o atual leva ao da bancada
     (que liga, se estava desligado: sempre há um workspace na tela, e ele está ligado); o da bancada, sendo o atual,

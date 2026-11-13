@@ -715,12 +715,12 @@ pub fn apagar_visao(conn: &Connection, id: i64) -> Res<()> {
     Ok(())
 }
 
-/// Sorteia um código de 7 hexadecimais que ainda não existe na bancada.
+/// Sorteia um código de 7 hexadecimais que ainda não existe nesta bancada nem em nenhuma outra (um só no atelier).
 fn novo_codigo(conn: &Connection) -> Res<String> {
     for _ in 0..20 {
         let c: String = conn.query_row("SELECT substr(lower(hex(randomblob(4))), 1, 7)", [], |r| r.get(0))?;
         let existe: bool = conn.query_row("SELECT EXISTS (SELECT 1 FROM itens WHERE codigo = ?)", [&c], |r| r.get(0))?;
-        if !existe {
+        if !existe && !crate::bancada::codigo_em_uso(&c) {
             return Ok(c);
         }
     }

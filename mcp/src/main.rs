@@ -145,7 +145,7 @@ Guarde os arquivos nessas subpastas e registre o andamento no documento com `ano
 TELA: com o app aberto, `tela` mostra as coisas para o usuário (abrir documento, visão, pasta, arquivo; metade esquerda ou \
 direita; workspaces; terminal; tema...); `tela` com acao \"estado\" diz o que está aberto agora. \
 QUANDO NÃO DER: se o usuário pedir algo que estas ferramentas não fazem, NÃO improvise por fora (arquivos, comandos, \
-banco): chame `nao_consigo` com o pedido e o que faltou, e diga a ele que ficou anotado. CHECKLIST: roteiro de execução com muitos passos (sessão, implantação, migração) não vira um monte de documentos nem um app HTML: é um arquivo <nome>.checklist.json na pasta do documento, que o atelier mostra como checklist e onde grava o progresso; leia o formato com `checklist` acao \"formato\" antes de criar. LINKS: para o usuário abrir um documento com um clique (de fora do atelier, numa mensagem), escreva atelier://doc/<código> (também atelier://visao/<nome> e atelier://bancada/<nome>). BANCADA: você trabalha na bancada em que nasceu (a do terminal do atelier, ou a da pasta onde está); trocar_bancada só pede, o usuário aceita na tela.";
+banco): chame `nao_consigo` com o pedido e o que faltou, e diga a ele que ficou anotado. CHECKLIST: roteiro de execução com muitos passos (sessão, implantação, migração) não vira um monte de documentos nem um app HTML: é um arquivo <nome>.checklist.json na pasta do documento, que o atelier mostra como checklist e onde grava o progresso; leia o formato com `checklist` acao \"formato\" antes de criar. LINKS: para o usuário abrir um documento com um clique (de fora do atelier, numa mensagem), escreva atelier://doc/<código> (também atelier://visao/<nome> e atelier://bancada/<nome>; arquivo da pasta de um documento: atelier://doc/<código>/<caminho>). SEGREDOS: senha, secret, token ou chave que o usuário passar NUNCA fica em texto (documento, nota, checklist, arquivo): guarde no cofre com `segredo` acao \"guardar\" (ligado ao documento) e cite pelo nome; num checklist, o valor fica `cofre:<id>`. Para usar um valor, `segredo` acao \"ler\" (o usuário permite na tela); use só no comando, sem repetir na conversa. `segredos` lista sem os valores. BANCADA: você trabalha na bancada em que nasceu (a do terminal do atelier, ou a da pasta onde está); trocar_bancada só pede, o usuário aceita na tela.";
 
 fn ferramentas() -> Value {
     #[allow(non_snake_case)]
@@ -353,9 +353,11 @@ fn ferramentas() -> Value {
         },
         {
             "name": "checklist",
-            "description": "Checklist do atelier: arquivo <nome>.checklist.json na pasta do documento, que a tela mostra como checklist e onde ela grava o progresso. Use para roteiros de execução (muitos passos curtos); etapa com vida própria é documento. Ações: formato (o formato do arquivo, com exemplo: LEIA ANTES de criar um) · ler (com id = código do documento: o resumo dos checklists da pasta dele; com arquivo: só aquele) · marcar (arquivo, passo = id do passo, feito true/false, pulado, obs). Para criar, escreva o arquivo (de costume em artefatos/) e mostre com `tela` abrir arquivo.",
+            "description": "Checklist do atelier: arquivo <nome>.checklist.json na pasta do documento, que a tela mostra como checklist e onde ela grava o progresso. Use para roteiros de execução (muitos passos curtos); etapa com vida própria é documento. Ações: formato (o formato do arquivo, com exemplo: LEIA ANTES de criar um) · ler (com id = código do documento: o resumo dos checklists da pasta dele; com arquivo: só aquele) · marcar (arquivo, passo = id do passo, feito true/false, pulado, obs) · valor (arquivo, chave, valor: muda um valor do checklist, que aparece em todo lugar onde o texto usa {{chave}}, e registra no histórico). Para criar, escreva o arquivo (de costume em artefatos/) e mostre com `tela` abrir arquivo.",
             "inputSchema": { "type": "object", "properties": {
-                "acao": { "type": "string", "enum": ["formato", "ler", "marcar"] },
+                "acao": { "type": "string", "enum": ["formato", "ler", "marcar", "valor"] },
+                "chave": { "type": "string", "description": "valor: a chave do campo (a de {{chave}})" },
+                "valor": { "type": "string", "description": "valor: o novo valor" },
                 "id": ID,
                 "arquivo": { "type": "string", "description": "caminho absoluto do .checklist.json" },
                 "passo": { "type": "string", "description": "marcar: o id do passo" },
@@ -368,6 +370,29 @@ fn ferramentas() -> Value {
             "name": "espaco_em_disco",
             "description": "Quanto ocupa no disco: com id (código do documento), a pasta do workspace dele e a dele somada à dos descendentes (Pai → Filhos, a árvore inteira); sem id, a pasta da bancada inteira. Pasta dentro de outra não conta duas vezes.",
             "inputSchema": { "type": "object", "properties": { "id": ID } }
+        },
+        {
+            "name": "segredos",
+            "description": "Cofre de segredos da bancada (criptografado): lista os segredos SEM o valor (id, nome, descrição, chave, documento). Filtros: documento (código: só os dele; com descendentes: true, também os dos filhos, netos...) e busca (no nome, descrição ou chave). Para usar o valor, `segredo` ação ler.",
+            "inputSchema": { "type": "object", "properties": {
+                "documento": { "type": "string", "description": "código do documento" },
+                "descendentes": { "type": "boolean", "description": "com documento: inclui os segredos dos descendentes (Pai → Filhos)" },
+                "busca": { "type": "string" }
+            } }
+        },
+        {
+            "name": "segredo",
+            "description": "Um segredo do cofre. ler (segredo = id, nome ou chave; motivo): pede o VALOR ao Paulo, que permite na tela (por alguns minutos ou só desta vez); ESPERA a resposta (até 2 min). Use o valor só no comando que precisa dele, sem repetir na conversa nem gravar em arquivo. guardar (nome, descricao, chave, valor, documento): põe um segredo novo no cofre (ex.: o Paulo colou uma senha e pediu para guardar); depois NÃO deixe o valor em texto em nenhum documento: cite o segredo pelo nome.",
+            "inputSchema": { "type": "object", "properties": {
+                "acao": { "type": "string", "enum": ["ler", "guardar"] },
+                "segredo": { "type": "string", "description": "ler: id, nome ou chave" },
+                "motivo": { "type": "string", "description": "ler: para que você precisa (aparece para o Paulo ao pedir)" },
+                "nome": { "type": "string", "description": "guardar: nome descritivo (ex.: Secret do app da API, DEV)" },
+                "descricao": { "type": "string" },
+                "chave": { "type": "string", "description": "guardar: o identificador (ex.: client_secret)" },
+                "valor": { "type": "string", "description": "guardar: o valor" },
+                "documento": { "type": "string", "description": "guardar: código do documento que gerou o segredo" }
+            }, "required": ["acao"] }
         },
         {
             "name": "nao_consigo",
@@ -817,6 +842,25 @@ fn post_api(caminho: &str, corpo: &Value) -> Result<Value, String> {
     serde_json::from_str(corpo.trim()).map_err(|_| format!("resposta inesperada do app: {}", resp.lines().next().unwrap_or("")))
 }
 
+/// Como `post_api`, mas esperando a resposta por mais tempo (o pedido ao cofre espera o Paulo responder na tela).
+fn post_api_esperando(caminho: &str, corpo: &Value, segundos: u64) -> Result<Value, String> {
+    use std::io::Read;
+    use std::net::TcpStream;
+    let mut s = TcpStream::connect(("127.0.0.1", atelier_core::api::porta())).map_err(|_| "o app atelier não está aberto (o valor de um segredo só sai com o Paulo permitindo na tela)".to_string())?;
+    s.set_read_timeout(Some(std::time::Duration::from_secs(segundos))).ok();
+    let b = corpo.to_string();
+    let req = format!(
+        "POST {caminho} HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\nContent-Length: {}\r\n{}Connection: close\r\n\r\n{b}",
+        b.len(),
+        bancada_do_agente(&bancada::carregar()).map(|x| format!("x-atelier-bancada: {}\r\n", atelier_core::api::codificar_bancada(&x.caminho))).unwrap_or_default()
+    );
+    s.write_all(req.as_bytes()).map_err(|e| e.to_string())?;
+    let mut resp = String::new();
+    s.read_to_string(&mut resp).map_err(|e| e.to_string())?;
+    let corpo = resp.split_once("\r\n\r\n").map(|x| x.1).unwrap_or("");
+    serde_json::from_str(corpo.trim()).map_err(|_| format!("resposta inesperada do app: {}", resp.lines().next().unwrap_or("")))
+}
+
 fn chrono_hoje() -> String {
     db::agora()[..10].to_string()
 }
@@ -901,6 +945,19 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
             bancada::salvar(&cfg).map_err(|x| x.to_string())?;
             return Ok(json!({ "ok": true, "bancada": { "nome": nova.nome, "caminho": nova.caminho }, "aberta": abrir }));
         }
+        "segredo" if s(a, "acao") == Some("ler") => {
+            let alvo = s(a, "segredo").ok_or("informe o segredo (id, nome ou chave)")?;
+            let mut corpo = json!({ "agente": autor, "motivo": s(a, "motivo").unwrap_or("") });
+            match alvo.trim().parse::<i64>() {
+                Ok(id) => corpo["id"] = json!(id),
+                Err(_) => corpo["segredo"] = json!(alvo),
+            }
+            let r = post_api_esperando("/api/cofre/pedir", &corpo, 150)?;
+            if let Some(erro) = r.get("erro").and_then(|v| v.as_str()) {
+                return Err(erro.to_string());
+            }
+            return Ok(r);
+        }
         "nao_consigo" => {
             let pedido = s(a, "pedido").unwrap_or("");
             let motivo = s(a, "motivo").unwrap_or("");
@@ -914,6 +971,42 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
     }
     let (conn, banc) = abrir()?;
     let e = |x: db::Erro| x.to_string();
+    match nome {
+        "segredos" => {
+            let docs: Option<Vec<String>> = match s(a, "documento") {
+                Some(c) => {
+                    let id = db::id_por_codigo(&conn, c).map_err(e)?;
+                    let mut l = vec![db::ler_item(&conn, id).map_err(e)?.codigo];
+                    if a.get("descendentes").and_then(|v| v.as_bool()).unwrap_or(false) {
+                        l.extend(db::codigos_descendentes(&conn, id).map_err(e)?);
+                    }
+                    Some(l)
+                }
+                None => None,
+            };
+            let l = atelier_core::cofre::listar(&banc.caminho, docs.as_deref(), s(a, "busca")).map_err(e)?;
+            return Ok(json!({ "segredos": l, "obs": "sem os valores; para usar um, `segredo` ação ler (o Paulo permite na tela)" }));
+        }
+        "segredo" => {
+            if s(a, "acao") != Some("guardar") {
+                return Err("ação: ler ou guardar".into());
+            }
+            let nome_s = s(a, "nome").ok_or("informe o nome")?;
+            let valor = s(a, "valor").ok_or("informe o valor")?;
+            let doc = s(a, "documento").map(|c| c.trim().trim_start_matches('#').to_lowercase());
+            if let Some(c) = &doc {
+                db::id_por_codigo(&conn, c).map_err(e)?;
+            }
+            let id = atelier_core::cofre::criar(&banc.caminho, nome_s, s(a, "descricao").unwrap_or(""), s(a, "chave").unwrap_or(""), valor, doc.as_deref()).map_err(e)?;
+            if let Some(c) = &doc {
+                let item = db::id_por_codigo(&conn, c).map_err(e)?;
+                db::anotar(&conn, item, &format!("🔒 Segredo guardado no cofre: «{nome_s}»"), autor).map_err(e)?;
+            }
+            let _ = post_api("/api/tela", &json!({ "acao": "recarregar" }));
+            return Ok(json!({ "ok": true, "id": id, "diga_ao_usuario": format!("o segredo «{nome_s}» está no cofre; cite-o pelo nome, sem o valor") }));
+        }
+        _ => {}
+    }
     let mapa = Mapa::carregar(&conn)?;
     match nome {
         "esquema" => {
@@ -1342,7 +1435,13 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
                     let pulado = a.get("pulado").and_then(|v| v.as_bool()).unwrap_or(false);
                     ck::marcar(Path::new(arq), passo, feito, pulado, s(a, "obs"), autor)
                 }
-                outra => Err(format!("ação desconhecida: {outra:?} (formato, ler ou marcar)")),
+                "valor" => {
+                    let arq = s(a, "arquivo").ok_or("informe o arquivo")?;
+                    let chave = s(a, "chave").ok_or("informe a chave")?;
+                    let valor = s(a, "valor").ok_or("informe o valor")?;
+                    ck::valor(Path::new(arq), chave, valor, autor)
+                }
+                outra => Err(format!("ação desconhecida: {outra:?} (formato, ler, marcar ou valor)")),
             }
         }
         "espaco_em_disco" => {

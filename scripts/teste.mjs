@@ -12,6 +12,8 @@ const home = process.argv[2] ?? path.join(os.tmpdir(), "atelier-teste");
 const env = {
   ...process.env,
   ATELIER_HOME: home,
+  // o cofre de segredos do teste guarda a chave num arquivo da pasta de teste, não no Credential Manager
+  ATELIER_COFRE_CHAVE: "arquivo",
   ATELIER_PORTA: String(API),
   ATELIER_ORIGEM: `http://localhost:${TELA}`,
   ATELIER_VITE_PORTA: String(TELA),

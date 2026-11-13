@@ -12,6 +12,7 @@ const FIXOS: [string, string][] = [
   ["#código", "No texto ou numa nota: cita outro documento (vira link e aparece em \"Mencionado em\")"],
   ["Enter / Shift Enter", "Na anotação: anota / quebra linha"],
   ["Esc", "Fecha menus e janelas"],
+  ["Ctrl K", "Atalho em dois tempos: aperte Ctrl+K, solte, e a segunda tecla (a lista aparece embaixo). Fora do terminal"],
 ];
 
 export function Atalhos({ aoFechar }: { aoFechar: () => void }) {
@@ -30,7 +31,10 @@ export function Atalhos({ aoFechar }: { aoFechar: () => void }) {
         <div className="atalhos-lista">
           {ATALHOS.map((a) => (
             <div key={a.id} className="atalho">
-              <span className="atalho-teclas">{partes(combinacao(a.id)).map((t, i) => <kbd key={i}>{t}</kbd>)}</span>
+              <span className="atalho-teclas">
+                {partes(combinacao(a.id)).map((t, i) => <kbd key={i}>{t}</kbd>)}
+                {a.dois && <span className="atalho-ou" title="Em dois tempos: Ctrl+K, solta, e a outra tecla"> ou <kbd>Ctrl K</kbd> <kbd>{a.dois}</kbd></span>}
+              </span>
               <span>{a.nome}</span>
             </div>
           ))}

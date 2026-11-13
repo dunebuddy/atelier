@@ -1,6 +1,8 @@
 import { Estrela } from "./Estrela";
+import { SegredosDoDocumento } from "./Cofre";
+import { copiarLink, linkDoc } from "../links";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { Bot, Check, ChevronDown, ChevronRight, Copy, FileDown, LayoutDashboard, PanelRight, FolderOpen, FolderPlus, History, Layers, Pencil, RotateCcw, Send, Trash2, X } from "lucide-react";
+import { Link2, Bot, Check, ChevronDown, ChevronRight, Copy, FileDown, LayoutDashboard, PanelRight, FolderOpen, FolderPlus, History, Layers, Pencil, RotateCcw, Send, Trash2, X } from "lucide-react";
 import { abrirWorkspace } from "./Workspaces";
 import { api, Esquema, Item, Nota, Propriedade, propsDoTipo, Valor } from "../api";
 import { avisar, falhou, guardar, ler, lerBase64, Rota } from "../ui";
@@ -351,6 +353,10 @@ export function PaginaItem({
             <button className="btn" onClick={duplicar} title="Cria uma cópia com o mesmo tipo, propriedades e texto">
               <Copy size={14} /> Duplicar
             </button>
+            <button className="btn" onClick={() => copiarLink(linkDoc(item.codigo))}
+              title={`Copia ${linkDoc(item.codigo)}: colado na busca (Ctrl+P), clicado no Teams ou numa nota, abre este documento (em qualquer bancada)`}>
+              <Link2 size={14} /> Copiar link
+            </button>
             <button
               className="btn"
               onClick={() => abrirWorkspace({ id: item.id, titulo: item.titulo, icone: esquema.tipos.find((t) => t.id === item.tipo_id)?.icone })}
@@ -471,6 +477,8 @@ export function PaginaItem({
           )}
 
           <Relacoes esquema={esquema} item={item} />
+
+          <SegredosDoDocumento codigo={item.codigo} />
 
           <Arquivos item={item} recarga={recargaArquivos} aoMudar={() => { carregar(); setRecargaArquivos((n) => n + 1); }} />
 

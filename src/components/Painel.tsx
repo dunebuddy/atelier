@@ -1,4 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ExternalLink } from "lucide-react";
+import { destacarEmJanela } from "./JanelaSolta";
+import { TelaCofre } from "./Cofre";
 import { createPortal } from "react-dom";
 import { combinacao, dispararAtalho } from "../atalhos";
 import { PaginaConsulta } from "./Consultas";
@@ -442,6 +445,12 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
                   {estado.expandida === menu.id ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                   <span style={{ flex: 1 }}>{estado.expandida === menu.id ? "Voltar ao tamanho de antes" : "Expandir"}</span> <kbd>{combinacao("maximizar")}</kbd>
                 </button>
+                {j && P.rotaDe(j).v !== "terminal" && (
+                  <button className="menu-item" onClick={() => { setMenu(null); destacarEmJanela(P.rotaDe(j), j.titulo ?? "atelier"); }}
+                    title="Abre esta aba numa janela pequena, para pôr do lado do que você está fazendo (com “sempre por cima”)">
+                    <ExternalLink size={14} /> Destacar numa janelinha
+                  </button>
+                )}
                 <button className="menu-item" onClick={doMenu(P.moverParaOutraMetade)}>
                   <Columns2 size={14} /> {estado.metades.length > 1 ? "Mover para a outra metade" : "Mover para a metade da direita"}
                 </button>
@@ -516,6 +525,7 @@ function Conteudo({ j, ctx, visivel, mudar }: { j: Janela; ctx: Contexto; visive
     else if (tipoDaLista) rotular({ titulo: tipoDaLista.nome, icone: tipoDaLista.icone, tipo_id: tipoDaLista.id });
     else if (r.v === "consulta") rotular({ titulo: r.titulo, icone: r.icone ?? "🔗", tipo_id: null });
     else if (r.v === "lixeira") rotular({ titulo: "Lixeira", icone: "🗑️", tipo_id: null });
+    else if (r.v === "cofre") rotular({ titulo: "Cofre", icone: "🔒", tipo_id: null });
     else if (r.v === "sql") rotular({ titulo: "Consulta", icone: "🔎", tipo_id: null });
     else if (tipoConfig) rotular({ titulo: `Tipo: ${tipoConfig.nome}`, icone: tipoConfig.icone, tipo_id: null });
     else if (r.v === "terminal") rotular({ titulo: r.titulo ?? "terminal", tipo_id: null });
@@ -581,6 +591,8 @@ function Conteudo({ j, ctx, visivel, mudar }: { j: Janela; ctx: Contexto; visive
       );
     case "lixeira":
       return <Lixeira esquema={esquema} ir={ir} />;
+    case "cofre":
+      return <TelaCofre />;
     case "sql":
       return (
         <PaginaConsulta

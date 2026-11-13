@@ -560,6 +560,33 @@ pub fn pastas_da_arvore(conn: &Connection, id: i64) -> Res<(Option<String>, Vec<
     Ok((pasta, pastas, vistos.len() - 1))
 }
 
+/// Os códigos dos descendentes (Pai → Filhos, a árvore inteira, pelas relações de um só valor): o "achar pela
+/// cadeia" do cofre (os segredos das tasks de um projeto).
+pub fn codigos_descendentes(conn: &Connection, id: i64) -> Res<Vec<String>> {
+    let pais: Vec<i64> = conn
+        .prepare("SELECT id FROM propriedades WHERE especie = 'relacao' AND json_extract(config, '$.um_so') = 1")?
+        .query_map([], |r| r.get(0))?
+        .collect::<Result<_, _>>()?;
+    let mut vistos = std::collections::HashSet::from([id]);
+    let mut fila = vec![resumo_item(conn, id)?.0];
+    let mut codigos = vec![];
+    while let Some(cod) = fila.pop() {
+        for p in &pais {
+            let mut st = conn.prepare(&format!(
+                "SELECT id, codigo FROM itens WHERE apagado_em IS NULL AND EXISTS                  (SELECT 1 FROM json_each(itens.props, '$.\"{p}\"') WHERE value = ?1)"
+            ))?;
+            let filhos = st.query_map([&cod], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?)))?.collect::<Result<Vec<_>, _>>()?;
+            for (fid, fcod) in filhos {
+                if vistos.insert(fid) {
+                    codigos.push(fcod.clone());
+                    fila.push(fcod);
+                }
+            }
+        }
+    }
+    Ok(codigos)
+}
+
 pub fn ramo(conn: &Connection, id: i64, prop: i64, sentido: &str) -> Res<Vec<Item>> {
     let (cod, _) = resumo_item(conn, id)?;
     let sql = if sentido == "apontado" {

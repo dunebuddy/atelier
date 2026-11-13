@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { linkDoc, RE_CODIGO_SOLTO, RE_LINK, seguirLink } from "../links";
 import { BotaoWorkspace } from "./BotaoWorkspace";
 import {
   ChevronLeft, ChevronRight, Copy, Keyboard, Minus, PanelLeft, Search, Settings, Sparkles, Square, Trash2, X,
@@ -188,9 +189,14 @@ function BuscaRapida({ esquema, ir, aoFechar, inicial = "" }: { esquema: Esquema
         item: r,
       }))
     : [];
-  const opcoes: { rotulo: string; icone: string; detalhe: string; rota?: Rota; acao?: string; item?: { id: number; titulo: string; tipo_id: number | null } }[] = emAcoes
+  // colou um link atelier:// ou um código que não está nesta bancada: abrir pelo link (acha a bancada certa)
+  const ehLink = RE_LINK.test(q.trim());
+  const codigoSolto = q.trim().match(RE_CODIGO_SOLTO)?.[1].toLowerCase();
+  const link = ehLink ? q.trim() : codigoSolto && !itens.some((i) => i.codigo === codigoSolto) ? linkDoc(codigoSolto) : null;
+  const opcoes: { rotulo: string; icone: string; detalhe: string; rota?: Rota; acao?: string; link?: string; item?: { id: number; titulo: string; tipo_id: number | null } }[] = emAcoes
     ? acharAtalhos(q.slice(1)).map((a) => ({ rotulo: a.nome, icone: "⌨", detalhe: combinacao(a.id), acao: a.id }))
     : [
+    ...(link ? [{ rotulo: ehLink ? "Abrir o link" : `Procurar #${codigoSolto} nas outras bancadas`, icone: "🔗", detalhe: link, link }] : []),
     ...recentes,
     ...tipos.map((t) => ({ rotulo: t.nome, icone: t.icone, detalhe: "tipo", rota: { v: "lista", tipo: t.id } as Rota })),
     ...itens.filter((it) => !recentes.some((r) => (r.rota as { id: number }).id === it.id)).map((it) => {
@@ -203,7 +209,8 @@ function BuscaRapida({ esquema, ir, aoFechar, inicial = "" }: { esquema: Esquema
     const o = opcoes[i];
     if (!o) return;
     aoFechar();
-    if (o.acao) { const id = o.acao; window.setTimeout(() => dispararAtalho(id), 30); }
+    if (o.link) seguirLink(o.link);
+    else if (o.acao) { const id = o.acao; window.setTimeout(() => dispararAtalho(id), 30); }
     else if (o.rota) ir(o.rota);
   };
 
@@ -218,7 +225,7 @@ function BuscaRapida({ esquema, ir, aoFechar, inicial = "" }: { esquema: Esquema
           <Search size={17} />
           <input
             autoFocus
-            placeholder={emAcoes ? "Ação… (apague o > para buscar documentos)" : "Buscar documentos ou tipos… (> para as ações)"}
+            placeholder={emAcoes ? "Ação… (apague o > para buscar documentos)" : "Buscar documentos, tipos, código ou link atelier://… (> para as ações)"}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {

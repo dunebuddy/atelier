@@ -65,6 +65,18 @@ pub struct Estado {
     tela: tokio::sync::broadcast::Sender<String>,
     /// o que cada janela está mostrando, em texto (ela manda a cada mudança), por bancada
     tela_estado: Mutex<std::collections::HashMap<String, String>>,
+    /// cofre: os pedidos de valor do agente esperando a resposta na tela, e as permissões por tempo
+    cofre: Cofre,
+}
+
+/// Pedidos do agente ao cofre: cada um espera a pessoa responder na tela ("Permitir por 5 min", "Só desta vez",
+/// "Negar"); a permissão por tempo vale para aquele segredo até vencer.
+#[derive(Default)]
+struct Cofre {
+    proximo: std::sync::atomic::AtomicU64,
+    esperando: Mutex<std::collections::HashMap<u64, tokio::sync::oneshot::Sender<(bool, u64)>>>,
+    /// (bancada, id do segredo) → até quando o agente pode ler sem perguntar
+    liberados: Mutex<std::collections::HashMap<(String, i64), std::time::Instant>>,
 }
 
 pub type Banco = Arc<Estado>;
@@ -82,6 +94,7 @@ impl Estado {
         Ok(Arc::new(Estado {
             conn: Mutex::new(conn), outras: Mutex::new(Default::default()), cfg: Mutex::new(cfg),
             tela: tokio::sync::broadcast::channel(64).0, tela_estado: Mutex::new(Default::default()),
+            cofre: Cofre::default(),
         }))
     }
 
@@ -221,6 +234,11 @@ pub fn rotas(banco: Banco) -> Router {
         .route("/api/integracoes", get(|| async { Json(crate::integracoes::listar()) }))
         .route("/api/agentes", get(agentes))
         .route("/api/tela", post(tela))
+        .route("/api/cofre", get(cofre_listar).post(cofre_criar))
+        .route("/api/cofre/pedir", post(cofre_pedir))
+        .route("/api/cofre/resposta", post(cofre_resposta))
+        .route("/api/cofre/{id}", get(cofre_ler).patch(cofre_mudar).delete(cofre_apagar))
+        .route("/api/cofre/{id}/valor", get(cofre_valor))
         .route("/api/log", post(gravar_log))
         .route("/api/sistema", get(|| async { Json(tokio::task::spawn_blocking(crate::sistema::medir).await.unwrap_or_default()) }))
         .route("/api/sistema/placas", get(|| async { Json(json!(tokio::task::spawn_blocking(crate::sistema::placas_de_video).await.unwrap_or_default())) }))
@@ -1159,6 +1177,182 @@ async fn falta(State(b): State<Banco>, Json(d): Json<Value>) -> R {
     let arquivo = bancada::anotar_pedido(&pedido, &motivo, &agente)?;
     let _ = b.tela.send(json!({ "acao": "falta", "texto": pedido, "motivo": motivo, "arquivo": arquivo, "agente": agente, "bancada": b.chave_da_tela() }).to_string());
     Ok(Json(json!({ "ok": true, "arquivo": arquivo })))
+}
+
+// ---------- cofre de segredos ----------
+//
+// A tela (Origin do app) lê, cria e mostra valores. O agente (MCP, sem Origin) lista e cria pelo núcleo, e o VALOR
+// só por `/api/cofre/pedir`, que pergunta na tela. É um corrimão, não uma muralha: um programa rodando com o seu
+// usuário pode, com esforço, ler o que você lê; o que se evita é o agente usar segredo sem você ver e permitir.
+
+fn so_da_tela(headers: &axum::http::HeaderMap) -> Result<(), Erro> {
+    let origem = headers.get("origin").and_then(|v| v.to_str().ok()).unwrap_or("");
+    if crate::terminal::origem_permitida(origem) {
+        Ok(())
+    } else {
+        Err(Erro::Invalido("o valor de um segredo só sai pela tela do atelier; o agente pede com a ferramenta `segredo` (o Paulo permite na tela)".into()))
+    }
+}
+
+fn pasta_da_bancada(b: &Banco) -> Result<String, Erro> {
+    b.bancada_ativa().map(|x| x.caminho).ok_or(Erro::Invalido("nenhuma bancada aberta".into()))
+}
+
+fn falhou_tarefa(e: tokio::task::JoinError) -> Erro {
+    Erro::Invalido(e.to_string())
+}
+
+/// Anota na linha do tempo do documento do segredo (sem o valor, nunca).
+fn anotar_no_documento(b: &Banco, documento: Option<&str>, texto: &str, autor: &str) {
+    if let Some(c) = documento {
+        let _ = com(b, |conn| db::anotar(conn, db::id_por_codigo(conn, c)?, texto, autor));
+    }
+}
+
+fn avisar_cofre(b: &Banco) {
+    let _ = b.tela.send(json!({ "acao": "cofre-mudou", "bancada": b.chave_da_tela() }).to_string());
+}
+
+async fn cofre_listar(State(b): State<Banco>, Query(q): Query<std::collections::HashMap<String, String>>) -> R {
+    let banc = pasta_da_bancada(&b)?;
+    let mut docs: Option<Vec<String>> = q.get("documentos").map(|d| d.split(',').map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect());
+    // `de=<código>`: os segredos do documento e dos descendentes dele (a cadeia toda)
+    if let Some(c) = q.get("de") {
+        let c = c.trim().trim_start_matches('#').to_lowercase();
+        let mut l = com(&b, |conn| db::codigos_descendentes(conn, db::id_por_codigo(conn, &c)?))?;
+        l.insert(0, c);
+        docs = Some(l);
+    }
+    let busca = q.get("q").cloned();
+    let l = tokio::task::spawn_blocking(move || crate::cofre::listar(&banc, docs.as_deref(), busca.as_deref())).await.map_err(falhou_tarefa)??;
+    Ok(Json(json!(l)))
+}
+
+async fn cofre_criar(State(b): State<Banco>, Json(d): Json<Value>) -> R {
+    let banc = pasta_da_bancada(&b)?;
+    let t = |k: &str| d.get(k).and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let (nome, descricao, chave, valor) = (t("nome"), t("descricao"), t("chave"), t("valor"));
+    let doc = Some(t("documento")).filter(|x| !x.trim().is_empty());
+    let autor = d.get("autor").and_then(|v| v.as_str()).unwrap_or("Paulo").to_string();
+    let (n2, doc2) = (nome.clone(), doc.clone());
+    let id = tokio::task::spawn_blocking(move || crate::cofre::criar(&banc, &n2, &descricao, &chave, &valor, doc2.as_deref())).await.map_err(falhou_tarefa)??;
+    anotar_no_documento(&b, doc.as_deref(), &format!("🔒 Segredo guardado no cofre: «{nome}»"), &autor);
+    avisar_cofre(&b);
+    Ok(Json(json!({ "ok": true, "id": id })))
+}
+
+async fn cofre_ler(State(b): State<Banco>, Path(id): Path<i64>) -> R {
+    let banc = pasta_da_bancada(&b)?;
+    let s = tokio::task::spawn_blocking(move || crate::cofre::ler(&banc, id)).await.map_err(falhou_tarefa)??;
+    Ok(Json(json!(s)))
+}
+
+async fn cofre_valor(State(b): State<Banco>, headers: axum::http::HeaderMap, Path(id): Path<i64>) -> R {
+    so_da_tela(&headers)?;
+    let banc = pasta_da_bancada(&b)?;
+    let v = tokio::task::spawn_blocking(move || crate::cofre::valor(&banc, id)).await.map_err(falhou_tarefa)??;
+    Ok(Json(json!({ "valor": v })))
+}
+
+async fn cofre_mudar(State(b): State<Banco>, headers: axum::http::HeaderMap, Path(id): Path<i64>, Json(d): Json<Value>) -> R {
+    // trocar o valor é só pela tela
+    let trocou_valor = d.get("valor").is_some();
+    if trocou_valor {
+        so_da_tela(&headers)?;
+    }
+    let banc = pasta_da_bancada(&b)?;
+    let (b2, d2) = (banc.clone(), d.clone());
+    tokio::task::spawn_blocking(move || crate::cofre::atualizar(&b2, id, &d2)).await.map_err(falhou_tarefa)??;
+    if trocou_valor {
+        let s = tokio::task::spawn_blocking(move || crate::cofre::ler(&banc, id)).await.map_err(falhou_tarefa)??;
+        anotar_no_documento(&b, s.documento.as_deref(), &format!("🔒 Valor do segredo «{}» trocado", s.nome), "Paulo");
+    }
+    avisar_cofre(&b);
+    Ok(Json(json!({ "ok": true })))
+}
+
+async fn cofre_apagar(State(b): State<Banco>, headers: axum::http::HeaderMap, Path(id): Path<i64>) -> R {
+    so_da_tela(&headers)?;
+    let banc = pasta_da_bancada(&b)?;
+    let b2 = banc.clone();
+    let s = tokio::task::spawn_blocking(move || crate::cofre::ler(&b2, id)).await.map_err(falhou_tarefa)??;
+    tokio::task::spawn_blocking(move || crate::cofre::apagar(&banc, id)).await.map_err(falhou_tarefa)??;
+    anotar_no_documento(&b, s.documento.as_deref(), &format!("🔒 Segredo «{}» apagado do cofre", s.nome), "Paulo");
+    avisar_cofre(&b);
+    Ok(Json(json!({ "ok": true })))
+}
+
+fn conta_bancada(c: &str) -> String {
+    c.trim().trim_end_matches(['\\', '/']).replace('/', "\\").to_lowercase()
+}
+
+/// O agente pede o valor: se ainda vale uma permissão por tempo para aquele segredo, sai na hora; senão a tela
+/// pergunta e este pedido espera a resposta (até 2 minutos). Toda leitura vai para a linha do tempo do documento.
+async fn cofre_pedir(State(b): State<Banco>, Json(d): Json<Value>) -> R {
+    let banc = pasta_da_bancada(&b)?;
+    let alvo = d.get("segredo").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let id_num = d.get("id").and_then(|v| v.as_i64());
+    let agente = d.get("agente").and_then(|v| v.as_str()).unwrap_or("Agente").to_string();
+    let motivo = d.get("motivo").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let b2 = banc.clone();
+    let s = tokio::task::spawn_blocking(move || match id_num {
+        Some(i) => crate::cofre::ler(&b2, i),
+        None => crate::cofre::achar(&b2, &alvo),
+    })
+    .await
+    .map_err(falhou_tarefa)??;
+    let chave = (conta_bancada(&banc), s.id);
+    let liberado = b.cofre.liberados.lock().unwrap_or_else(|e| e.into_inner()).get(&chave).is_some_and(|ate| *ate > std::time::Instant::now());
+    if !liberado {
+        let n = b.cofre.proximo.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        b.cofre.esperando.lock().unwrap_or_else(|e| e.into_inner()).insert(n, tx);
+        let ev = json!({
+            "acao": "cofre-pedido", "pedido": n, "agente": agente, "motivo": motivo, "bancada": b.chave_da_tela(),
+            "segredo": { "id": s.id, "nome": s.nome, "descricao": s.descricao, "chave": s.chave, "documento": s.documento },
+        });
+        if b.tela.send(ev.to_string()).unwrap_or(0) == 0 {
+            b.cofre.esperando.lock().unwrap_or_else(|e| e.into_inner()).remove(&n);
+            return Err(Erro::Invalido("a tela do atelier não está aberta para o Paulo permitir; peça a ele para abrir o app".into()));
+        }
+        let resposta = tokio::time::timeout(std::time::Duration::from_secs(120), rx).await;
+        b.cofre.esperando.lock().unwrap_or_else(|e| e.into_inner()).remove(&n);
+        let (permitiu, minutos) = match resposta {
+            Ok(Ok(r)) => r,
+            _ => {
+                let _ = b.tela.send(json!({ "acao": "cofre-pedido-fim", "pedido": n, "bancada": b.chave_da_tela() }).to_string());
+                return Err(Erro::Invalido("o Paulo não respondeu em 2 minutos; peça de novo quando ele estiver na tela".into()));
+            }
+        };
+        if !permitiu {
+            anotar_no_documento(&b, s.documento.as_deref(), &format!("🔒 {agente} pediu o segredo «{}»: negado", s.nome), "Paulo");
+            return Err(Erro::Invalido(format!("o Paulo negou o acesso ao segredo «{}»", s.nome)));
+        }
+        if minutos > 0 {
+            let ate = std::time::Instant::now() + std::time::Duration::from_secs(minutos * 60);
+            b.cofre.liberados.lock().unwrap_or_else(|e| e.into_inner()).insert(chave, ate);
+        }
+    }
+    let (b3, id) = (banc.clone(), s.id);
+    let valor = tokio::task::spawn_blocking(move || crate::cofre::valor(&b3, id)).await.map_err(falhou_tarefa)??;
+    anotar_no_documento(&b, s.documento.as_deref(), &format!("🔒 {agente} leu o segredo «{}»", s.nome), &agente);
+    Ok(Json(json!({ "id": s.id, "nome": s.nome, "chave": s.chave, "valor": valor })))
+}
+
+/// A tela responde a um pedido do agente: permitir (por `minutos`; 0 = só desta vez) ou negar.
+async fn cofre_resposta(State(b): State<Banco>, headers: axum::http::HeaderMap, Json(d): Json<Value>) -> R {
+    so_da_tela(&headers)?;
+    let n = d.get("pedido").and_then(|v| v.as_u64()).ok_or(Erro::Invalido("qual pedido?".into()))?;
+    let permitir = d.get("permitir").and_then(|v| v.as_bool()).unwrap_or(false);
+    let minutos = d.get("minutos").and_then(|v| v.as_u64()).unwrap_or(0).min(24 * 60);
+    let tx = b.cofre.esperando.lock().unwrap_or_else(|e| e.into_inner()).remove(&n);
+    match tx {
+        Some(tx) => {
+            let _ = tx.send((permitir, minutos));
+            Ok(Json(json!({ "ok": true })))
+        }
+        None => Err(Erro::Invalido("esse pedido já venceu".into())),
+    }
 }
 
 /// Websocket por onde a tela recebe os pedidos acima (só da janela do atelier).

@@ -151,7 +151,8 @@ fn abrir_janela_bancada(app: tauri::AppHandle, caminho: String, nome: String, ab
     }
     let mut url = format!("index.html?bancada={}", api::codificar_bancada(&caminho).replace('%', "%25").replace('&', "%26").replace('#', "%23"));
     if let Some(c) = abrir {
-        url.push_str(&format!("&abrir={c}"));
+        // o código e, se for link de arquivo, o caminho (com espaço, & ou # codificados)
+        url.push_str(&format!("&abrir={}", api::codificar_bancada(&c)));
     }
     let w = tauri::WebviewWindowBuilder::new(&app, &rotulo, tauri::WebviewUrl::App(url.into()))
         .title(format!("atelier · {nome}"))
@@ -166,15 +167,43 @@ fn abrir_janela_bancada(app: tauri::AppHandle, caminho: String, nome: String, ab
     Ok(())
 }
 
+/// A janelinha destacada: uma aba numa janela pequena (`?solta=<rota em JSON>`), com a bancada da janela que pediu.
+#[tauri::command]
+fn abrir_janela_solta(app: tauri::AppHandle, rota: String, titulo: String, bancada: Option<String>, largura: Option<f64>, altura: Option<f64>) -> Result<(), String> {
+    static N: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+    // a rota vem codificada pela tela (encodeURIComponent): vai como está
+    let mut url = format!("index.html?solta={rota}");
+    if let Some(b) = bancada.filter(|b| !b.is_empty()) {
+        // já vem codificada (como a API recebe); na URL, o % vira %25
+        url.push_str(&format!("&bancada={}", b.replace('%', "%25").replace('&', "%26").replace('#', "%23")));
+    }
+    let w = tauri::WebviewWindowBuilder::new(&app, format!("solta-{n}"), tauri::WebviewUrl::App(url.into()))
+        .title(format!("{titulo} · atelier"))
+        .inner_size(largura.unwrap_or(480.0).clamp(320.0, 2000.0), altura.unwrap_or(820.0).clamp(300.0, 2000.0))
+        .min_inner_size(320.0, 300.0)
+        .build()
+        .map_err(|e| e.to_string())?;
+    let _ = w.set_focus();
+    Ok(())
+}
+
 /// Um link `atelier://...`: `doc/<código>` abre o documento na janela da bancada dele (abrindo a janela se for de
 /// outra); `visao/<nome>` e o resto vão para a janela principal, que sabe abrir.
 fn tratar_link(app: &tauri::AppHandle, url: &str) {
     let resto = url.trim().trim_start_matches("atelier://").trim_end_matches('/');
-    if let Some(codigo) = resto.strip_prefix("doc/") {
-        let ativa = bancada::carregar().ativa().map(|b| b.caminho.clone()).unwrap_or_default();
-        match bancada::achar_codigo(codigo) {
+    // `doc/<código>` ou `doc/<código>/<caminho do arquivo>`, com `?bancada=<nome>` opcional (diz onde olhar primeiro);
+    // `item/` é o nome antigo de `doc/`
+    if let Some(parte) = resto.strip_prefix("doc/").or_else(|| resto.strip_prefix("item/")) {
+        let (alvo, query) = parte.split_once('?').unwrap_or((parte, ""));
+        let codigo = alvo.split('/').next().unwrap_or_default().trim_start_matches('#').to_lowercase();
+        let pedida = query.split('&').find_map(|p| p.strip_prefix("bancada=")).map(|n| n.replace("%20", " ").replace('+', " "));
+        let cfg = bancada::carregar();
+        let ativa = cfg.ativa().map(|b| b.caminho.clone()).unwrap_or_default();
+        let na_pedida = pedida.and_then(|n| cfg.bancadas.iter().find(|b| b.nome.eq_ignore_ascii_case(&n)).cloned());
+        match na_pedida.or_else(|| bancada::achar_codigo(&codigo)) {
             Some(b) if !bancada::mesmo_caminho(&b.caminho, &ativa) => {
-                let _ = abrir_janela_bancada(app.clone(), b.caminho, b.nome, Some(codigo.to_string()));
+                let _ = abrir_janela_bancada(app.clone(), b.caminho, b.nome, Some(alvo.to_string()));
                 return;
             }
             _ => {}
@@ -278,7 +307,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![abrir_janela_bancada, link_inicial, seguir_link])
+        .invoke_handler(tauri::generate_handler![abrir_janela_solta, abrir_janela_bancada, link_inicial, seguir_link])
         .on_window_event(|janela, ev| match ev {
             // "fechar vai para a bandeja" (Configurações → Geral): o × só esconde; sair é pelo menu da bandeja.
             // As janelas de outras bancadas fecham de verdade.

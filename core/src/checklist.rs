@@ -17,7 +17,7 @@ documento (tipo Passo/Task), não passo de checklist.
   "comentarios": [                                                      // blocos de markdown entre as seções
     { "id": "c1", "texto": "Para que serve, de onde veio…", "antes_de": "grupo-ad" }  // antes_de: id do passo seguinte (null = no fim)
   ],
-  "campos": { "tenant": "Tenant ID", "kv": "Nome do Key Vault" },      // valores a coletar durante a execução
+  "campos": { "tenant": "Tenant ID", "kv": "Nome do Key Vault" },      // os VALORES do checklist: chave → rótulo
   "passos": [
     {
       "id": "grupo-ad",                       // obrigatório, único e ESTÁVEL (estado e dependências apontam para ele)
@@ -33,14 +33,21 @@ documento (tipo Passo/Task), não passo de checklist.
   ],
   "estado": { "grupo-ad": { "feito": "2026-11-12T14:00:00-03:00", "por": "Paulo", "pulado": false, "obs": "…",
                             "documento": "a3f9c21" } },
-  "valores": { "tenant": "…" }
+  "valores": { "kv": "kv-rotina-comercial-dev" },   // planejados (você põe ao criar) ou coletados (o Paulo preenche)
+  "historico": [ { "quando": "…", "chave": "kv", "de": "kv-antigo", "para": "kv-rotina-comercial-dev", "por": "Paulo" } ]
 }
 
 Regras:
 - A ORDEM do array `passos` é a ordem de execução. Ponha cada passo depois do que ele precisa.
 - Links: "#código" abre o documento; http(s) abre o site; caminho relativo é relativo à pasta do checklist.
 - Qualquer passo pode ser pulado na tela ("não se aplica"); `opcional` só sinaliza.
-- `estado` e `valores` são do Paulo. Como ele também edita os passos, NUNCA reescreva o arquivo de memória: leia o
+- VALOR COMO REFERÊNCIA: todo nome ou valor que aparece em mais de um lugar (o nome do grupo, do app, do Key Vault,
+  do secret) vira um campo em `campos`, com o valor planejado em `valores`, e o texto usa `{{chave}}` em TODO lugar
+  onde ele aparece (inclusive dentro de `código` e de tabelas). Na tela, `{{chave}}` aparece como o valor, que copia
+  com um clique e se edita ali mesmo: mudou num lugar, muda em todos, e a troca fica no `historico`.
+- Para mudar um valor depois de criado, use `checklist` ação "valor" (arquivo, chave, valor): grava e registra no
+  `historico` (de → para). Não edite `valores` nem `historico` à mão.
+- `estado`, `valores` e `historico` são do Paulo. Como ele também edita os passos, NUNCA reescreva o arquivo de memória: leia o
   arquivo atual e mude só o que precisa, preservando `estado`, `valores` e os ids. Para marcar um passo, use
   `checklist` ação "marcar".
 - O texto do topo é um comentário com `antes_de` = id do primeiro passo (o campo antigo `descricao` vira isso sozinho).
@@ -116,6 +123,10 @@ pub fn resumo(p: &Path, base: Option<&Path>) -> Value {
     if !documentos.is_empty() {
         r["viraram_documento"] = json!(documentos);
     }
+    // os valores (planejados ou coletados); segredo aparece só como referência ao cofre, nunca o valor
+    if let Some(vs) = v["valores"].as_object().filter(|m| !m.is_empty()) {
+        r["valores"] = Value::Object(vs.clone());
+    }
     r
 }
 
@@ -163,6 +174,41 @@ pub fn marcar(p: &Path, id: &str, feito_: bool, pulado: bool, obs: Option<&str>,
     Ok(resumo(p, p.parent()))
 }
 
+/// Muda (ou põe) o valor de um campo e registra a troca no `historico` (de → para). Devolve o resumo.
+pub fn valor(p: &Path, chave: &str, novo: &str, por: &str) -> Result<Value, String> {
+    if !eh_checklist(p) {
+        return Err("o arquivo precisa terminar em .checklist.json".into());
+    }
+    let mut v = ler(p)?;
+    let raiz = v.as_object_mut().unwrap();
+    let campos = raiz.entry("campos").or_insert_with(|| json!({}));
+    if !campos.is_object() {
+        *campos = json!({});
+    }
+    // campo novo: o rótulo é a própria chave (a tela deixa renomear)
+    campos.as_object_mut().unwrap().entry(chave.to_string()).or_insert_with(|| json!(chave));
+    let valores = raiz.entry("valores").or_insert_with(|| json!({}));
+    if !valores.is_object() {
+        *valores = json!({});
+    }
+    let antes = valores[chave].as_str().unwrap_or("").to_string();
+    if antes == novo {
+        return Ok(resumo(p, p.parent()));
+    }
+    valores.as_object_mut().unwrap().insert(chave.to_string(), json!(novo));
+    let hist = raiz.entry("historico").or_insert_with(|| json!([]));
+    if !hist.is_array() {
+        *hist = json!([]);
+    }
+    hist.as_array_mut().unwrap().push(json!({
+        "quando": chrono::Local::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, false),
+        "chave": chave, "de": antes, "para": novo, "por": por,
+    }));
+    let texto = serde_json::to_string_pretty(&v).map_err(|e| e.to_string())? + "\n";
+    std::fs::write(p, texto).map_err(|e| format!("não gravei {}: {e}", p.display()))?;
+    Ok(resumo(p, p.parent()))
+}
+
 #[cfg(test)]
 mod testes {
     use super::*;
@@ -198,6 +244,17 @@ mod testes {
         marcar(&p, "a", false, false, None, "Agente").unwrap();
         assert!(!feito(&ler(&p).unwrap(), "a"));
         assert!(marcar(&p, "zz", true, false, None, "Agente").is_err());
+
+        // valor como referência: muda e registra de → para; o mesmo valor de novo não registra
+        valor(&p, "grupo", "G_ANTIGO", "Agente").unwrap();
+        let r = valor(&p, "grupo", "G_NOVO", "Paulo").unwrap();
+        assert_eq!(r["valores"]["grupo"], "G_NOVO");
+        valor(&p, "grupo", "G_NOVO", "Paulo").unwrap();
+        let v = ler(&p).unwrap();
+        let h = v["historico"].as_array().unwrap();
+        assert_eq!(h.len(), 2);
+        assert_eq!((h[1]["de"].as_str(), h[1]["para"].as_str(), h[1]["por"].as_str()), (Some("G_ANTIGO"), Some("G_NOVO"), Some("Paulo")));
+        assert_eq!(v["campos"]["grupo"], "grupo");
         std::fs::remove_dir_all(&dir).ok();
     }
 }

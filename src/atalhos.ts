@@ -11,11 +11,13 @@ export interface DefAtalho {
   extras?: string[];
   /** palavras escondidas para a busca achar sem saber o nome ("aumentar janela" acha "Maximizar a janela") */
   tags?: string;
+  /** a versão curta em dois tempos: Ctrl+K e depois esta tecla, sem Ctrl (como no VS Code e no tmux) */
+  dois?: string;
 }
 
 // os padrões seguem o VS Code no Windows (o Paulo usa os de fábrica, mais Ctrl+Shift+Alt+J para maximizar)
 export const ATALHOS: DefAtalho[] = [
-  { id: "busca", nome: "Buscar ou ir para um documento", grupo: "Geral", padrao: "Ctrl+P", extras: ["Ctrl+K"], tags: "procurar achar abrir documento item ir para quick open" },
+  { id: "busca", nome: "Buscar ou ir para um documento", grupo: "Geral", padrao: "Ctrl+P", tags: "procurar achar abrir documento item ir para quick open" },
   { id: "acoes", nome: "Todas as ações (com busca)", grupo: "Geral", padrao: "Ctrl+Shift+P", tags: "paleta comandos ações menu o que dá para fazer" },
   { id: "buscar-texto", nome: "Buscar no texto de todos os documentos", grupo: "Geral", padrao: "Ctrl+Shift+F", tags: "procurar palavra conteúdo corpo texto inteiro pesquisa" },
   { id: "novo", nome: "Novo documento", grupo: "Geral", padrao: "Ctrl+N", tags: "criar adicionar item tarefa nota" },
@@ -34,24 +36,24 @@ export const ATALHOS: DefAtalho[] = [
   { id: "fechar-janela", nome: "Fechar a janela com o foco", grupo: "Painel de trabalho", padrao: "Ctrl+W", tags: "fechar aba sair" },
   { id: "proxima-janela", nome: "Próxima janela da metade", grupo: "Painel de trabalho", padrao: "Ctrl+Tab", extras: ["Ctrl+PgDn"], tags: "próxima aba trocar janela seguinte" },
   { id: "janela-anterior", nome: "Janela anterior da metade", grupo: "Painel de trabalho", padrao: "Ctrl+Shift+Tab", extras: ["Ctrl+PgUp"], tags: "aba anterior trocar janela" },
-  { id: "foco-esquerda", nome: "Foco na janela da esquerda", grupo: "Painel de trabalho", padrao: "Ctrl+Alt+←", tags: "fita andar esquerda navegar niri" },
-  { id: "foco-direita", nome: "Foco na janela da direita", grupo: "Painel de trabalho", padrao: "Ctrl+Alt+→", tags: "fita andar direita navegar niri" },
-  { id: "mover-esquerda", nome: "Mover a janela para a esquerda", grupo: "Painel de trabalho", padrao: "Ctrl+Shift+PgUp", extras: ["Ctrl+Alt+Shift+←"], tags: "arrastar reordenar aba posição" },
-  { id: "mover-direita", nome: "Mover a janela para a direita", grupo: "Painel de trabalho", padrao: "Ctrl+Shift+PgDn", extras: ["Ctrl+Alt+Shift+→"], tags: "arrastar reordenar aba posição" },
-  { id: "maximizar", nome: "Maximizar a janela com foco (de novo: voltar)", grupo: "Painel de trabalho", padrao: "Ctrl+Alt+Shift+J", tags: "aumentar janela grande cheia ampliar esconder metade espaço zoom painel" },
-  { id: "zen", nome: "Modo Zen: a janela com foco na tela toda", grupo: "Painel de trabalho", padrao: "F11", tags: "tela cheia foco concentrar distração fullscreen esconder tudo" },
-  { id: "dividir", nome: "Dividir o painel em dois (de novo: juntar)", grupo: "Painel de trabalho", padrao: "Ctrl+\\", extras: ["Ctrl+Alt+\\"], tags: "split lado a lado duas metades" },
+  { id: "foco-esquerda", dois: "←", nome: "Foco na janela da esquerda", grupo: "Painel de trabalho", padrao: "Ctrl+Alt+←", tags: "fita andar esquerda navegar niri" },
+  { id: "foco-direita", dois: "→", nome: "Foco na janela da direita", grupo: "Painel de trabalho", padrao: "Ctrl+Alt+→", tags: "fita andar direita navegar niri" },
+  { id: "mover-esquerda", dois: "Shift+←", nome: "Mover a janela para a esquerda", grupo: "Painel de trabalho", padrao: "Ctrl+Shift+PgUp", extras: ["Ctrl+Alt+Shift+←"], tags: "arrastar reordenar aba posição" },
+  { id: "mover-direita", dois: "Shift+→", nome: "Mover a janela para a direita", grupo: "Painel de trabalho", padrao: "Ctrl+Shift+PgDn", extras: ["Ctrl+Alt+Shift+→"], tags: "arrastar reordenar aba posição" },
+  { id: "maximizar", dois: "J", nome: "Maximizar a janela com foco (de novo: voltar)", grupo: "Painel de trabalho", padrao: "Ctrl+Alt+Shift+J", tags: "aumentar janela grande cheia ampliar esconder metade espaço zoom painel" },
+  { id: "zen", dois: "Z", nome: "Modo Zen: a janela com foco na tela toda", grupo: "Painel de trabalho", padrao: "F11", tags: "tela cheia foco concentrar distração fullscreen esconder tudo" },
+  { id: "dividir", dois: "\\", nome: "Dividir o painel em dois (de novo: juntar)", grupo: "Painel de trabalho", padrao: "Ctrl+\\", extras: ["Ctrl+Alt+\\"], tags: "split lado a lado duas metades" },
   { id: "painel-0", nome: "Foco no painel 0 (esquerda)", grupo: "Painel de trabalho", padrao: "Ctrl+1", tags: "metade esquerda primeiro grupo" },
   { id: "painel-1", nome: "Foco no painel 1 (direita)", grupo: "Painel de trabalho", padrao: "Ctrl+2", tags: "metade direita segundo grupo" },
-  { id: "trocar-metade", nome: "Trocar o foco de painel", grupo: "Painel de trabalho", padrao: "Ctrl+Alt+O", tags: "metade outro lado alternar" },
-  { id: "modo-abas", nome: "Modo abas", grupo: "Painel de trabalho", padrao: "Ctrl+Alt+1", tags: "layout tabs" },
-  { id: "modo-tile", nome: "Modo tile", grupo: "Painel de trabalho", padrao: "Ctrl+Alt+2", tags: "layout grade mosaico" },
-  { id: "modo-fita", nome: "Modo fita", grupo: "Painel de trabalho", padrao: "Ctrl+Alt+3", tags: "layout colunas rolagem niri" },
-  { id: "largura", nome: "Fita: próxima largura da coluna", grupo: "Painel de trabalho", padrao: "Ctrl+Alt+R", tags: "tamanho coluna largura redimensionar" },
-  { id: "empilhar", nome: "Fita: empilhar embaixo da anterior", grupo: "Painel de trabalho", padrao: "Ctrl+Alt+↓", tags: "coluna juntar embaixo" },
-  { id: "desempilhar", nome: "Fita: tirar da coluna", grupo: "Painel de trabalho", padrao: "Ctrl+Alt+↑", tags: "coluna separar" },
-  { id: "promover", nome: "Tile: virar a janela principal", grupo: "Painel de trabalho", padrao: "Ctrl+Alt+Enter", tags: "principal grande destaque" },
-  { id: "visao-geral", nome: "Visão geral dos workspaces", grupo: "Workspaces", padrao: "Ctrl+R", extras: ["Ctrl+Shift+O"], tags: "workspaces recentes todos abertos overview trocar" },
+  { id: "trocar-metade", dois: "O", nome: "Trocar o foco de painel", grupo: "Painel de trabalho", padrao: "Ctrl+Alt+O", tags: "metade outro lado alternar" },
+  { id: "modo-abas", dois: "1", nome: "Modo abas", grupo: "Painel de trabalho", padrao: "Ctrl+Alt+1", tags: "layout tabs" },
+  { id: "modo-tile", dois: "2", nome: "Modo tile", grupo: "Painel de trabalho", padrao: "Ctrl+Alt+2", tags: "layout grade mosaico" },
+  { id: "modo-fita", dois: "3", nome: "Modo fita", grupo: "Painel de trabalho", padrao: "Ctrl+Alt+3", tags: "layout colunas rolagem niri" },
+  { id: "largura", dois: "R", nome: "Fita: próxima largura da coluna", grupo: "Painel de trabalho", padrao: "Ctrl+Alt+R", tags: "tamanho coluna largura redimensionar" },
+  { id: "empilhar", dois: "↓", nome: "Fita: empilhar embaixo da anterior", grupo: "Painel de trabalho", padrao: "Ctrl+Alt+↓", tags: "coluna juntar embaixo" },
+  { id: "desempilhar", dois: "↑", nome: "Fita: tirar da coluna", grupo: "Painel de trabalho", padrao: "Ctrl+Alt+↑", tags: "coluna separar" },
+  { id: "promover", dois: "Enter", nome: "Tile: virar a janela principal", grupo: "Painel de trabalho", padrao: "Ctrl+Alt+Enter", tags: "principal grande destaque" },
+  { id: "visao-geral", dois: "W", nome: "Visão geral dos workspaces", grupo: "Workspaces", padrao: "Ctrl+R", extras: ["Ctrl+Shift+O"], tags: "workspaces recentes todos abertos overview trocar" },
   { id: "workspace-proximo", nome: "Próximo workspace aberto", grupo: "Workspaces", padrao: "Ctrl+Alt+PgDn", tags: "trocar workspace seguinte" },
   { id: "workspace-anterior", nome: "Workspace anterior", grupo: "Workspaces", padrao: "Ctrl+Alt+PgUp", tags: "trocar workspace anterior" },
 ];
@@ -132,7 +134,7 @@ export function acharAtalhos(texto: string): DefAtalho[] {
   if (!t) return ATALHOS;
   const palavras = t.split(/\s+/);
   return ATALHOS.filter((a) => {
-    const onde = semAcento(`${a.nome} ${a.tags ?? ""} ${a.grupo} ${combinacoes(a.id).join(" ")}`);
+    const onde = semAcento(`${a.nome} ${a.tags ?? ""} ${a.grupo} ${combinacoes(a.id).join(" ")} ${doisTempos(a.id)}`);
     return palavras.every((p) => onde.includes(p));
   });
 }
@@ -159,3 +161,52 @@ export function dispararAtalho(id: string) {
 export function partes(combo: string): string[] {
   return combo.split("+").filter((x, i, l) => x !== "" || (i === l.length - 1 && combo.endsWith("+"))).map((x) => x || "+");
 }
+
+// ---------- dois tempos: Ctrl+K e depois uma tecla ----------
+
+/** O prefixo dos atalhos em dois tempos. No terminal ele fica com o shell (lá Ctrl+K apaga até o fim da linha). */
+export const PREFIXO = "Ctrl+K";
+const ESPERA = 2000;
+
+/** "Ctrl+K J" para mostrar. */
+export const doisTempos = (id: string) => {
+  const d = ATALHOS.find((a) => a.id === id)?.dois;
+  return d ? `${PREFIXO} ${d}` : "";
+};
+
+/** A segunda tecla como no `dois` ("J", "Shift+←", "\\", "Enter"). */
+function segundaDe(e: KeyboardEvent): string | null {
+  const t = teclaDe(e);
+  if (!t) return null;
+  return e.shiftKey && !/^[A-Z]$/.test(t) ? `Shift+${t}` : t;
+}
+
+let esperando = 0;
+const avisarModo = (ativo: boolean) => window.dispatchEvent(new CustomEvent("atelier:dois-tempos", { detail: ativo }));
+
+/** Liga os atalhos em dois tempos (uma vez, no App). Ctrl+K arma; a tecla seguinte, sem Ctrl, dispara o atalho. */
+export function instalarDoisTempos() {
+  const sair = () => { window.clearTimeout(esperando); esperando = 0; avisarModo(false); };
+  window.addEventListener("keydown", (e) => {
+    if (!e.isTrusted) return; // o dispararAtalho manda teclas de mentira: não são para cá
+    if (esperando) {
+      if (["Control", "Shift", "Alt", "Meta"].includes(e.key)) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      const seg = segundaDe(e);
+      const a = !e.ctrlKey && !e.altKey && seg ? ATALHOS.find((x) => x.dois === seg) : undefined;
+      sair();
+      if (a) window.setTimeout(() => dispararAtalho(a.id), 0);
+      return;
+    }
+    if (comboDe(e) !== PREFIXO) return;
+    if ((document.activeElement as HTMLElement | null)?.closest(".pt-term")) return; // no terminal, é do shell
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    avisarModo(true);
+    esperando = window.setTimeout(sair, ESPERA);
+  }, true);
+}
+
+/** Os atalhos que têm a versão em dois tempos (para o selo mostrar o que dá para apertar). */
+export const comDoisTempos = () => ATALHOS.filter((a) => a.dois);

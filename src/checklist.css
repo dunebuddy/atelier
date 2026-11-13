@@ -134,7 +134,7 @@ button.ck-grupo-nome:hover { background: var(--hover); color: var(--texto-2); }
 .ck-md .ck-tabela .ck-copiar { top: 0; right: 0; opacity: 0; }
 .ck-md .ck-tabela:hover .ck-copiar { opacity: 1; }
 .ck-md-caixa { position: relative; }
-.ck-md-caixa > .ck-copiar-tudo { position: absolute; top: -4px; right: 0; z-index: 1; opacity: 0; font-size: 11px; border: 1px solid var(--borda-forte); background: var(--bg-elev); color: var(--texto-2); border-radius: 6px; padding: 1px 7px; cursor: pointer; }
+.ck-md-caixa > .ck-copiar-tudo { position: absolute; bottom: -10px; right: 0; z-index: 1; opacity: 0; font-size: 11px; border: 1px solid var(--borda-forte); background: var(--bg-elev); color: var(--texto-2); border-radius: 6px; padding: 1px 7px; cursor: pointer; }
 .ck-md-caixa:hover > .ck-copiar-tudo { opacity: 1; }
 .ck-md { user-select: text; }
 .ck-md td, .ck-md th { border: 1px solid var(--borda-forte); padding: 4px 8px; text-align: left; }
@@ -223,3 +223,30 @@ button.ck-grupo-nome:hover { background: var(--hover); color: var(--texto-2); }
 .ck-editor .editor { min-height: 140px; border: 1px solid var(--borda); border-radius: 0 0 8px 8px; padding: 8px 12px; background: var(--bg-elev); }
 .ck-editor .editor .ProseMirror { font-size: 14px; line-height: 1.6; min-height: 120px; }
 
+
+/* {{chave}} no texto: a etiqueta do valor (clique copia; o lápis muda o valor em todo o checklist) */
+.ck-md .ck-ref {
+  display: inline-flex; align-items: center; gap: 3px; padding: 0 3px 0 6px; border-radius: 5px; cursor: copy;
+  background: color-mix(in srgb, var(--acento) 14%, transparent); border: 1px solid color-mix(in srgb, var(--acento) 40%, transparent);
+  font: 12.5px "Cascadia Code", Consolas, monospace; white-space: nowrap;
+}
+.ck-md .ck-ref.vazio { color: var(--texto-3); border-style: dashed; cursor: default; }
+.ck-md .ck-ref-lapis { cursor: pointer; opacity: .45; font-family: inherit; padding: 0 2px; border-radius: 3px; }
+.ck-md .ck-ref:hover .ck-ref-lapis { opacity: 1; }
+.ck-md .ck-ref-lapis:hover { background: var(--hover); }
+.ck-ref-editar { display: flex; gap: 6px; padding: 4px 8px 6px; }
+.ck-ref-editar .campo { flex: 1; font-family: "Cascadia Code", Consolas, monospace; font-size: 12.5px; }
+.ck-historico { margin-top: 10px; font-size: 12.5px; color: var(--texto-2); }
+.ck-historico summary { cursor: pointer; color: var(--texto-3); }
+.ck-historico ul { margin: 6px 0 0; padding-left: 18px; }
+.ck-historico li { margin: 2px 0; }
+.ck-historico code { font-size: 12px; }
+.ck-hist-quando { color: var(--texto-3); font-variant-numeric: tabular-nums; }
+.ck-valor-linha { display: flex; align-items: center; gap: 2px; flex: 1; min-width: 0; }
+.ck-valor-linha .campo { flex: 1; min-width: 0; }
+.ck-valor-linha .ck-cadeado { opacity: .35; }
+.ck-valor-linha:hover .ck-cadeado, .ck-valor-linha:focus-within .ck-cadeado { opacity: .9; }
+.ck-valor-cofre { display: flex; align-items: center; gap: 2px; flex: 1; min-width: 0; }
+.ck-valor-cofre .campo { flex: 1; min-width: 0; }
+.ck-valor-cofre-txt { flex: 1; display: inline-flex; align-items: center; gap: 4px; color: var(--texto-2); font-size: 12.5px; padding: 0 8px; }
+.ck-md .ck-ref.segredo { cursor: copy; background: color-mix(in srgb, var(--t-red) 10%, transparent); border-color: color-mix(in srgb, var(--t-red) 35%, transparent); padding-right: 6px; }

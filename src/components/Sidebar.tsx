@@ -1,4 +1,5 @@
 import type { SecaoConfig } from "./Configuracoes";
+import { Lock } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, ChevronRight, ChevronsUpDown, ExternalLink, ListTree, Plus, Settings2, Trash2 } from "lucide-react";
 import { abrirJanelaDaBancada } from "../janela";
@@ -235,6 +236,11 @@ export function Sidebar({
           })}
         </div>
         <div className="sb-secao">
+          <button className={`sb-item${rota.v === "cofre" ? " ativo" : ""}`} onClick={() => ir({ v: "cofre" })} style={{ color: "var(--texto-3)" }}
+            title="Cofre de segredos da bancada (criptografado)">
+            <span className="tipo-chip vazio" style={{ borderStyle: "solid" }}><Lock size={14} /></span>
+            <span className="rotulo">Cofre</span>
+          </button>
           <button className={`sb-item${rota.v === "lixeira" ? " ativo" : ""}`} onClick={() => ir({ v: "lixeira" })} style={{ color: "var(--texto-3)" }}>
             <span className="tipo-chip vazio" style={{ borderStyle: "solid" }}><Trash2 size={14} /></span>
             <span className="rotulo">Lixeira</span>

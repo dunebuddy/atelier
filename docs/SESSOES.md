@@ -581,3 +581,22 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   `draggable` com a alça pressionada (`pega`). Anotados para depois: cofre de segredos (decidido: arquivo separado e
   todo criptografado, permissão ao agente por 5 min, valor de checklist como segredo), valor como referência com
   histórico, janelinha destacada e links `atelier://`.
+
+## 2026-11-13 — 0.2.22 ("uma versão com 100% de tudo")
+- O Paulo pediu a caixa de entrada inteira numa versão. Os antigos já estavam feitos (0.2.4 a 0.2.8); sobrou o
+  Ctrl+K. Feito: cofre, referência com histórico, janelinha, links, Ctrl+K, workspace da bancada.
+- **Cofre:** `core/src/cofre.rs` (SQLite3 Multiple Ciphers por `vendor/libsqlite3-sys`, copiado do torii; chave por
+  bancada no `keyring`, conta = caminho normalizado; `ATELIER_COFRE_CHAVE=arquivo` no `bun run teste`; nos testes
+  uma chave fixa). API `/api/cofre*`: o valor só sai com Origin da tela (`so_da_tela`); `/api/cofre/pedir` segura o
+  pedido do MCP num `oneshot` e manda `cofre-pedido` à tela (`PedidoDoAgente`), que responde em `/api/cofre/resposta`;
+  permissões por tempo em memória (`liberados`). `db::codigos_descendentes` dá a cadeia. É corrimão, não muralha:
+  um programa com o mesmo usuário consegue, com esforço, o que o usuário consegue.
+- **Checklist:** `{{chave}}` vira marca U+E000/U+E001 antes do markdown e etiqueta depois (`limpar`); dentro de
+  código, o valor puro. `trocarValor`/`valorParaOCofre`/`idNoCofre` em `checklist.ts`; `EntradaValor` registra no
+  `historico` ao sair do campo. No Rust, `checklist::valor` (MCP ação "valor").
+- **Janelinha:** `?solta=<rota>` → `JanelaSolta` (main.tsx), comando `abrir_janela_solta` (rótulo `solta-<n>`,
+  capability `solta-*` + `allow-set-always-on-top`).
+- **Links:** `src/links.ts` (`seguirLink` vai pelo núcleo; no teste, `atelier:link-local`); `tratar_link` aceita
+  caminho, `item/` e `?bancada=`. **Ctrl+K:** `instalarDoisTempos` (captura, só tecla de verdade), `dois` em cada
+  atalho, `SeloDoisTempos`.
+- A conferir no app de verdade: Credential Manager, MCP real pedindo segredo, sempre por cima, Ctrl+K no WebView2.

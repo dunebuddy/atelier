@@ -8,3 +8,7 @@ lto = true
 opt-level = 3
 panic = "abort"
 strip = true
+
+# o cofre de segredos é um SQLite criptografado (SQLite3 Multiple Ciphers); veja vendor/README.md
+[patch.crates-io]
+libsqlite3-sys = { path = "vendor/libsqlite3-sys" }

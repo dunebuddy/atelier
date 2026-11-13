@@ -93,7 +93,7 @@ const FORMATOS: { id: Formato; nome: string; dica: string }[] = [
 /** Nota que o atelier escreveu sozinho (mudança de propriedade, criado, texto editado...). */
 const AUTOMATICA = /^(Criado\.|Texto editado\.|Pasta desligada\.|Movido para a lixeira\.|Restaurado da lixeira\.|Texto restaurado|Ligado: |Desligado: |Arquivos em |Pasta: |Texto escrito por \/prompt)|^[^\n]{1,60}: .* → /;
 
-const linkAtelier = (codigo: string) => `atelier://item/${codigo}`;
+const linkAtelier = (codigo: string) => `atelier://doc/${codigo}`;
 const dataHoraBR = (iso: string) => `${dataBR(iso)} ${iso.slice(11, 16)}`;
 
 function esc(s: string) {

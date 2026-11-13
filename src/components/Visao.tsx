@@ -1,4 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Link2 } from "lucide-react";
+import { copiarLink, linkVisao } from "../links";
 import {
   Activity, ArrowUpDown, FileDown, ChevronDown, ChevronLeft, ChevronRight, Columns3, Eye, EyeOff, Filter, Layers, List, MoreHorizontal, Search,
   SlidersHorizontal, Table2, Trash2,
@@ -385,6 +387,9 @@ export function VisaoTela({
             onBlur={(e) => { if ((e.target.value.trim() || null) !== (v.grupo ?? null)) mudar({ grupo: e.target.value.trim() || "" }); }}
           />
           <div className="menu-sep" />
+          <button className="menu-item" onClick={() => { pMenu.fechar(); copiarLink(linkVisao(v.nome)); }} title={linkVisao(v.nome)}>
+            <Link2 size={14} /> Copiar link da visão
+          </button>
           <button className="menu-item" style={{ color: "var(--t-red)" }} onClick={() => { pMenu.fechar(); aoApagar(); }}>
             <Trash2 size={14} /> Apagar esta visão
           </button>

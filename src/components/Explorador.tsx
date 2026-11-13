@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link2 } from "lucide-react";
+import { copiarLink, linkDoArquivo } from "../links";
 import {
   ArrowLeft, ArrowUp, ChevronDown, ChevronRight, Code2, Eye, File, FileSpreadsheet, FileText, Film, Folder, FolderOpen, Image, Music, Pencil,
   ListChecks, RefreshCw, Save, Table,
@@ -329,6 +331,10 @@ function Previa({ caminho, aoVoltar, aoVerChecklist }: { caminho: string; aoVolt
         </button>
         <span className="ex-meta">{tamanho(info.tamanho)}{info.modificado ? ` · modificado ${dataHora(info.modificado)}` : ""}</span>
         <span style={{ flex: 1 }} />
+        {linkDoArquivo(caminho) && (
+          <button className="btn-icone" title={`Copiar o link deste arquivo (${linkDoArquivo(caminho)}): abre aqui de qualquer lugar`}
+            onClick={() => copiarLink(linkDoArquivo(caminho)!)}><Link2 size={14} /></button>
+        )}
         {aoVerChecklist && <button className="btn" onClick={aoVerChecklist}><ListChecks size={14} /> Ver como checklist</button>}
         {ehTexto && info.especie !== "texto" && (
           <button className="btn" onClick={() => setEditando((v) => !v)}>{editando ? <><Eye size={14} /> Ver</> : <><Pencil size={14} /> Editar</>}</button>

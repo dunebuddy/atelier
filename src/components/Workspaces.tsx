@@ -136,11 +136,13 @@ export function SeletorWorkspace({ ws, trocar, fechar, esquecer, renomear, arqui
   // no botão: o mais importante entre todos os workspaces abertos
   const todos = ws.abertos.flatMap((k) => (ws.estados[k] ? sessoesDe(ws.estados[k]) : []));
   const geral = { estado: estadoDe(todos.map((s) => s.sessao)), temAgente: todos.some((s) => !!s.programa) };
-  // os ativos (abertos) primeiro, o da bancada na frente; depois os fechados; os arquivados à parte, no fim
-  const porNome = (a: string, b: string) => (a === GERAL ? -1 : b === GERAL ? 1 : (ws.info[a]?.titulo ?? "").localeCompare(ws.info[b]?.titulo ?? ""));
-  const todas = Object.keys(ws.estados);
+  // o da bancada sempre em primeiro (ligado ou não; ele nunca é apagado nem arquivado); depois os ativos (abertos),
+  // os fechados e, à parte, no fim, os arquivados
+  const porNome = (a: string, b: string) => (ws.info[a]?.titulo ?? "").localeCompare(ws.info[b]?.titulo ?? "");
+  const todas = Object.keys(ws.estados).filter((k) => k !== GERAL);
   const arquivados = todas.filter((k) => ws.info[k]?.arquivado).sort(porNome);
   const chaves = [
+    ...(ws.estados[GERAL] ? [GERAL] : []),
     ...todas.filter((k) => ws.abertos.includes(k) && !ws.info[k]?.arquivado).sort(porNome),
     ...todas.filter((k) => !ws.abertos.includes(k) && !ws.info[k]?.arquivado).sort(porNome),
   ];
@@ -409,11 +411,11 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
   const [editando, setEditando] = useState<string | null>(null);
   const [m, setM] = useState<Medida | null>(null);
   const [busca, setBusca] = useState("");
-  // os abertos primeiro (o atual na frente), depois os guardados
-  // os arquivados não entram
+  // o da bancada sempre em primeiro (ligado ou não), depois os abertos, depois os guardados; os arquivados não entram
   const ordem = [
-    ...ws.abertos,
-    ...Object.keys(ws.estados).filter((k) => !ws.abertos.includes(k)).sort((a, b) => (ws.info[a]?.titulo ?? "").localeCompare(ws.info[b]?.titulo ?? "")),
+    GERAL,
+    ...ws.abertos.filter((k) => k !== GERAL),
+    ...Object.keys(ws.estados).filter((k) => k !== GERAL && !ws.abertos.includes(k)).sort((a, b) => (ws.info[a]?.titulo ?? "").localeCompare(ws.info[b]?.titulo ?? "")),
   ].filter((k) => ws.estados[k] && !ws.info[k]?.arquivado && (ws.info[k]?.titulo ?? k).toLowerCase().includes(busca.trim().toLowerCase()));
   // os arquivados, à parte: só com "Mostrar arquivados", embaixo, depois de um traço
   const [verArquivados, setVerArquivados] = useState(() => ler("workspaces.geral.arquivados", false));

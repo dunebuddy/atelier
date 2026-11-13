@@ -53,7 +53,36 @@ export interface Checklist {
   passos: Passo[];
   estado?: Record<string, EstadoPasso>;
   valores?: Record<string, string>;
+  /** as trocas de valor (de → para): o "log" de quando um nome mudou no meio da sessão */
+  historico?: TrocaDeValor[];
 }
+
+export interface TrocaDeValor { quando: string; chave: string; de: string; para: string; por: string }
+
+/** Muda o valor de um campo e registra a troca no histórico (vazio apaga o valor; o mesmo valor não registra). */
+/** O valor virou segredo: no histórico, os valores antigos dessa chave viram •••• (o texto do segredo sai do
+ *  arquivo inteiro), e a troca registra só "→ cofre". */
+export function valorParaOCofre(d: Checklist, chave: string, id: number, por = "Paulo") {
+  for (const h of d.historico ?? []) {
+    if (h.chave !== chave) continue;
+    if (h.de && idNoCofre(h.de) == null) h.de = "••••";
+    if (h.para && idNoCofre(h.para) == null) h.para = "••••";
+  }
+  (d.valores ??= {})[chave] = `cofre:${id}`;
+  (d.historico ??= []).push({ quando: new Date().toISOString(), chave, de: "••••", para: `cofre:${id}`, por });
+}
+
+export function trocarValor(d: Checklist, chave: string, para: string, por = "Paulo") {
+  const de = d.valores?.[chave] ?? "";
+  if (de === para) return;
+  if (para.trim()) (d.valores ??= {})[chave] = para; else delete d.valores?.[chave];
+  (d.historico ??= []).push({ quando: new Date().toISOString(), chave, de, para, por });
+}
+
+/** Marca de referência no texto antes do markdown (vira etiqueta depois): caracteres de uso privado, que o markdown
+ *  deixa passar como texto (U+E000 e U+E001, gravados direto entre as aspas). */
+export const REF_INI = "", REF_FIM = "";
+export const marcarRefs = (texto: string) => texto.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (_, k: string) => `${REF_INI}${k}${REF_FIM}`);
 
 export const ehChecklist = (caminho: string) => /\.checklist\.json$/i.test(caminho);
 
@@ -265,8 +294,15 @@ export function dependeDe(doc: Checklist, para: string, de: string): boolean {
 }
 
 /** Troca {{chave}} pelo valor coletado; sem valor, fica ‹chave› (à vista, e sem virar tag no markdown). */
+/** Valor que mora no cofre de segredos: no arquivo fica só `cofre:<id>` (a referência), nunca o valor. */
+export const idNoCofre = (v: string | undefined): number | null => {
+  const m = v?.match(/^cofre:(\d+)$/);
+  return m ? Number(m[1]) : null;
+};
+
+/** Troca {{chave}} pelo valor (segredo do cofre aparece como ••••••, nunca o valor). */
 export const preencher = (texto: string, valores: Record<string, string>) =>
-  texto.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (_, k: string) => (valores[k] ? valores[k] : `‹${k}›`));
+  texto.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (_, k: string) => (idNoCofre(valores[k]) != null ? "••••••" : valores[k] ? valores[k] : `‹${k}›`));
 
 /** Chave de campo a partir do rótulo ("Nome do Key Vault" → "nome_do_key_vault"), sem repetir as que existem. */
 export function chaveDeCampo(doc: Checklist, rotulo: string): string {

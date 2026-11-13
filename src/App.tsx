@@ -1,4 +1,7 @@
 import { abrirCodigo } from "./components/Mencoes";
+import { PedidoDoAgente } from "./components/Cofre";
+import { SeloDoisTempos } from "./components/DoisTempos";
+import { partesDoLink } from "./links";
 import { abrirJanelaDaBancada, ABRIR_AO_CARREGAR, BANCADA_DA_JANELA, bancadaNaQuery, codificarBancada, decodificarBancada, mesmaBancada } from "./janela";
 import { desfazerAgora, notificarFalta, PilhaDeAvisos } from "./components/Avisos";
 import { notificar } from "./notificacoes";
@@ -395,6 +398,10 @@ export default function App() {
       case "filtrar": window.dispatchEvent(new CustomEvent("atelier:filtrar", { detail: { texto: d.texto ?? "" } })); return;
       case "destacar": if (d.codigo) destacar(d.codigo); return;
       case "falta": notificarFalta(d.texto ?? "", d.agente ?? undefined); return;
+      // cofre: o agente pediu um valor (a caixa de permitir), um pedido venceu, ou o cofre mudou
+      case "cofre-pedido": case "cofre-pedido-fim": case "cofre-mudou":
+        window.dispatchEvent(new CustomEvent("atelier:cofre", { detail: d }));
+        return;
       // o hook de um agente avisou: acende o workspace e, se terminou ou espera você, avisa
       case "agente": {
         if (d.sessao == null || !d.estado) return;
@@ -471,10 +478,18 @@ export default function App() {
   useEffect(() => {
     let solta: (() => void) | undefined;
     const seguir = (url: string) => {
-      const resto = url.replace(/^atelier:\/\//, "").replace(/\/+$/, "");
-      const [tipo, ...nome] = resto.split("/");
-      const valor = decodeURIComponent(nome.join("/"));
-      if (tipo === "doc") abrirCodigo(valor, (r) => abrirAoLado(r));
+      const { tipo, valor, codigo, caminho } = partesDoLink(url);
+      if (tipo === "doc" && codigo) {
+        // atelier://doc/<código>/<caminho>: o arquivo, dentro da pasta do documento
+        if (!caminho) abrirCodigo(codigo, (r) => abrirAoLado(r));
+        else api.itens({ q: codigo }).then((l) => {
+          const it = l.find((i) => i.codigo === codigo);
+          if (!it) return avisar(`Não achei o documento #${codigo}.`);
+          if (!it.pasta) return avisar(`O documento #${codigo} ainda não tem pasta.`);
+          const sep = it.pasta.includes("\\") ? "\\" : "/";
+          abrirAoLado({ v: "arquivos", raiz: it.pasta, arquivo: `${it.pasta}${sep}${caminho.split("/").join(sep)}` });
+        }).catch(falhou);
+      }
       else if (tipo === "visao") {
         api.visoes().then((vs) => {
           const v = vs.find((x) => x.nome.toLowerCase() === valor.toLowerCase());
@@ -487,6 +502,9 @@ export default function App() {
         else avisar(`A bancada “${valor}” não existe.`);
       }
     };
+    // no navegador de teste (sem o núcleo), o link colado na busca abre aqui mesmo
+    const local = (e: Event) => seguir((e as CustomEvent<string>).detail);
+    window.addEventListener("atelier:link-local", local);
     (async () => {
       try {
         const { listen } = await import("@tauri-apps/api/event");
@@ -501,7 +519,7 @@ export default function App() {
       } catch { /* no navegador de teste não há Tauri */ }
       if (ABRIR_AO_CARREGAR) window.setTimeout(() => seguir(`atelier://doc/${ABRIR_AO_CARREGAR}`), 800);
     })();
-    return () => solta?.();
+    return () => { solta?.(); window.removeEventListener("atelier:link-local", local); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // o que está na tela, em texto: vai para a API (o agente consulta com tela → estado) e para o Comando
@@ -751,6 +769,8 @@ export default function App() {
         />
       )}
       <PilhaDeAvisos />
+      <SeloDoisTempos />
+      <PedidoDoAgente />
       {pedidoTroca && (
         <div className="modal-fundo" onMouseDown={(e) => e.target === e.currentTarget && setPedidoTroca(null)}>
           <div className="modal confirmar-bancada">

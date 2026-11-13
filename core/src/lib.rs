@@ -5,6 +5,7 @@ pub mod apps;
 pub mod arvore;
 pub mod bancada;
 pub mod checklist;
+pub mod cofre;
 pub mod consultas;
 pub mod db;
 pub mod disco;

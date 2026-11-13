@@ -17,156 +17,26 @@ Como usar:
 
 ## Caixa de entrada
 
-> **Triagem de 2026-11-02:** tudo o que está abaixo já tem lugar na segunda rodada do [`ROADMAP.md`](ROADMAP.md)
-> (0.2.4 a 0.2.9) ou em "Ideias, sem data". Pedido novo entra aqui e ganha lugar lá.
-
-- **Checklist: valor como referência, com histórico** (13/11, Paulo): durante a sessão com o André um nome mudou
-  ("não posso criar com esse nome, tem que ser com esse") e ele aparecia em dois campos diferentes. Quer editar num
-  lugar só e ver mudar em todo canto, com um **log** ("o valor tal foi atualizado para o valor tal").
-  *Pré-análise:* o checklist já tem a base: `campos` (chave → rótulo), `valores` e `{{chave}}` no texto, trocado pelo
-  valor. Mas os valores são só os coletados na execução; os nomes planejados (o nome do grupo, do app) o agente
-  escreve soltos no texto. Falta: (1) **valor planejado**: o agente cria o campo já com o valor ("cria esse cara com
-  esse nome") e usa `{{chave}}` em todo lugar onde ele aparece (o formato e o guia do MCP passam a pedir isso);
-  (2) no texto, o valor vira um **chip**: clique copia (como hoje) e um lápis edita ali mesmo, mudando em todos os
-  passos; (3) **histórico** no próprio arquivo (`historico: [{quando, chave, de, para, por}]`), mostrado no painel
-  "Valores" e na linha do tempo do documento; (4) desfazer volta o valor anterior. Tamanho: médio.
-
-- **Cofre de segredos da bancada** (13/11, Paulo; recurso grande, a pensar junto antes de fazer). Hoje segredo
-  recebido (ex.: os *secret values* que o André passou durante o checklist) fica em texto plano no documento.
-  *O que ele pediu:* cofre criptografado por bancada (um banco só, não um por documento); cada segredo com **nome**
-  descritivo, **descrição**, **chave** e **valor**; ligado ao **documento** que o gerou ("o documento é o key vault"),
-  e o documento mostra os segredos dele; ver **todos os segredos da bancada**; achar pela **cadeia** (no projeto, ver
-  os segredos das 20 tasks filhas); e o **agente** poder usar ("pega a senha tal e salva na AWS", via torii, cujo log
-  é criptografado).
-  *Pré-análise:*
-  - **Como o torii faz** (`C:\projetos\torii`): SQLite3 Multiple Ciphers (cifra ChaCha20, o arquivo inteiro
-    criptografado) com o `libsqlite3-sys` 0.30.1 em `vendor/` e `[patch.crates-io]`; chave de 256 bits aleatória no
-    cofre do sistema pelo `keyring` (Credential Manager/DPAPI no Windows, Secret Service no Linux, arquivo só do
-    usuário com aviso se não houver). O atelier usa o mesmo `rusqlite` 0.32: dá para trazer o `vendor/` como está.
-  - **Decidido pelo Paulo (13/11):** cofre **separado e todo criptografado** (a opção a abaixo), do jeito sugerido;
-    a permissão ao agente pode valer **por X minutos (padrão 5)**, porque o agente às vezes consulta o mesmo valor
-    mais de uma vez: "Permitir por 5 min" / "Só desta vez" / "Negar".
-  - **Onde guardar:** (a) arquivo **`cofre.db` separado** na bancada, inteiro criptografado como o do
-    torii: nem nome nem descrição ficam legíveis no disco; o `atelier.db` continua como está (consultas, MCP,
-    backup); (b) **só o valor** criptografado dentro do `atelier.db`: mais simples, e busca/consultas veem nome e
-    descrição. Recomendação: **(a)**, o mesmo esquema já provado no torii e nada do segredo à vista.
-  - **Ligação e cadeia:** cada segredo aponta para o código do documento; a página do documento ganha a parte
-    **Segredos** (os dele e, recolhidos, os dos filhos, descendo pela relação Pai como a medida do workspace já faz);
-    uma tela **Cofre** com todos da bancada, busca por nome/descrição/documento. No texto, uma menção ao segredo vira
-    um chip (nome, nunca o valor).
-  - **Na tela:** valor escondido; "mostrar" e "copiar" (a área de transferência se limpa sozinha em ~30 s).
-    **"Guardar no cofre"** num trecho selecionado do documento troca o texto pelo chip (para tirar os segredos que já
-    estão em texto plano, como os do André).
-  - **Agente (MCP):** `segredos` lista nome, descrição e documento, **sem valor**; `segredo` (ler o valor) pede **ok
-    na tela** ("o agente quer o segredo X: Permitir por 5 min?"; dentro da janela de tempo, as leituras seguintes desse
-    agente passam sem perguntar), e a leitura entra na linha do tempo do documento (sem o
-    valor). O valor entra no contexto do agente e no argv do torii (log criptografado): viável, como o Paulo disse.
-  - **Cuidados:** a chave fica nesta máquina e neste usuário: backup ou bancada levada para outra máquina não abre o
-    cofre sem exportar a chave (exportar com senha fica para depois). Export/PDF nunca levam valor.
-  - **Ligado ao checklist** (13/11, Paulo: "tenho que poder criar um valor como secret, que aí não vai para o
-    documento, vai só a referência para o segredo"): no painel de dados/valores do checklist, o Paulo cria ou marca
-    um valor como **segredo** ao preencher (ele preenche, não é o agente que cria). O valor vai para o cofre, ligado
-    ao documento do checklist; o `*.checklist.json` guarda só a referência (ex.: `"valores": {"client_secret":
-    {"segredo": "<id>"}}`). No texto, `{{client_secret}}` aparece como `••••••` com copiar/mostrar (vindo do cofre).
-    O agente, lendo o checklist pelo MCP, vê a referência, nunca o valor; para usar, pede o segredo (com a permissão
-    por tempo). Isso também liga com o "valor como referência": o segredo é um valor referenciado que mora no cofre.
-  - Tamanho: grande; provavelmente uma versão só para isso (cofre + tela + MCP), com "Guardar no cofre" junto.
-
-
-- **Destacar uma aba numa janelinha** (13/11, Paulo): "acompanhar uma aplicação de passo a passo seria melhor se eu
-  pudesse destacar o checklist e colocar do lado da janela onde estou trabalhando, e o atelier é muito grande para
-  isso". Vale para qualquer aba, o checklist é o caso que motivou.
-  *Pré-análise:* dá para aproveitar o que a 0.2.8 fez para "bancada em nova janela" (`abrirJanelaDaBancada` em
-  `src/janela.ts` e o comando `abrir_janela_bancada` no núcleo, que já abrem outra janela com `?bancada=`/`?abrir=`).
-  Falta: (1) um modo **janela solta** (`?solta=<rota>`), que mostra só o conteúdo da aba, sem menu lateral, abas nem
-  barra de título grande, com um tamanho inicial estreito (uns 480×800) e lembrado; (2) o comando no núcleo aceitar
-  esse modo (outro rótulo de janela, título = nome da aba); (3) "Destacar em janela" no menu da aba (e talvez
-  arrastar a aba para fora); (4) opção **sempre por cima** na janelinha, para o checklist não sumir atrás do que ele
-  está fazendo; (5) as duas janelas veem o mesmo arquivo: o checklist já relê do disco quando muda por fora, então
-  marcar o passo numa aparece na outra. No teste sem janela vira uma aba do navegador; o "sempre por cima" só dá
-  para conferir no app de verdade. Tamanho: médio (uma versão só para isso).
-- **Links `atelier://` mais úteis, como um "ARN" de tudo** (13/11, Paulo): "não tem um canto para abrir esse cara",
-  "era legal qualquer coisa dentro do atelier ter esse ARN, por exemplo achar um MD", e a dúvida "não tem a bancada:
-  se eu estiver na outra bancada, tem que abrir a outra".
-  *Como está hoje (conferido no código):* o `atelier://` **está registrado** no Windows (plugin deep-link e
-  instalador); clicar num link fora do app (navegador, Teams, nota) abre o atelier no documento. **A bancada já é
-  resolvida:** `achar_codigo` (`core/src/bancada.rs`) procura o código na bancada ativa e depois nas outras, e abre a
-  janela da bancada certa (a da 0.2.8). Dentro do app, a busca (Ctrl P) acha pelo código (`b9b2cb3` ou `#b9b2cb3`),
-  mas **só na bancada aberta** e **não aceita colar o link inteiro**.
-  *O que falta:* (1) **colar o link na busca** (Ctrl P) abre, inclusive de outra bancada (indo pelo mesmo caminho do
-  clique de fora); colar o código sozinho também procura nas outras bancadas; (2) **link de arquivo**:
-  `atelier://doc/<código>/<caminho na pasta>` (ex.: `.../artefatos/sessao-andre.checklist.json`) abre o arquivo na
-  pasta do documento; "Copiar link" no menu do arquivo; (3) **"Copiar link"** à mão no documento, na visão e no
-  arquivo (hoje o link aparece mais pelo agente); (4) **bancada no link, opcional**: o código é aleatório (7 hexa) e a
-  chance de repetir entre bancadas é mínima, mas um `atelier://doc/<código>?bancada=<nome>` desempata e avisa se a
-  bancada não está nesta máquina; (5) **bug:** o Exportar gera `atelier://item/<código>` (`Exportar.tsx`), que a tela
-  não sabe abrir: trocar para `doc/` e aceitar `item/` como apelido.
+> **Limpa em 2026-11-13** (0.2.22, "uma versão com 100% de tudo"): o que estava aqui foi feito na 0.2.22 ou já
+> tinha sido feito antes (pedidos do agente de novembro: 0.2.4 a 0.2.6; links `atelier://`: 0.2.8; fórmulas:
+> 0.2.7). Pedido novo entra aqui.
 
 ### Bugs
+
 ### Melhorias pedidas
-- **Atalhos em dois tempos com Ctrl+K (como VS Code / tmux)** (04/11, o Paulo: "os atalhos que batem... Ctrl+K e aí o
-  segundo atalho, como no tmux, Ctrl+B e a ação; acho que o Ctrl+K é liberado"). Pré-análise:
-  - hoje o Ctrl+K é só um **extra** da busca (o principal é Ctrl+P): sai de lá e vira o prefixo;
-  - Ctrl+K liga um "modo comando" por ~1,5 s com um selo na barra de status ("Ctrl+K … esperando a segunda tecla",
-    e a lista das possíveis); a segunda tecla é sem Ctrl (ex.: Ctrl+K → `\` esconde a direita, → `J` expande, → `Z`
-    Zen, → `P` fixa, → `←/→` foco de metade, → `W` fecha as outras); Esc ou tempo esgotado cancela;
-  - resolve os conflitos: o que hoje precisa de Ctrl+Alt+Shift+letra (e briga com AltGr, terminal e editor) ganha
-    uma versão curta em dois tempos; a lista de atalhos e a configuração passam a aceitar combinações "Ctrl+K J";
-  - cuidados: no **terminal** o Ctrl+K é "apagar até o fim da linha" do shell (fica com o terminal, como o Ctrl+W;
-    lá vale um prefixo alternativo, ou o Ctrl+K só com o foco fora do terminal); no **editor** muita gente usa
-    Ctrl+K para link (hoje o atelier não usa).
-### Pedidos do agente (de `pedidos-ao-atelier.md`)
-
-Revisão crítica de 2026-11-02 (o Paulo pediu: dizer o que não faz sentido, o que já existe e o que engessa o app).
-O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, para não repassar os mesmos.
-
-- **Linha do tempo com menos ruído, ADO com molde de link, visão "pode andar agora", ordenar visões** (01/11): já
-  feitos na 0.1.8 a 0.2.0. Saem.
-- **Tabela markdown embaralhada** (02/11): procede, e é pior que ele viu (editar na tela apaga a tabela). 0.2.4.
-- **Abrir o próximo documento no mesmo lugar** (02/11): o diagnóstico procede (é bug nosso: o MCP joga fora o
-  `estado`). A ação "substituir" que ele pediu **não**: é específica demais. No lugar, peças genéricas (id da
-  janela, painel numerado, fechar/abrir por elas). 0.2.4.
-- **`editar_trecho`** (02/11): **bom pedido**, genérico (o mesmo jeito do Edit de arquivo) e ainda protege a edição
-  do Paulo na tela. Aprovado como ele desenhou. 0.2.4.
-- **Tipo "Passo" + lista de filhos ordenada** (02/11), item por item:
-  - criar o tipo Passo e tirar o `inteiro` da Ordem: **não é trabalho de dev**, o agente faz pelo MCP. É decisão de
-    modelagem do Paulo: cada passo vira um documento (com status, responsável e bloqueio próprios) ou fica como
-    checklist no texto. Com o `editar_trecho`, o checklist no texto deixa de ser caro; o Passo só vale se o passo
-    precisar de status ou bloqueio próprios;
-  - "lista de filhos na página do pai, ordenada, filtrando por tipo": procede, mas **não fixo em "filhos"**: é a
-    lista dinâmica que o Paulo já pediu (tipos X + relação P + ordenar por uma propriedade). 0.2.6;
-  - `ler_documento` com "filhos" resumidos: fixo em "filhos" **engessa**. Generalizar: as listas dinâmicas e o
-    "apontado por" vêm resumidos (código, tipo, status, ordem). 0.2.6;
-  - ordenar a Ordem com decimal: **já existe** (a ordenação de número é numérica; 1.5 vem antes de 10). Só falta
-    tirar o `inteiro` da propriedade, pelo MCP;
-  - tirar o tipo Passo da daily e do semanal: **já existe** (filtro por tipo das visões, `atualizar_visao`);
-  - WAL e `busy_timeout` no SQLite: **já existem** (WAL, espera de 5 s). Índice nas relações: elas ficam em JSON nas
-    propriedades, sem índice; hoje não pesa (vai para "Ideias");
-  - criar/atualizar em lote: genérico, ok, mas depois (vai para "Ideias");
-  - "task list `- [x]` no renderizador": não havia pedido anterior; o editor tem lista de tarefas. Conferir no teste
-    do editor da 0.2.4.
-- **Lista ao vivo dentro do corpo do documento** (02/11, 14:51): um bloco no markdown (cerca ```` ```atelier-lista ````
-  com tipos, filtro, ordem, colunas e layout) que a tela troca por uma lista ao vivo, com a mesma consulta das
-  visões; clicar abre o documento; mudar status ali; o `ler_documento` devolve o resultado junto. **Viável e bom**:
-  - o markdown continua portátil: fora do atelier é só um bloco de código; e o editor grava o bloco como está, sem
-    risco de perda (é um bloco de código para o markdown);
-  - já existem as peças: o filtro das visões (`Filtro` em `db.rs`: tipos, propriedades, datas, "livres"), a
-    janela de consulta (`{ v: "consulta", filtro }`, que a seção de relações usa) e os layouts lista/tabela/kanban;
-  - funciona em **modelo** de tipo (os modelos já existem): cada task nova nasce com a lista dos seus passos;
-  - **ressalva:** `filhos: true` fixa a relação "Pai" e **engessa**. No lugar, o mesmo filtro das visões com um
-    valor especial **"este"** (o documento onde o bloco está): `Pai: este`, `Bloqueado por: este`... Assim serve
-    para qualquer relação;
-  - é o primo da lista dinâmica (a propriedade do tipo): **o mesmo motor** (filtro + "este" + ordenar) serve aos
-    dois; a propriedade aparece na ficha, o bloco aparece onde for escrito no texto. Vai junto na 0.2.6.
-
-### Recursos (mudam comportamento: precisam do ok do Paulo antes)
 
 ### Ideias antigas (ninguém pediu agora)
-- Abrir o atelier por link (`atelier://`).
-- Propriedades calculadas (fórmula; soma a partir de itens ligados).
-- Migrar o posto `daily-work` para dentro do atelier.
+- Migrar o posto `daily-work` para dentro do atelier (é trabalho no outro repositório, não aqui).
+- Cofre: exportar a chave com uma senha (para levar a bancada com o cofre para outro computador).
+- Cofre: "Guardar no cofre" num trecho selecionado no editor do documento (hoje: a parte Segredos da página, a tela
+  Cofre, o cadeado do checklist e o agente com `segredo` guardar).
+- Atalhos em dois tempos configuráveis (hoje a segunda tecla é fixa; a lista está em Atalhos, Ctrl+/).
 
 ### A conferir no uso
+- **0.2.22 no app de verdade** (o teste sem janela não tem Tauri nem o Credential Manager): o cofre criando a chave
+  no Credential Manager (aparece como `atelier-cofre` em Credenciais do Windows), o pedido do agente pelo MCP real
+  (`segredo` ler), a janelinha destacada com "sempre por cima", o Ctrl+K no WebView2, e um link de arquivo
+  `atelier://doc/<código>/<caminho>` clicado fora do app (com ele aberto e fechado).
 - **0.2.11:** ditar com o Nemotron no microfone de verdade (baixar em Configurações → Ditado; o primeiro ditado
   demora uns segundos carregando); o robô animado; renomear workspace; a tela "isto quebrou" se algo der errado
   (e o `erros.log`).
@@ -187,6 +57,34 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.22** (2026-11-13) · "Uma versão com tudo": a caixa de entrada inteira, pedidos de 13/11 e o Ctrl+K de 04/11:
+  - **cofre de segredos da bancada:** `<bancada>/cofre.db`, um SQLite **criptografado inteiro** (SQLite3 Multiple
+    Ciphers, ChaCha20, o mesmo do torii: `vendor/`), com a chave no **Credential Manager** do Windows (Secret
+    Service no Linux). Cada segredo: nome, descrição, chave, valor e o documento que o gerou. Tela **Cofre** (barra
+    lateral) com busca; na página do documento, a parte **Segredos** (os dele e, recolhidos, os dos descendentes:
+    o "achar pela cadeia"). Valor escondido; mostrar e copiar (a área de transferência se limpa em 30 s). Toda
+    criação, troca, leitura e recusa vai para a linha do tempo do documento, **sem o valor**;
+  - **agente e cofre:** `segredos` lista sem valor; `segredo` ler pede na tela "**Permitir por 5 min** / Só desta
+    vez / Negar" (1 a 60 min) e espera a resposta; dentro do prazo, lê de novo sem perguntar; `segredo` guardar põe
+    um segredo novo. A API só entrega o valor à tela; as instruções do MCP mandam nunca deixar segredo em texto;
+  - **checklist e cofre:** o cadeado ao lado de um valor manda ele para o cofre; o arquivo fica só com
+    `cofre:<id>` e o histórico antigo daquele valor vira ••••; no texto, `{{chave}}` aparece 🔒 •••••• (clique
+    copia);
+  - **valor como referência, com histórico:** no texto do passo, `{{chave}}` vira uma etiqueta com o valor (clique
+    copia; o ✎ muda o valor ali mesmo, em todo o checklist); toda troca vai para o `historico` do arquivo
+    (de → para, quando, quem), mostrado em "Valores"; o agente muda com `checklist` ação "valor" e o formato pede
+    `{{chave}}` em todo nome que se repete;
+  - **janelinha destacada:** "Destacar numa janelinha" no menu da aba abre só aquela aba numa janela pequena (o
+    tamanho fica lembrado), com **sempre por cima** (o alfinete da barrinha). Não mexe nos workspaces;
+  - **links `atelier://`:** colar o link (ou só o código) na busca Ctrl+P abre, inclusive de outra bancada; link
+    de **arquivo** `atelier://doc/<código>/<caminho>`; **Copiar link** no documento, no menu da visão, no arquivo e
+    no checklist; `?bancada=<nome>` opcional desempata; o Exportar gerava `atelier://item/`, que não abria
+    (agora `doc/`, e `item/` continua aceito);
+  - **atalhos em dois tempos:** **Ctrl+K** e depois uma tecla (J expande, Z Zen, \ divide, ← → foco, O troca de
+    painel, 1 2 3 modos, R largura, W visão geral...). Um selo embaixo mostra as opções; Esc ou 2 s cancela; no
+    terminal o Ctrl+K continua do shell. A busca saiu do Ctrl+K (fica no Ctrl+P);
+  - **workspace da bancada:** sempre o primeiro da lista (no seletor e na visão geral), ligado ou não, e nunca
+    apaga nem arquiva.
 - **0.2.21** (2026-11-13) · Checklist mais legível e fácil de copiar, pedidos de 13/11:
   - **feito × pendente à primeira vista:** o pendente é um cartão esverdeado com bordinha verde (4 px) à esquerda; o
     feito fica achatado, sem fundo nem borda, a 40% (aberto ou com o mouse em cima, 90%). O Paulo escolheu esta (a

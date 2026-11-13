@@ -271,6 +271,18 @@ export const api = {
   ramo: (id: number, prop: number, sentido: Sentido) => req<Item[]>("GET", `/itens/${id}/ramo?prop=${prop}&sentido=${sentido}`),
   resumos: (codigos: string[]) => req<Resumo[]>("GET", `/resumos?codigos=${codigos.join(",")}`),
   lixeira: () => req<{ itens: Item[]; notas: any[] }>("GET", "/lixeira"),
+  // cofre de segredos: listar nunca traz o valor; o valor só por cofreValor (a tela) ou pelo pedido do agente
+  cofre: (f: { de?: string; q?: string } = {}) => {
+    const p = new URLSearchParams();
+    if (f.de) p.set("de", f.de);
+    if (f.q) p.set("q", f.q);
+    return req<Segredo[]>("GET", `/cofre${p.size ? `?${p}` : ""}`);
+  },
+  cofreCriar: (d: { nome: string; descricao?: string; chave?: string; valor: string; documento?: string | null }) => req<{ id: number }>("POST", "/cofre", d),
+  cofreMudar: (id: number, d: Partial<{ nome: string; descricao: string; chave: string; valor: string; documento: string | null }>) => req("PATCH", `/cofre/${id}`, d),
+  cofreApagar: (id: number) => req("DELETE", `/cofre/${id}`),
+  cofreValor: (id: number) => req<{ valor: string }>("GET", `/cofre/${id}/valor`),
+  cofreResponder: (pedido: number, permitir: boolean, minutos: number) => req("POST", "/cofre/resposta", { pedido, permitir, minutos }),
   esvaziarLixeira: () => req<{ itens: number; notas: number }>("DELETE", "/lixeira"),
   apagarDeVez: (id: number) => req("DELETE", `/lixeira/itens/${id}`),
   /** com: "arquivos" (padrão), "vscode" ou "terminal" */
@@ -607,4 +619,16 @@ export async function acrescentarOpcao(e: Esquema, prop: Propriedade, tipoId: nu
 
 export function corAleatoria(): Cor {
   return CORES[1 + Math.floor(Math.random() * (CORES.length - 1))];
+}
+
+/** Um segredo do cofre da bancada, sem o valor. */
+export interface Segredo {
+  id: number;
+  nome: string;
+  descricao: string;
+  chave: string;
+  /** código do documento que gerou o segredo */
+  documento: string | null;
+  criado_em: string;
+  atualizado_em: string;
 }

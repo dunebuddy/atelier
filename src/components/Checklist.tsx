@@ -1,7 +1,9 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { copiarSegredo } from "./Cofre";
+import { copiarLink, linkDoArquivo } from "../links";
 import {
   ArrowDown, ArrowLeft, ArrowUp, Braces, Check, ChevronDown, ChevronRight, FilePlus, FileText, GripVertical, Link2, ListChecks,
-  Paperclip, Pencil, Plus, RefreshCw, SkipForward, Trash2, Undo2, X,
+  Copy, Lock, Paperclip, Pencil, Plus, RefreshCw, SkipForward, Trash2, Undo2, X,
 } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { api, BASE, Esquema, Props, Resumo } from "../api";
@@ -16,7 +18,7 @@ import { Editor } from "./Editor";
 import {
   alvoDe, apagarComentario, apagarPasso, blocos, chaveDeCampo, Checklist, corDaTag, criarComentario, criarPasso, dependeDe, dependentes, donoDaPasta, EstadoPasso,
   escreverChecklist, faltando, feito, juntar, lerChecklist, Link, moverParaSecao, moverPasso, moverSecao, Passo, preencher,
-  progresso, relativo, renomearSecao, rotuloDe, tagsDe,
+  idNoCofre, marcarRefs, progresso, REF_FIM, REF_INI, relativo, renomearSecao, rotuloDe, tagsDe, trocarValor, valorParaOCofre,
 } from "../checklist";
 import "../checklist.css";
 
@@ -71,7 +73,7 @@ function seguir(link: Link, pasta: string, raiz: string) {
 }
 
 /** Markdown → HTML sem script nem evento, com botão de copiar nos blocos de código. */
-function limpar(html: string, pasta: string): string {
+function limpar(html: string, pasta: string, valores?: Record<string, string>): string {
   const d = new DOMParser().parseFromString(`<div>${html}</div>`, "text/html");
   d.querySelectorAll("img").forEach((img) => {
     const src = img.getAttribute("src") ?? "";
@@ -104,26 +106,97 @@ function limpar(html: string, pasta: string): string {
     b.setAttribute("data-copiar", "");
     pre.prepend(b);
   });
+  // {{chave}}: no texto vira a etiqueta do valor (clique copia, lápis edita em todo lugar); dentro de código, o valor
+  if (valores) {
+    const re = new RegExp(`${REF_INI}([\\w.-]+)${REF_FIM}`, "g");
+    const nos: Text[] = [];
+    const andar = d.createTreeWalker(d.body, NodeFilter.SHOW_TEXT);
+    while (andar.nextNode()) if ((andar.currentNode.nodeValue ?? "").includes(REF_INI)) nos.push(andar.currentNode as Text);
+    for (const no of nos) {
+      const texto = no.nodeValue ?? "";
+      if (no.parentElement?.closest("code, pre")) {
+        no.nodeValue = texto.replace(re, (_, k: string) => (idNoCofre(valores[k]) != null ? "••••••" : valores[k] || `‹${k}›`));
+        continue;
+      }
+      const frag = d.createDocumentFragment();
+      let ultimo = 0;
+      for (const m of texto.matchAll(re)) {
+        frag.append(texto.slice(ultimo, m.index));
+        const k = m[1];
+        const chip = d.createElement("span");
+        // segredo do cofre: 🔒 e ••••••; o clique copia (vindo do cofre), sem lápis (muda-se no painel Valores)
+        const noCofre = idNoCofre(valores[k]);
+        if (noCofre != null) {
+          chip.className = "ck-ref segredo";
+          chip.setAttribute("data-segredo", String(noCofre));
+          chip.setAttribute("data-ref-nome", k);
+          chip.title = "Segredo no cofre: clique copia (a área de transferência se limpa em 30 s)";
+          chip.textContent = "🔒 ••••••";
+          frag.append(chip);
+          ultimo = (m.index ?? 0) + m[0].length;
+          continue;
+        }
+        chip.className = `ck-ref${valores[k] ? "" : " vazio"}`;
+        chip.setAttribute("data-ref", k);
+        chip.title = valores[k] ? "Clique copia · o lápis muda o valor em todo o checklist" : "Sem valor ainda · o lápis põe";
+        chip.textContent = valores[k] || `‹${k}›`;
+        const lapis = d.createElement("span");
+        lapis.className = "ck-ref-lapis";
+        lapis.setAttribute("data-ref-lapis", k);
+        lapis.textContent = "✎";
+        chip.append(lapis);
+        frag.append(chip);
+        ultimo = (m.index ?? 0) + m[0].length;
+      }
+      frag.append(texto.slice(ultimo));
+      no.replaceWith(frag);
+    }
+  }
   return d.body.firstElementChild?.innerHTML ?? "";
 }
 
 type Marked = typeof import("marked");
 
-function Markdown({ texto, md, pasta, raiz }: { texto: string; md: Marked | null; pasta: string; raiz: string }) {
-  const html = useMemo(() => (md ? limpar(md.marked.parse(texto, { async: false }) as string, pasta) : null), [texto, md, pasta]);
+/** Os valores do checklist para as etiquetas de {{chave}}: o texto vem cru e cada referência vira etiqueta. */
+interface Refs { valores: Record<string, string>; campos: Record<string, string>; aoMudar: (chave: string, valor: string) => void }
+
+function Markdown({ texto, md, pasta, raiz, refs }: { texto: string; md: Marked | null; pasta: string; raiz: string; refs?: Refs }) {
+  const fonte = refs ? marcarRefs(texto) : texto;
+  const html = useMemo(() => (md ? limpar(md.marked.parse(fonte, { async: false }) as string, pasta, refs?.valores) : null), [fonte, md, pasta, refs?.valores]);
   const corpo = useRef<HTMLDivElement>(null);
-  if (html == null) return <div className="ck-md">{texto}</div>;
+  const [editando, setEditando] = useState<{ k: string; ancora: HTMLElement; valor: string } | null>(null);
+  // o markdown que vai para a área de transferência: com os valores no lugar das referências
+  const textoCopiar = refs ? preencher(texto, refs.valores) : texto;
+  if (html == null) return <div className="ck-md">{textoCopiar}</div>;
   return (
     <div className="ck-md-caixa">
     {/* copia o texto inteiro (o passo a passo do card), com formatação */}
     <button className="ck-copiar ck-copiar-tudo" title="Copiar o texto inteiro, com formatação (cola no Teams)"
-      onClick={() => corpo.current && copiarRico(htmlParaColar(corpo.current), texto)}>copiar texto</button>
+      onClick={() => corpo.current && copiarRico(htmlParaColar(corpo.current), textoCopiar)}>copiar texto</button>
     <div
       ref={corpo}
       className="ck-md"
       dangerouslySetInnerHTML={{ __html: html }}
       onClick={(e) => {
         const t = e.target as HTMLElement;
+        if (refs && t.matches("[data-ref-lapis]")) {
+          e.preventDefault();
+          const k = t.getAttribute("data-ref-lapis")!;
+          setEditando({ k, ancora: t.parentElement!, valor: refs.valores[k] ?? "" });
+          return;
+        }
+        const seg = t.closest<HTMLElement>("[data-segredo]");
+        if (seg) {
+          e.preventDefault();
+          copiarSegredo(Number(seg.getAttribute("data-segredo")), refs?.campos[seg.getAttribute("data-ref-nome") ?? ""] ?? "segredo");
+          return;
+        }
+        const ref = refs && t.closest<HTMLElement>("[data-ref]");
+        if (ref) {
+          const v = refs.valores[ref.getAttribute("data-ref")!];
+          if (v && !window.getSelection()?.toString()) copiar(v);
+          return;
+        }
         if (t.matches("[data-copiar-tabela]")) {
           e.preventDefault();
           const tab = t.parentElement?.querySelector("table");
@@ -147,9 +220,33 @@ function Markdown({ texto, md, pasta, raiz }: { texto: string; md: Marked | null
         if (t.tagName === "CODE" && t.parentElement?.tagName !== "PRE" && !window.getSelection()?.toString()) copiar(t.textContent ?? "");
       }}
     />
+    {editando && refs && (
+      <Popover ancora={editando.ancora} aoFechar={() => setEditando(null)} largura={340}>
+        <div className="menu-rotulo">{refs.campos[editando.k] ?? editando.k}</div>
+        <div className="ck-ref-editar">
+          <input className="campo" autoFocus value={editando.valor}
+            onChange={(e) => setEditando({ ...editando, valor: e.target.value })}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { refs.aoMudar(editando.k, editando.valor.trim()); setEditando(null); }
+              if (e.key === "Escape") setEditando(null);
+            }} />
+          <button className="btn primario" onClick={() => { refs.aoMudar(editando.k, editando.valor.trim()); setEditando(null); }}>Mudar</button>
+        </div>
+        <div className="menu-rotulo" style={{ textTransform: "none", letterSpacing: 0, fontWeight: 400 }}>
+          Muda em todo lugar do checklist onde aparece; a troca fica no histórico dos valores.
+        </div>
+      </Popover>
+    )}
     </div>
   );
 }
+
+/** As referências do checklist para o Markdown: mudar um valor ali registra no histórico. */
+const refsDe = (ctx: Ctx): Refs => ({
+  valores: ctx.doc.valores ?? {},
+  campos: ctx.doc.campos ?? {},
+  aoMudar: (k, v) => ctx.mudar(`Valor · ${ctx.doc.campos?.[k] ?? k}`, (d) => { (d.campos ??= {})[k] ??= k; trocarValor(d, k, v); }),
+});
 
 /** O que os cartões precisam da tela. */
 interface Ctx {
@@ -465,6 +562,9 @@ export function ChecklistTela({ caminho, raiz, aoVoltar, aoVerTexto }: { caminho
         <span style={{ flex: 1 }} />
         <span className="ex-meta">{salvoEm ? `salvo no arquivo às ${salvoEm}` : "o progresso fica no próprio arquivo"}</span>
         <button className="btn-icone" title="Recarregar" onClick={() => carregar()}><RefreshCw size={14} /></button>
+        {linkDoArquivo(caminho) && (
+          <button className="btn-icone" title={`Copiar o link deste checklist (${linkDoArquivo(caminho)})`} onClick={() => copiarLink(linkDoArquivo(caminho)!)}><Link2 size={14} /></button>
+        )}
         <button className="btn-icone" title="Ver o JSON" onClick={aoVerTexto}><Braces size={14} /></button>
       </div>
       <div className="ex-conteudo">
@@ -553,7 +653,7 @@ export function ChecklistTela({ caminho, raiz, aoVoltar, aoVerTexto }: { caminho
             <>
               <h2 className="ck-h-recolhe">
                 <button onClick={() => setVerValores((v) => !v)}>
-                  {verValores ? <ChevronDown size={15} /> : <ChevronRight size={15} />} Valores coletados
+                  {verValores ? <ChevronDown size={15} /> : <ChevronRight size={15} />} Valores
                   <span className="ck-conta">{campos.filter(([k]) => doc.valores?.[k]).length}/{campos.length}</span>
                 </button>
               </h2>
@@ -563,13 +663,25 @@ export function ChecklistTela({ caminho, raiz, aoVoltar, aoVerTexto }: { caminho
                     {campos.map(([k, rot]) => (
                       <label key={k} className="ck-campo">
                         <span className="ck-campo-rot">{rot}</span>
-                        <input className="campo" value={doc.valores?.[k] ?? ""} placeholder="—"
-                          onFocus={() => fotoAoFocar(`Valor · ${rot}`)}
-                          onChange={(e) => { const v = e.target.value; digitar((d) => { if (v.trim()) (d.valores ??= {})[k] = v; else delete d.valores?.[k]; }); }} />
+                        <EntradaValor ctx={ctx} k={k} placeholder="—" />
                       </label>
                     ))}
                   </div>
                   <button className="btn" onClick={() => copiar(campos.map(([k]) => `${k}: ${doc.valores?.[k] ?? ""}`).join("\n"))}>Copiar como YAML</button>
+                  {(doc.historico ?? []).length > 0 && (
+                    <details className="ck-historico">
+                      <summary>Histórico dos valores ({doc.historico!.length})</summary>
+                      <ul>
+                        {[...doc.historico!].reverse().map((h, i) => (
+                          <li key={i}>
+                            <span className="ck-hist-quando">{dataCurta(h.quando)}</span> <strong>{doc.campos?.[h.chave] ?? h.chave}</strong>:{" "}
+                            {h.de ? <s>{h.de}</s> : <em>vazio</em>} → {h.para ? <code>{h.para}</code> : <em>vazio</em>}
+                            {h.por && h.por !== "Paulo" ? ` · ${h.por}` : ""}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
                 </div>
               )}
             </>
@@ -851,7 +963,7 @@ function BlocoComentario({ ctx, id, editandoAoNascer, aoTerminar }: { ctx: Ctx; 
         <EditorTexto ctx={ctx} rotulo="Comentário" valor={c.texto} placeholder="Comentário: contexto, avisos, links de referência."
           aoMudar={(v) => digitar((d) => { const x = d.comentarios?.find((y) => y.id === id); if (x) x.texto = v; })} />
       ) : (
-        <Markdown texto={preencher(c.texto, doc.valores ?? {})} md={md} pasta={pasta} raiz={raiz} />
+        <Markdown texto={c.texto} md={md} pasta={pasta} raiz={raiz} refs={refsDe(ctx)} />
       )}
     </div>
   );
@@ -920,12 +1032,75 @@ function ConfirmarApagar({ mensagem, detalhe, aoApagar, children }: {
   );
 }
 
+/** A caixa de um valor: digita direto (como antes) e, ao sair, registra a troca no histórico (de → para). */
+function EntradaValor({ ctx, k, placeholder }: { ctx: Ctx; k: string; placeholder?: string }) {
+  const { doc, digitar, fotoAoFocar, mudar, caminho } = ctx;
+  const antes = useRef<string | null>(null);
+  const [trocando, setTrocando] = useState<string | null>(null);
+  const noCofre = idNoCofre(doc.valores?.[k]);
+  const rotulo = doc.campos?.[k] ?? k;
+  // guardar como segredo: o valor vai para o cofre (ligado ao documento do checklist) e o arquivo fica com a referência
+  const paraOCofre = async () => {
+    const valor = doc.valores?.[k] ?? "";
+    if (!valor.trim()) return avisar("Escreva o valor primeiro; depois o cadeado guarda no cofre.");
+    try {
+      const { id } = await api.cofreCriar({
+        nome: `${rotulo}${doc.titulo ? ` · ${doc.titulo}` : ""}`, chave: k, valor,
+        descricao: `Do checklist ${nomeDe(caminho)}`, documento: donoDaPasta(caminho)?.codigo ?? null,
+      });
+      mudar(`Segredo · ${rotulo}`, (d) => valorParaOCofre(d, k, id));
+      avisar(`“${rotulo}” foi para o cofre. No checklist fica só a referência.`);
+    } catch (e) {
+      falhou(e);
+    }
+  };
+  if (noCofre != null) {
+    // trocar o valor: um campo de senha ali mesmo (a caixa do sistema não aparece na janela do app)
+    const trocar = async (novo: string) => {
+      setTrocando(null);
+      if (!novo) return;
+      try {
+        await api.cofreMudar(noCofre, { valor: novo });
+        mudar(null, (d) => { (d.historico ??= []).push({ quando: new Date().toISOString(), chave: k, de: "••••", para: "•••• (trocado no cofre)", por: "Paulo" }); });
+        avisar(`Valor de “${rotulo}” trocado no cofre.`);
+      } catch (e) { falhou(e); }
+    };
+    return (
+      <span className="ck-valor-cofre">
+        {trocando != null ? (
+          <input className="campo" type="password" autoFocus autoComplete="off" placeholder="Novo valor e Enter (Esc cancela)" value={trocando}
+            onChange={(ev) => setTrocando(ev.target.value)}
+            onKeyDown={(ev) => { if (ev.key === "Enter") trocar(trocando); if (ev.key === "Escape") setTrocando(null); }}
+            onBlur={() => setTrocando(null)} />
+        ) : (
+          <span className="ck-valor-cofre-txt" title="O valor está no cofre de segredos; no arquivo fica só a referência"><Lock size={12} /> no cofre</span>
+        )}
+        <button className="btn-icone" title="Copiar (limpa a área de transferência em 30 s)" onClick={() => copiarSegredo(noCofre, rotulo)}><Copy size={13} /></button>
+        <button className="btn-icone" title="Trocar o valor no cofre" onClick={() => setTrocando("")}><Pencil size={13} /></button>
+      </span>
+    );
+  }
+  return (
+    <span className="ck-valor-linha">
+    <input className="campo" value={doc.valores?.[k] ?? ""} placeholder={placeholder}
+      onFocus={() => { antes.current = doc.valores?.[k] ?? ""; fotoAoFocar(`Valor · ${doc.campos?.[k] ?? k}`); }}
+      onChange={(ev) => { const v = ev.target.value; digitar((d) => { if (v.trim()) (d.valores ??= {})[k] = v; else delete d.valores?.[k]; }); }}
+      onBlur={(ev) => {
+        const de = antes.current ?? "", para = ev.target.value.trim();
+        antes.current = null;
+        if (de !== para) mudar(null, (d) => { (d.historico ??= []).push({ quando: new Date().toISOString(), chave: k, de, para, por: "Paulo" }); });
+      }} />
+    <button className="btn-icone ck-cadeado" title="Guardar como segredo: o valor vai para o cofre criptografado e o checklist fica só com a referência" onClick={paraOCofre}><Lock size={13} /></button>
+    </span>
+  );
+}
+
 /** O texto do passo; editando (o card inteiro está em edição), a caixa do texto. */
 function PainelTexto({ ctx, p, editando }: { ctx: Ctx; p: Passo; editando: boolean }) {
-  const { doc, md, pasta, raiz, digitar } = ctx;
+  const { md, pasta, raiz, digitar } = ctx;
   if (!editando) {
     return p.corpo
-      ? <Markdown texto={preencher(p.corpo, doc.valores ?? {})} md={md} pasta={pasta} raiz={raiz} />
+      ? <Markdown texto={p.corpo} md={md} pasta={pasta} raiz={raiz} refs={refsDe(ctx)} />
       : <div className="ck-nada">Sem texto. Use o lápis no canto de cima para escrever o que fazer.</div>;
   }
   return (
@@ -968,9 +1143,7 @@ function PainelDados({ ctx, p, editando }: { ctx: Ctx; p: Passo; editando: boole
             ) : (
               <span className="ck-campo-rot">{doc.campos?.[k] ?? k}</span>
             )}
-            <input className="campo" value={doc.valores?.[k] ?? ""}
-              onFocus={() => fotoAoFocar(`Valor · ${doc.campos?.[k] ?? k}`)}
-              onChange={(ev) => { const v = ev.target.value; digitar((d) => { if (v.trim()) (d.valores ??= {})[k] = v; else delete d.valores?.[k]; }); }} />
+            <EntradaValor ctx={ctx} k={k} />
             {editando && (
               <button className="btn-icone" title="Tirar este dado do passo (o valor fica guardado)"
                 onClick={() => mudarPasso("Tirar dado", (x) => { x.pede = (x.pede ?? []).filter((y) => y !== k); if (!x.pede.length) delete x.pede; })}><X size={13} /></button>

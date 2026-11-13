@@ -67,7 +67,7 @@ export function carregar(bancada: string): Workspaces {
   const ativo = estados[g.ativo] ? g.ativo : GERAL;
   // os de antes do "usado" começam a contar agora (senão o arquivar sozinho levaria todos de uma vez)
   for (const [k, i] of Object.entries(g.info ?? {})) if (i && i.usado == null) g.info[k] = { ...i, usado: Date.now() };
-  return { ativo, estados, info: { ...g.info, [GERAL]: { ...g.info?.[GERAL], titulo: g.info?.[GERAL]?.nome || "Bancada" } }, abertos: [ativo] };
+  return { ativo, estados, info: { ...g.info, [GERAL]: { ...g.info?.[GERAL], titulo: g.info?.[GERAL]?.nome || "Bancada", arquivado: undefined } }, abertos: [ativo] };
 }
 
 export function salvar(bancada: string, w: Workspaces) {

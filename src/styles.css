@@ -1412,3 +1412,59 @@ body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grab
 .ws-geral-traco::before, .ws-geral-traco::after { content: ""; flex: 1; border-top: 1px dashed var(--borda-forte); }
 .ws-cartao.arquivado { opacity: .55; }
 .ws-geral-topo .btn.ativo { background: var(--acento-suave); color: var(--acento); border-color: var(--acento); }
+
+/* Ctrl+K: o selo dos atalhos em dois tempos, embaixo no meio, com o que dá para apertar */
+.selo-dois-tempos {
+  position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%); z-index: 120; width: min(640px, calc(100vw - 36px));
+  background: var(--bg-elev); border: 1px solid var(--acento); border-radius: 12px; box-shadow: var(--sombra);
+  padding: 10px 14px; font-size: 12.5px; color: var(--texto); animation: surgir .12s ease-out;
+}
+.selo-dois-tempos .sdt-topo { display: flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 8px; }
+.selo-dois-tempos .sdt-dica { margin-left: auto; font-weight: 400; color: var(--texto-3); }
+.selo-dois-tempos .sdt-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 4px 12px; color: var(--texto-2); }
+.selo-dois-tempos .sdt-item kbd { min-width: 22px; text-align: center; display: inline-block; }
+.atalho-ou { color: var(--texto-3); font-size: 12px; }
+
+/* ---------- cofre de segredos ---------- */
+.pagina.cofre { max-width: 860px; }
+.cofre-topo h1 { display: flex; align-items: center; gap: 10px; margin: 0 0 4px; }
+.cofre-topo .dica-inline { display: block; margin-bottom: 14px; }
+.cofre-barra { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.cofre-busca { flex: 1; display: flex; align-items: center; gap: 6px; color: var(--texto-3); }
+.cofre-busca .campo { flex: 1; }
+.cofre-lista { display: flex; flex-direction: column; gap: 6px; }
+.cofre-linha { display: flex; align-items: flex-start; gap: 10px; padding: 9px 10px; border: 1px solid var(--borda); border-radius: 10px; background: var(--bg-elev); }
+.cofre-icone { color: var(--acento); margin-top: 2px; flex-shrink: 0; }
+.cofre-info { flex: 1; min-width: 0; }
+.cofre-nome { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-weight: 600; }
+.cofre-chave { font: 12px "Cascadia Code", Consolas, monospace; color: var(--texto-2); background: var(--codigo); padding: 0 6px; border-radius: 5px; font-weight: 400; }
+.cofre-desc { color: var(--texto-2); font-size: 12.5px; margin-top: 2px; }
+.cofre-valor { margin-top: 3px; font: 12.5px "Cascadia Code", Consolas, monospace; color: var(--texto-3); overflow-wrap: anywhere; }
+.cofre-valor code { color: var(--texto); background: var(--codigo); padding: 1px 6px; border-radius: 5px; user-select: all; }
+.cofre-acoes { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.cofre-confirma { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--t-red); }
+.cofre-form { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--acento); border-radius: 10px; background: var(--bg-elev); margin-bottom: 8px; }
+.cofre-form-linha { display: flex; gap: 6px; align-items: center; }
+.cofre-form-linha .campo { flex: 1; }
+.cofre-campo-valor { font-family: "Cascadia Code", Consolas, monospace; }
+.cofre-form-acoes { display: flex; justify-content: flex-end; gap: 6px; }
+.cofre-doc { margin: 14px 0 6px; display: flex; flex-direction: column; gap: 6px; }
+.cofre-doc.vazio { flex-direction: row; }
+.cofre-doc-cab { display: flex; align-items: center; gap: 6px; color: var(--texto-2); font-size: 13px; }
+.cofre-filhos summary { cursor: pointer; color: var(--texto-3); font-size: 12.5px; margin: 4px 0; }
+.cofre-filhos .cofre-linha { margin-top: 6px; }
+.modal.cofre-pedido { width: min(520px, calc(100vw - 36px)); height: auto; min-height: 0; max-height: none; padding: 18px; }
+.cofre-pedido-cab { display: flex; align-items: center; gap: 8px; font-size: 15px; margin-bottom: 12px; }
+.cofre-pedido-segredo { display: flex; align-items: center; gap: 8px; padding: 10px; border-radius: 9px; background: var(--hover); }
+.cofre-pedido-motivo { margin-top: 10px; color: var(--texto-2); font-style: italic; }
+.cofre-pedido-acoes { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
+.cofre-pedido-tempo { display: inline-flex; gap: 4px; align-items: center; }
+.cofre-pedido-tempo .campo { width: auto; }
+
+/* janelinha destacada: só a aba, com uma barrinha em cima (título e "sempre por cima") */
+.app.janela-solta { display: flex; flex-direction: column; height: 100vh; }
+.solta-barra { display: flex; align-items: center; gap: 6px; height: 30px; flex-shrink: 0; padding: 0 6px 0 12px; border-bottom: 1px solid var(--borda); background: var(--bg-elev); font-size: 12.5px; }
+.solta-titulo { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--texto-2); font-weight: 600; }
+.solta-barra .btn-icone.ativo { color: var(--acento); background: var(--acento-suave); }
+.solta-corpo { flex: 1; min-height: 0; position: relative; display: flex; }
+.solta-corpo > * { flex: 1; min-width: 0; }

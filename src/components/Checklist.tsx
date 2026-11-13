@@ -35,6 +35,30 @@ function copiar(texto: string) {
   navigator.clipboard.writeText(texto).then(() => avisar("Copiado")).catch(falhou);
 }
 
+/** Copia com formatação (HTML, que o Teams e o Outlook entendem) e, para quem só aceita texto, o markdown. */
+function copiarRico(html: string, texto: string) {
+  const blob = (t: string, tipo: string) => new Blob([t], { type: tipo });
+  navigator.clipboard.write([new ClipboardItem({ "text/html": blob(html, "text/html"), "text/plain": blob(texto, "text/plain") })])
+    .then(() => avisar("Copiado"))
+    .catch(() => copiar(texto));
+}
+
+/** O HTML de um trecho renderizado, sem os botões de copiar e com borda nas tabelas (o tema não vai junto). */
+function htmlParaColar(el: Element): string {
+  const c = el.cloneNode(true) as Element;
+  c.querySelectorAll(".ck-copiar").forEach((b) => b.remove());
+  [...(c.tagName === "TABLE" ? [c] : []), ...c.querySelectorAll("table")].forEach((t) => t.setAttribute("style", "border-collapse:collapse"));
+  c.querySelectorAll("td, th").forEach((x) => x.setAttribute("style", "border:1px solid #999;padding:4px 8px;text-align:left"));
+  return c.tagName === "TABLE" ? c.outerHTML : c.innerHTML;
+}
+
+/** A tabela em markdown (para colar onde só entra texto). */
+function tabelaEmMarkdown(t: HTMLTableElement): string {
+  const linhas = [...t.rows].map((r) => `| ${[...r.cells].map((c) => (c.textContent ?? "").trim().replace(/\s+/g, " ").replace(/\|/g, "\\|")).join(" | ")} |`);
+  if (linhas.length) linhas.splice(1, 0, `|${" --- |".repeat(t.rows[0].cells.length)}`);
+  return linhas.join("\n");
+}
+
 /** Abre o alvo de um link. Documento e arquivo abrem na outra metade do painel, como referência ao lado do checklist. */
 function seguir(link: Link, pasta: string, raiz: string) {
   const a = alvoDe(link, pasta);
@@ -62,6 +86,17 @@ function limpar(html: string, pasta: string): string {
       if (at.name.startsWith("on") || (/^(href|src)$/.test(at.name) && /^\s*javascript:/i.test(at.value))) el.removeAttribute(at.name);
     }
   });
+  // tabela ganha "copiar tabela" (com formatação, para o Teams; em markdown para quem só aceita texto)
+  d.querySelectorAll("table").forEach((t) => {
+    const caixa = d.createElement("div");
+    caixa.className = "ck-tabela";
+    const b = d.createElement("button");
+    b.className = "ck-copiar";
+    b.textContent = "copiar tabela";
+    b.setAttribute("data-copiar-tabela", "");
+    t.replaceWith(caixa);
+    caixa.append(b, t);
+  });
   d.querySelectorAll("pre").forEach((pre) => {
     const b = d.createElement("button");
     b.className = "ck-copiar";
@@ -76,13 +111,25 @@ type Marked = typeof import("marked");
 
 function Markdown({ texto, md, pasta, raiz }: { texto: string; md: Marked | null; pasta: string; raiz: string }) {
   const html = useMemo(() => (md ? limpar(md.marked.parse(texto, { async: false }) as string, pasta) : null), [texto, md, pasta]);
+  const corpo = useRef<HTMLDivElement>(null);
   if (html == null) return <div className="ck-md">{texto}</div>;
   return (
+    <div className="ck-md-caixa">
+    {/* copia o texto inteiro (o passo a passo do card), com formatação */}
+    <button className="ck-copiar ck-copiar-tudo" title="Copiar o texto inteiro, com formatação (cola no Teams)"
+      onClick={() => corpo.current && copiarRico(htmlParaColar(corpo.current), texto)}>copiar texto</button>
     <div
+      ref={corpo}
       className="ck-md"
       dangerouslySetInnerHTML={{ __html: html }}
       onClick={(e) => {
         const t = e.target as HTMLElement;
+        if (t.matches("[data-copiar-tabela]")) {
+          e.preventDefault();
+          const tab = t.parentElement?.querySelector("table");
+          if (tab) copiarRico(htmlParaColar(tab), tabelaEmMarkdown(tab));
+          return;
+        }
         if (t.matches("[data-copiar]")) {
           e.preventDefault();
           copiar((t.parentElement?.textContent ?? "").replace(/^copiar/, "").replace(/\n$/, ""));
@@ -96,9 +143,11 @@ function Markdown({ texto, md, pasta, raiz }: { texto: string; md: Marked | null
           return;
         }
         // código solto no texto: um clique copia
-        if (t.tagName === "CODE" && t.parentElement?.tagName !== "PRE") copiar(t.textContent ?? "");
+        // (menos quando você está selecionando texto: aí o clique é do arrasto da seleção)
+        if (t.tagName === "CODE" && t.parentElement?.tagName !== "PRE" && !window.getSelection()?.toString()) copiar(t.textContent ?? "");
       }}
     />
+    </div>
   );
 }
 
@@ -566,6 +615,8 @@ function CartaoPasso({ ctx, p, proximo, aberto, alternar, editando, setEditando,
   const tituloDe = (id: string) => passoDe(doc, id)?.titulo ?? id;
   const deps = p.depende_de ?? [];
   const libera = dependentes(doc, p.id);
+  // o cartão só fica arrastável enquanto a alça está pressionada: o cartão inteiro arrastável não deixava selecionar texto
+  const [pega, setPega] = useState(false);
   const comDrop = arrastar?.estado?.alvo === p.id ? (arrastar.estado.antes ? " drop-antes" : " drop-depois") : "";
   const mudarPasso = (rotulo: string, f: (x: Passo) => void) => mudar(`${rotulo} · ${p.titulo}`, (d) => { const x = passoDe(d, p.id); if (x) f(x); });
   const parar = (ev: React.SyntheticEvent) => ev.stopPropagation();
@@ -599,7 +650,7 @@ function CartaoPasso({ ctx, p, proximo, aberto, alternar, editando, setEditando,
     <div
       data-passo={p.id}
       className={`ck-passo${proximo ? " proximo" : ""}${ok ? " feito" : ""}${aberto ? " aberto" : ""}${editando ? " editando" : ""}${arrastar?.estado?.id === p.id ? " arrastando" : ""}${comDrop}`}
-      draggable={!!arrastar && !editando}
+      draggable={!!arrastar && !editando && pega}
       onDragStart={(ev) => { if (!arrastar) return; ev.dataTransfer.effectAllowed = "move"; ev.dataTransfer.setData("text/plain", p.id); arrastar.inicio(); }}
       onDragOver={(ev) => {
         if (!arrastar?.estado) return;
@@ -608,12 +659,13 @@ function CartaoPasso({ ctx, p, proximo, aberto, alternar, editando, setEditando,
         arrastar.sobre(ev.clientY < r.top + r.height / 2);
       }}
       onDrop={(ev) => { if (!arrastar) return; ev.preventDefault(); arrastar.soltar(); }}
-      onDragEnd={() => arrastar?.fim()}
+      onDragEnd={() => { setPega(false); arrastar?.fim(); }}
     >
       {/* topo: cabeçalho e, com o passo aberto, a faixa de tags; o realce do mouse cobre os dois */}
       <div className="ck-topo" onClick={editando ? undefined : alternar}>
         <div className="ck-cab">
-          {arrastar && <span className="ck-alca" title="Arraste para mudar de lugar"><GripVertical size={14} /></span>}
+          {arrastar && <span className="ck-alca" title="Arraste para mudar de lugar"
+            onMouseDown={() => { setPega(true); window.addEventListener("mouseup", () => setPega(false), { once: true }); }}><GripVertical size={14} /></span>}
           <span className="ck-num">{n}</span>
           {editando ? (
             <input className="campo ck-titulo-edit" autoFocus value={p.titulo} onClick={parar} onKeyDown={(ev) => ev.stopPropagation()}

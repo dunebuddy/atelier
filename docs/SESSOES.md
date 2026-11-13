@@ -576,3 +576,8 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 - Código único: `bancada::codigo_em_uso` abre os outros bancos só para ler (sem `db::abrir`, que migra e cria pasta).
 - 0.2.20 fechada com o ok do Paulo ("pode resolver isso tudo e subir uma versão nova"). Ficaram na caixa de entrada:
   janelinha destacada e links `atelier://` (colar na busca, link de arquivo, Copiar link, bug do `atelier://item/`).
+- 0.2.21 (com o ok do Paulo): contraste feito/pendente em `checklist.css` (verde #3fb950 fixo); `copiarRico`
+  (ClipboardItem com text/html e text/plain), `htmlParaColar` e `tabelaEmMarkdown` no `Checklist.tsx`; o card só fica
+  `draggable` com a alça pressionada (`pega`). Anotados para depois: cofre de segredos (decidido: arquivo separado e
+  todo criptografado, permissão ao agente por 5 min, valor de checklist como segredo), valor como referência com
+  histórico, janelinha destacada e links `atelier://`.

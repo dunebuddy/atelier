@@ -64,8 +64,16 @@ button.ck-grupo-nome:hover { background: var(--hover); color: var(--texto-2); }
 
 /* cartão do passo */
 .ck-passo { position: relative; border: 1px solid var(--borda); border-radius: 10px; background: var(--bg-elev); margin: 6px 0; }
-.ck-passo.feito { opacity: .62; }
-.ck-passo.feito:hover { opacity: .9; }
+/* feito e pendente se distinguem rolando rápido: o pendente é um cartão esverdeado com a bordinha verde à esquerda;
+   o feito fica achatado (sem fundo nem borda) e apagado. Verde vivo fixo: o verde do tema escuro é fraco demais */
+.ck-passo:not(.feito) {
+  border-color: color-mix(in srgb, #3fb950 55%, var(--borda)); border-left: 4px solid #3fb950;
+  background: color-mix(in srgb, var(--c-green) 35%, var(--bg-elev));
+}
+.ck-passo.feito { opacity: .4; }
+.ck-passo.feito:not(.aberto) { background: transparent; border-color: transparent; margin: 0; }
+.ck-passo.feito:not(.aberto) .ck-cab { padding-top: 2px; padding-bottom: 1px; }
+.ck-passo.feito:hover, .ck-passo.feito.aberto { opacity: .9; }
 .ck-passo.feito .ck-titulo { text-decoration: line-through; text-decoration-color: var(--texto-3); }
 .ck-passo.arrastando { opacity: .35; }
 .ck-passo.drop-antes::before, .ck-passo.drop-depois::after { content: ""; position: absolute; left: 6px; right: 6px; height: 3px; border-radius: 3px; background: var(--acento); }
@@ -121,6 +129,14 @@ button.ck-grupo-nome:hover { background: var(--hover); color: var(--texto-2); }
 .ck-md pre code { background: none; padding: 0; cursor: text; white-space: pre; }
 .ck-md .ck-copiar { position: absolute; top: 6px; right: 6px; font-size: 11px; border: 1px solid var(--borda-forte); background: var(--bg-elev); color: var(--texto-2); border-radius: 6px; padding: 1px 7px; cursor: pointer; }
 .ck-md table { border-collapse: collapse; margin: .5em 0; }
+/* copiar tabela (em cima, à direita da tabela) e copiar o texto inteiro (no canto do bloco): aparecem com o mouse */
+.ck-md .ck-tabela { position: relative; padding-top: 22px; }
+.ck-md .ck-tabela .ck-copiar { top: 0; right: 0; opacity: 0; }
+.ck-md .ck-tabela:hover .ck-copiar { opacity: 1; }
+.ck-md-caixa { position: relative; }
+.ck-md-caixa > .ck-copiar-tudo { position: absolute; top: -4px; right: 0; z-index: 1; opacity: 0; font-size: 11px; border: 1px solid var(--borda-forte); background: var(--bg-elev); color: var(--texto-2); border-radius: 6px; padding: 1px 7px; cursor: pointer; }
+.ck-md-caixa:hover > .ck-copiar-tudo { opacity: 1; }
+.ck-md { user-select: text; }
 .ck-md td, .ck-md th { border: 1px solid var(--borda-forte); padding: 4px 8px; text-align: left; }
 .ck-md a { color: var(--acento); cursor: pointer; }
 .ck-md blockquote { border-left: 3px solid var(--acento); margin: .6em 0; padding: 2px 12px; color: var(--texto-2); }

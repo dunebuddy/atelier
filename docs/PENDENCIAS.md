@@ -20,6 +20,59 @@ Como usar:
 > **Triagem de 2026-11-02:** tudo o que está abaixo já tem lugar na segunda rodada do [`ROADMAP.md`](ROADMAP.md)
 > (0.2.4 a 0.2.9) ou em "Ideias, sem data". Pedido novo entra aqui e ganha lugar lá.
 
+- **Checklist: valor como referência, com histórico** (13/11, Paulo): durante a sessão com o André um nome mudou
+  ("não posso criar com esse nome, tem que ser com esse") e ele aparecia em dois campos diferentes. Quer editar num
+  lugar só e ver mudar em todo canto, com um **log** ("o valor tal foi atualizado para o valor tal").
+  *Pré-análise:* o checklist já tem a base: `campos` (chave → rótulo), `valores` e `{{chave}}` no texto, trocado pelo
+  valor. Mas os valores são só os coletados na execução; os nomes planejados (o nome do grupo, do app) o agente
+  escreve soltos no texto. Falta: (1) **valor planejado**: o agente cria o campo já com o valor ("cria esse cara com
+  esse nome") e usa `{{chave}}` em todo lugar onde ele aparece (o formato e o guia do MCP passam a pedir isso);
+  (2) no texto, o valor vira um **chip**: clique copia (como hoje) e um lápis edita ali mesmo, mudando em todos os
+  passos; (3) **histórico** no próprio arquivo (`historico: [{quando, chave, de, para, por}]`), mostrado no painel
+  "Valores" e na linha do tempo do documento; (4) desfazer volta o valor anterior. Tamanho: médio.
+
+- **Cofre de segredos da bancada** (13/11, Paulo; recurso grande, a pensar junto antes de fazer). Hoje segredo
+  recebido (ex.: os *secret values* que o André passou durante o checklist) fica em texto plano no documento.
+  *O que ele pediu:* cofre criptografado por bancada (um banco só, não um por documento); cada segredo com **nome**
+  descritivo, **descrição**, **chave** e **valor**; ligado ao **documento** que o gerou ("o documento é o key vault"),
+  e o documento mostra os segredos dele; ver **todos os segredos da bancada**; achar pela **cadeia** (no projeto, ver
+  os segredos das 20 tasks filhas); e o **agente** poder usar ("pega a senha tal e salva na AWS", via torii, cujo log
+  é criptografado).
+  *Pré-análise:*
+  - **Como o torii faz** (`C:\projetos\torii`): SQLite3 Multiple Ciphers (cifra ChaCha20, o arquivo inteiro
+    criptografado) com o `libsqlite3-sys` 0.30.1 em `vendor/` e `[patch.crates-io]`; chave de 256 bits aleatória no
+    cofre do sistema pelo `keyring` (Credential Manager/DPAPI no Windows, Secret Service no Linux, arquivo só do
+    usuário com aviso se não houver). O atelier usa o mesmo `rusqlite` 0.32: dá para trazer o `vendor/` como está.
+  - **Decidido pelo Paulo (13/11):** cofre **separado e todo criptografado** (a opção a abaixo), do jeito sugerido;
+    a permissão ao agente pode valer **por X minutos (padrão 5)**, porque o agente às vezes consulta o mesmo valor
+    mais de uma vez: "Permitir por 5 min" / "Só desta vez" / "Negar".
+  - **Onde guardar:** (a) arquivo **`cofre.db` separado** na bancada, inteiro criptografado como o do
+    torii: nem nome nem descrição ficam legíveis no disco; o `atelier.db` continua como está (consultas, MCP,
+    backup); (b) **só o valor** criptografado dentro do `atelier.db`: mais simples, e busca/consultas veem nome e
+    descrição. Recomendação: **(a)**, o mesmo esquema já provado no torii e nada do segredo à vista.
+  - **Ligação e cadeia:** cada segredo aponta para o código do documento; a página do documento ganha a parte
+    **Segredos** (os dele e, recolhidos, os dos filhos, descendo pela relação Pai como a medida do workspace já faz);
+    uma tela **Cofre** com todos da bancada, busca por nome/descrição/documento. No texto, uma menção ao segredo vira
+    um chip (nome, nunca o valor).
+  - **Na tela:** valor escondido; "mostrar" e "copiar" (a área de transferência se limpa sozinha em ~30 s).
+    **"Guardar no cofre"** num trecho selecionado do documento troca o texto pelo chip (para tirar os segredos que já
+    estão em texto plano, como os do André).
+  - **Agente (MCP):** `segredos` lista nome, descrição e documento, **sem valor**; `segredo` (ler o valor) pede **ok
+    na tela** ("o agente quer o segredo X: Permitir por 5 min?"; dentro da janela de tempo, as leituras seguintes desse
+    agente passam sem perguntar), e a leitura entra na linha do tempo do documento (sem o
+    valor). O valor entra no contexto do agente e no argv do torii (log criptografado): viável, como o Paulo disse.
+  - **Cuidados:** a chave fica nesta máquina e neste usuário: backup ou bancada levada para outra máquina não abre o
+    cofre sem exportar a chave (exportar com senha fica para depois). Export/PDF nunca levam valor.
+  - **Ligado ao checklist** (13/11, Paulo: "tenho que poder criar um valor como secret, que aí não vai para o
+    documento, vai só a referência para o segredo"): no painel de dados/valores do checklist, o Paulo cria ou marca
+    um valor como **segredo** ao preencher (ele preenche, não é o agente que cria). O valor vai para o cofre, ligado
+    ao documento do checklist; o `*.checklist.json` guarda só a referência (ex.: `"valores": {"client_secret":
+    {"segredo": "<id>"}}`). No texto, `{{client_secret}}` aparece como `••••••` com copiar/mostrar (vindo do cofre).
+    O agente, lendo o checklist pelo MCP, vê a referência, nunca o valor; para usar, pede o segredo (com a permissão
+    por tempo). Isso também liga com o "valor como referência": o segredo é um valor referenciado que mora no cofre.
+  - Tamanho: grande; provavelmente uma versão só para isso (cofre + tela + MCP), com "Guardar no cofre" junto.
+
+
 - **Destacar uma aba numa janelinha** (13/11, Paulo): "acompanhar uma aplicação de passo a passo seria melhor se eu
   pudesse destacar o checklist e colocar do lado da janela onde estou trabalhando, e o atelier é muito grande para
   isso". Vale para qualquer aba, o checklist é o caso que motivou.
@@ -134,6 +187,14 @@ O arquivo `~/atelier/pedidos-ao-atelier.md` foi esvaziado depois desta triagem, 
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.21** (2026-11-13) · Checklist mais legível e fácil de copiar, pedidos de 13/11:
+  - **feito × pendente à primeira vista:** o pendente é um cartão esverdeado com bordinha verde (4 px) à esquerda; o
+    feito fica achatado, sem fundo nem borda, a 40% (aberto ou com o mouse em cima, 90%). O Paulo escolheu esta (a
+    "C") entre três opções mostradas;
+  - **copiar tabela** em toda tabela do texto do passo e **copiar texto** no bloco inteiro (com o mouse em cima):
+    copiam com formatação (HTML, que o Teams entende, com borda nas tabelas) e em markdown para quem só aceita texto;
+  - **dá para selecionar texto dentro do card:** o cartão inteiro era arrastável e bloqueava a seleção; agora só a
+    alça arrasta. Código solto não copia no clique quando você está selecionando.
 - **0.2.20** (2026-11-13) · Toasts, pílula dos agentes e checklist, pedidos de 13/11:
   - **toasts contam e somem sozinhos:** o com **Desfazer** (ex.: "itens apagados") ficava parado, sem barrinha, por
     causa da opção "Aviso com Desfazer fica até eu mexer" (ligada por padrão). Agora todo toast conta; o com Desfazer

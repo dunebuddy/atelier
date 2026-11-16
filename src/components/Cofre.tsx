@@ -5,7 +5,7 @@
 // - PedidoDoAgente: a caixa "o agente quer o segredo X: Permitir por 5 min / Só desta vez / Negar".
 // O valor nunca vem na lista: só ao clicar em mostrar ou copiar (e a área de transferência se limpa em 30 s).
 // Valor que é um objeto JSON aparece (e se edita) como chave/valor, como no Secrets Manager da AWS.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Bot, ChevronDown, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { api, Esquema, Segredo } from "../api";
 import { abrir, avisar, falhou } from "../ui";
@@ -89,24 +89,30 @@ function useCofre(carregar: () => void) {
   }, [carregar]);
 }
 
-function LinhaSegredo({ s, aoMudar, mostrarDocumento = true }: { s: Segredo; aoMudar: () => void; mostrarDocumento?: boolean }) {
+function LinhaSegredo({ s, aoMudar, foco }: { s: Segredo; aoMudar: () => void; foco?: boolean }) {
   const [valor, setValor] = useState<string | null>(null);
   const [apagando, setApagando] = useState(false);
   const menu = usePopover();
+  const resumo = useResumos(s.documento ? [s.documento] : []).get(s.documento ?? "");
+  // aberto pela ficha do documento: rola até ele e destaca
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (foco) ref.current?.scrollIntoView({ block: "center" }); }, [foco]);
   const mostrar = async () => {
     if (valor != null) return setValor(null);
     try { setValor((await api.cofreValor(s.id)).valor); } catch (e) { falhou(e); }
   };
   const obj = valor != null ? objetoJson(valor) : null;
   return (
-    <div className="cofre-linha">
+    <div className={`cofre-linha${foco ? " foco" : ""}`} ref={ref}>
       <KeyRound size={15} className="cofre-icone" />
       <div className="cofre-info">
         <div className="cofre-nome">
           {s.nome}
           {s.chave && <code className="cofre-chave copiavel" title="Clique para copiar a chave" onClick={seNaoSeleciona(() => copiarAberto(s.chave))}>{s.chave}</code>}
-          {mostrarDocumento && s.documento && (
-            <button className="mencao" title="Abrir o documento que gerou este segredo" onClick={() => abrirCodigo(s.documento!, (r) => abrir(r))}>#{s.documento}</button>
+          {s.documento && (
+            <button className="mencao cofre-doc-nome" title={`Abrir o documento deste segredo (#${s.documento})`} onClick={() => abrirCodigo(s.documento!, (r) => abrir(r))}>
+              {resumo ? resumo.titulo || "Sem título" : `#${s.documento}`}
+            </button>
           )}
         </div>
         {s.descricao && <div className="cofre-desc">{s.descricao}</div>}
@@ -131,16 +137,9 @@ function LinhaSegredo({ s, aoMudar, mostrarDocumento = true }: { s: Segredo; aoM
         <button className="btn-icone" title={valor != null ? "Esconder" : "Mostrar o valor"} onClick={mostrar}>{valor != null ? <EyeOff size={14} /> : <Eye size={14} />}</button>
         <button className="btn-icone cofre-copiar" title="Copiar…" onClick={menu.abrir}><Copy size={14} /><ChevronDown size={10} /></button>
         {menu.ancora && (
-          <Popover ancora={menu.ancora} aoFechar={menu.fechar} largura={300}>
-            <button className="menu-item" onClick={() => { menu.fechar(); copiarSegredo(s.id, s.nome); }}>
-              <Lock size={14} /> Copiar o segredo{obj ? " (o JSON inteiro)" : ""}
-            </button>
-            {s.chave && (
-              <button className="menu-item" onClick={() => { menu.fechar(); copiarAberto(s.chave); }}>
-                <KeyRound size={14} /> Copiar a chave <code className="cofre-chave">{s.chave}</code>
-              </button>
-            )}
-            <div className="dica" style={{ padding: "4px 8px" }}>O segredo some da área de transferência em 30 s.</div>
+          <Popover ancora={menu.ancora} aoFechar={menu.fechar} largura={180}>
+            <button className="menu-item" onClick={() => { menu.fechar(); copiarSegredo(s.id, s.nome); }}><Lock size={14} /> Copiar segredo</button>
+            {s.chave && <button className="menu-item" onClick={() => { menu.fechar(); copiarAberto(s.chave); }}><KeyRound size={14} /> Copiar chave</button>}
           </Popover>
         )}
         <button className="btn-icone" title="Editar" onClick={() => novoSegredo({ inicial: s })}><Pencil size={14} /></button>
@@ -188,7 +187,7 @@ export function JanelaSegredo({ esquema, wsItem }: { esquema: Esquema; wsItem: n
   );
 }
 
-/** Criar (sem `inicial`) ou editar um segredo. Editando, o valor só muda se você digitar (ou abrir) um novo. */
+/** Criar (sem `inicial`) ou editar um segredo. Editando, o valor guardado já vem preenchido; só vai se mudar. */
 function FormSegredo({ inicial, documento, esquema, wsItem, aoFechar, aoCriar }: PedidoForm & {
   esquema: Esquema; wsItem: number | null; aoFechar: () => void;
 }) {
@@ -217,19 +216,23 @@ function FormSegredo({ inicial, documento, esquema, wsItem, aoFechar, aoCriar }:
     if (wsItem == null) return;
     try { const it = await api.item(wsItem); lembrarResumo(it); setDoc(it.codigo); } catch (e) { falhou(e); }
   };
-  const abrirAtual = async () => {
+  // editando: o valor guardado já vem no campo (escondido até o olhinho); JSON abre na aba chave/valor
+  const [original, setOriginal] = useState<string | null>(null);
+  useEffect(() => {
     if (!inicial) return;
-    try {
-      const v = (await api.cofreValor(inicial.id)).valor;
+    api.cofreValor(inicial.id).then(({ valor: v }) => {
+      setOriginal(v);
       setValor(v);
       irPara(objetoJson(v) ? "kv" : "texto", v);
-    } catch (e) { falhou(e); }
-  };
+    }).catch(falhou);
+  }, [inicial?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const salvar = async () => {
     try {
       if (!nome.trim()) return avisar("O segredo precisa de um nome.");
       if (inicial) {
-        await api.cofreMudar(inicial.id, { nome, descricao, chave, documento: doc || null, ...(valor ? { valor } : {}) });
+        if (original != null && !valor) return avisar("O segredo precisa de um valor.");
+        const mudouValor = original != null && valor !== original;
+        await api.cofreMudar(inicial.id, { nome, descricao, chave, documento: doc || null, ...(mudouValor ? { valor } : {}) });
       } else {
         if (!valor) return avisar("O segredo precisa de um valor.");
         const { id } = await api.cofreCriar({ nome, descricao, chave, valor, documento: doc || null });
@@ -285,12 +288,11 @@ function FormSegredo({ inicial, documento, esquema, wsItem, aoFechar, aoCriar }:
           )}
         </div>
         <span style={{ flex: 1 }} />
-        {inicial && !valor && <button className="btn" onClick={abrirAtual} title="Traz o valor guardado para você mudar">Editar o valor atual</button>}
         <button className="btn-icone" title={ver ? "Esconder" : "Ver o que está digitando"} onClick={() => setVer((v) => !v)}>{ver ? <EyeOff size={14} /> : <Eye size={14} />}</button>
       </div>
       {aba === "texto" ? (
         <textarea className={`campo cofre-mono cofre-campo-valor${mascara}`} rows={5} autoComplete="off" spellCheck={false}
-          placeholder={inicial ? "Novo valor (vazio: fica o atual). Texto ou JSON." : "Texto ou JSON ({\"usuario\": \"...\", \"senha\": \"...\"})"}
+          placeholder={inicial && original == null ? "Abrindo o valor…" : "Texto ou JSON ({\"usuario\": \"...\", \"senha\": \"...\"})"}
           value={valor} onChange={(e) => setValor(e.target.value)} />
       ) : (
         <div className="cofre-kv-edita">
@@ -318,7 +320,7 @@ function FormSegredo({ inicial, documento, esquema, wsItem, aoFechar, aoCriar }:
 }
 
 /** Todos os segredos da bancada. */
-export function TelaCofre() {
+export function TelaCofre({ foco }: { foco?: number }) {
   const [lista, setLista] = useState<Segredo[] | null>(null);
   const [q, setQ] = useState("");
   const carregar = useCallback(() => { api.cofre().then(setLista).catch((e) => { setLista([]); falhou(e); }); }, []);
@@ -338,9 +340,23 @@ export function TelaCofre() {
       {lista == null && <div className="vazio-grande">Abrindo o cofre…</div>}
       {lista?.length === 0 && <div className="vazio-grande">Nenhum segredo ainda. Senha, secret ou token que você receber vem para cá, não para o texto.</div>}
       <div className="cofre-lista">
-        {vis.map((s) => <LinhaSegredo key={s.id} s={s} aoMudar={carregar} />)}
+        {vis.map((s) => <LinhaSegredo key={s.id} s={s} aoMudar={carregar} foco={s.id === foco} />)}
       </div>
     </div>
+  );
+}
+
+/** Na ficha do documento o segredo é só nome e descrição; o clique abre ele no Cofre (valor, copiar, editar). */
+function ItemDaFicha({ s }: { s: Segredo }) {
+  return (
+    <button className="cofre-ficha-item" title="Abrir no Cofre (ver, copiar, editar)"
+      onClick={(e) => abrir({ v: "cofre", segredo: s.id }, e.ctrlKey || e.metaKey)}>
+      <KeyRound size={14} className="cofre-icone" />
+      <span className="cofre-info">
+        <span className="cofre-nome">{s.nome}</span>
+        {s.descricao && <span className="cofre-desc">{s.descricao}</span>}
+      </span>
+    </button>
   );
 }
 
@@ -366,11 +382,11 @@ export function SegredosDoDocumento({ codigo }: { codigo: string }) {
         <span style={{ flex: 1 }} />
         <button className="btn" onClick={novo}><Plus size={13} /> Guardar segredo</button>
       </div>
-      {proprios.map((s) => <LinhaSegredo key={s.id} s={s} aoMudar={carregar} mostrarDocumento={false} />)}
+      {proprios.map((s) => <ItemDaFicha key={s.id} s={s} />)}
       {dosFilhos.length > 0 && (
         <details className="cofre-filhos">
           <summary>Dos descendentes ({dosFilhos.length})</summary>
-          {dosFilhos.map((s) => <LinhaSegredo key={s.id} s={s} aoMudar={carregar} />)}
+          {dosFilhos.map((s) => <ItemDaFicha key={s.id} s={s} />)}
         </details>
       )}
     </div>

@@ -610,3 +610,12 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   Exibição: `copiarSecreto` (limpa em 30 s) e `copiarAberto` (a chave); menu de copiar; clique copia.
 - Botão **Segredo** em `PaginaItem` (barra `meta-acoes`).
 - A conferir no app de verdade: o `-webkit-text-security` no WebView2 (no Chromium do teste funciona).
+
+## 2026-11-16 — cofre, ajustes do uso (sem versão ainda)
+- "Segredos sem valor" (registrado pelo agente em `~/atelier/pedidos-ao-atelier.md`): os valores estavam no cofre;
+  o editar abria com o campo vazio e parecia não ter valor. Agora o `FormSegredo` busca o valor ao abrir
+  (`original`) e só manda `valor` se mudou.
+- Menu de copiar só com "Copiar segredo" / "Copiar chave"; a linha mostra o título do documento (`useResumos`).
+- Ficha do documento: `ItemDaFicha` (nome e descrição); o clique abre `{ v: "cofre", segredo }`, e a `TelaCofre`
+  rola até ele e destaca (`foco`).
+- Na fila: no checklist, campo `cofre:N` sem olhinho para ver o valor.

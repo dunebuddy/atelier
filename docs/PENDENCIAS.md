@@ -13,7 +13,8 @@ Como usar:
 
 ## Próxima versão
 
-(vazio — escolher da caixa de entrada)
+Já no master (16/11, feitos a pedido do Paulo, sem versão ainda): os quatro itens do cofre da caixa de entrada
+(menu de copiar, nome do documento, ficha só com nome e descrição, editar com o valor preenchido).
 
 ## Caixa de entrada
 
@@ -24,6 +25,21 @@ Como usar:
 ### Bugs
 
 ### Melhorias pedidas
+- **Cofre, menu de copiar** (2026-11-16, uso da 0.2.23): o layout ficou feio (a chave em `code` quebra o "Copiar a
+  chave" em três linhas, e tem a dica dos 30 s embaixo). Deixar só dois itens, só texto: **Copiar segredo** e
+  **Copiar chave**, sem mostrar a chave no menu e sem a dica. Em `LinhaSegredo` (`src/components/Cofre.tsx`).
+- **Cofre, documento do segredo** (2026-11-16): na linha do segredo aparece só `#24b0c15`; mostrar o **nome do
+  documento** (projeto), não só o código. Dá para usar o `ChipItem` (ícone + código + título), como na janelinha.
+- **Cofre, lista de segredos na ficha do documento** (2026-11-16): ali aparece **só nome e descrição** (sem chave,
+  sem o •••• do valor, sem os botões). Clicar no segredo **abre ele no Cofre**, com tudo (chave, valor, copiar,
+  editar). Precisa de rota do cofre com o segredo escolhido (ex.: `{ v: "cofre", id }`), que rola até ele e o
+  destaca. A tela Cofre continua como é hoje. (`SegredosDoDocumento` em `src/components/Cofre.tsx`.)
+- **Cofre, editar abre com o valor vazio** (2026-11-16, bug de uso): o Paulo achou que os segredos criados pelo
+  agente (#451998b, `cofre:2` e `cofre:3`) estavam sem valor, porque o editar mostra o campo vazio ("Novo valor").
+  Os valores estão lá (o agente conferiu com `segredo ler`). Editar tem de vir **com o valor já preenchido**
+  (escondido, com o olhinho), sem botão "Editar o valor atual".
+- **Checklist, campo `cofre:N`** (sugestão do agente em `pedidos-ao-atelier.md`, 16/11): hoje mostra "🔒 no cofre"
+  com copiar e trocar; falta um jeito de **ver** o valor ali (olhinho) e de ir ao segredo no Cofre.
 
 ### Ideias antigas (ninguém pediu agora)
 - Migrar o posto `daily-work` para dentro do atelier (é trabalho no outro repositório, não aqui).

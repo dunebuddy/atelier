@@ -592,7 +592,7 @@ function Conteudo({ j, ctx, visivel, mudar }: { j: Janela; ctx: Contexto; visive
     case "lixeira":
       return <Lixeira esquema={esquema} ir={ir} />;
     case "cofre":
-      return <TelaCofre />;
+      return <TelaCofre foco={r.segredo} />;
     case "sql":
       return (
         <PaginaConsulta

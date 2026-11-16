@@ -5,7 +5,7 @@ export type Rota =
   | { v: "inicio" }
   | { v: "lixeira" }
   /** o cofre de segredos da bancada */
-  | { v: "cofre" }
+  | { v: "cofre"; segredo?: number }
   | { v: "visao"; id: number }
   /** visão avulsa, não salva: o filtro vem junto (ex.: "Filhos de X", aberta do "Apontado por" de um item) */
   | { v: "consulta"; titulo: string; icone?: string; filtro: FiltroVisao; layout?: Layout; config?: Visao["config"] }

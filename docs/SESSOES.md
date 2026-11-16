@@ -619,3 +619,16 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 - Ficha do documento: `ItemDaFicha` (nome e descrição); o clique abre `{ v: "cofre", segredo }`, e a `TelaCofre`
   rola até ele e destaca (`foco`).
 - Na fila: no checklist, campo `cofre:N` sem olhinho para ver o valor.
+
+## 2026-11-16 (fim do dia) — 0.2.24
+- O Paulo pediu: se achar o bug do toast, corrigir e fechar a versão com tudo do dia. Reproduzido no teste
+  (fechar o último toast pelo X com o mouse em cima → os próximos nascem com a pilha `aberta parada`).
+- `Avisos.tsx`: `sobre` (mouse, por `pointermove`) e `fora` (blur / visibilitychange) decidem a pausa
+  (`decidir`); a pilha que esvazia solta o `sobre`.
+- Checklist: `rotuloRepetido` e `gruposDeParametros` em `checklist.ts`; `preencher` no título; `EntradaValor` com
+  `cofre:N` só tem "Abrir no Cofre".
+- Tela do agente: o MCP põe `sessao` (`ATELIER_SESSAO`) no `/api/tela`; a API repassa; o `pedidoDaTela` acha o
+  workspace do terminal e usa `mudarDe(k)` (sem trocar o ativo); `P.janelaCom` evita abrir de novo e o evento
+  `atelier:recarregar-arquivo` relê no `Explorador`. Testado com a API: o workspace à vista não muda.
+- Ficou na caixa: HTML com recursos relativos, nome repetido pelo agente, `terminal` no workspace do agente,
+  `CLAUDE.md` da pasta e manual do agente.

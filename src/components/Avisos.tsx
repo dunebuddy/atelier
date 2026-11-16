@@ -99,6 +99,30 @@ export function PilhaDeAvisos() {
     pausada.current = false;
     [...resta.current].forEach(([id, ms]) => correr(id, ms));
   };
+  // o tempo para por dois motivos: o mouse em cima da pilha, ou o app fora de vista / sem foco (o aviso espera você
+  // voltar, em vez de sumir sem você ver). Os dois juntos decidem; a barrinha para junto.
+  const sobre = useRef(false);
+  const fora = useRef(typeof document !== "undefined" && (document.hidden || !document.hasFocus()));
+  const [parada, setParada] = useState(fora.current);
+  const decidir = () => {
+    const deve = sobre.current || fora.current;
+    if (deve && !pausada.current) pausar();
+    else if (!deve && pausada.current) retomar();
+    setParada(deve);
+  };
+  useEffect(() => {
+    if (fora.current) pausada.current = true;
+    const olhar = () => { fora.current = document.hidden || !document.hasFocus(); decidir(); };
+    window.addEventListener("focus", olhar);
+    window.addEventListener("blur", olhar);
+    document.addEventListener("visibilitychange", olhar);
+    return () => { window.removeEventListener("focus", olhar); window.removeEventListener("blur", olhar); document.removeEventListener("visibilitychange", olhar); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // a pilha esvaziou (fechou o último com o mouse em cima): ela sai da tela sem `mouseleave`, então solta aqui,
+  // senão os próximos nasceriam abertos e parados
+  useEffect(() => {
+    if (toasts.length === 0 && sobre.current) { sobre.current = false; setAberta(false); decidir(); }
+  }, [toasts.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const falta = (n: Notificacao) => resta.current.get(n.id) ?? Math.max(0, (fim.current.get(n.id) ?? Date.now()) - Date.now());
 
   useEffect(() => {
@@ -138,11 +162,12 @@ export function PilhaDeAvisos() {
       {toasts.length > 0 && (
       <div
         ref={pilhaRef}
-        className={`pilha-toasts${aberta || toasts.length === 1 ? " aberta" : " junta"}${aberta ? " parada" : ""}`}
+        className={`pilha-toasts${aberta || toasts.length === 1 ? " aberta" : " junta"}${parada ? " parada" : ""}`}
         style={{ "--altura-frente": `${alturaFrente}px` } as CSSProperties}
-        // mouse em cima abre a pilha e segura todos; saiu, junta de novo e todos voltam a contar
-        onMouseEnter={() => { pausar(); setAberta(true); }}
-        onMouseLeave={() => { retomar(); setAberta(false); }}
+        // mouse em cima (mexendo de verdade, não um toast que nasceu debaixo do cursor parado) abre a pilha e segura
+        // todos; saiu, junta de novo e todos voltam a contar
+        onPointerMove={() => { if (!sobre.current) { sobre.current = true; setAberta(true); decidir(); } }}
+        onMouseLeave={() => { sobre.current = false; setAberta(false); decidir(); }}
       >
       {ordem.map((n, i) => {
         const k = ordem.length - 1 - i;

@@ -31,7 +31,8 @@ export interface PedidoTela {
   /** pedir_bancada: para onde o agente quer trocar */
   caminho?: string;
   nome?: string;
-  /** agente: a sessão do terminal e o estado que o hook mandou; falta: quem pediu */
+  /** agente: a sessão do terminal e o estado que o hook mandou; falta: quem pediu. Nos pedidos de tela, o terminal
+   *  do agente que pediu: a tela faz no workspace dele, não no que está à vista */
   sessao?: number;
   estado?: string;
   agente?: string;

@@ -247,6 +247,15 @@ function Previa({ caminho, aoVoltar, aoVerChecklist }: { caminho: string; aoVolt
   }, [caminho]);
 
   useEffect(() => { carregar().catch(falhou); }, [carregar]);
+  // o agente pediu para abrir este arquivo, que já está aberto: relê
+  useEffect(() => {
+    const f = (e: Event) => {
+      const alvo = (e as CustomEvent<string>).detail ?? "";
+      if (alvo.replaceAll("\\", "/").toLowerCase() === caminho.replaceAll("\\", "/").toLowerCase()) carregar().catch(falhou);
+    };
+    window.addEventListener("atelier:recarregar-arquivo", f);
+    return () => window.removeEventListener("atelier:recarregar-arquivo", f);
+  }, [carregar, caminho]);
 
   // mudou fora (o agente editou)? recarrega sozinho, a não ser que você esteja com edição pendente
   const pendente = editado != null && editado !== texto;

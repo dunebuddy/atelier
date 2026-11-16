@@ -166,6 +166,18 @@ export function fecharJanelas(e: EstadoPainel, qual: string, mi = e.foco): Estad
   return ids.filter(livre).reduce((s, id) => fechar(s, id), e);
 }
 
+/** A janela que já mostra `r` (o mesmo arquivo, o mesmo documento...), para não abrir a mesma coisa duas vezes. */
+export function janelaCom(e: EstadoPainel, r: Rota): { mi: number; j: Janela } | null {
+  const norm = (c: string) => c.replaceAll("\\", "/").toLowerCase();
+  const igual = (x: Rota) =>
+    r.v === "arquivos" && r.arquivo ? x.v === "arquivos" && !!x.arquivo && norm(x.arquivo) === norm(r.arquivo) : chaveRota(x) === chaveRota(r);
+  for (let mi = 0; mi < e.metades.length; mi++) {
+    const j = e.metades[mi].janelas.find((x) => igual(rotaDe(x)));
+    if (j) return { mi, j };
+  }
+  return null;
+}
+
 /** Vai para `r` na janela ativa (ou abre uma, se não há, ou se a ativa é terminal/arquivos). */
 export function navegar(e: EstadoPainel, r: Rota): EstadoPainel {
   const a = janelaAtiva(e);

@@ -13,8 +13,7 @@ Como usar:
 
 ## Próxima versão
 
-Já no master (16/11, feitos a pedido do Paulo, sem versão ainda): os quatro itens do cofre da caixa de entrada
-(menu de copiar, nome do documento, ficha só com nome e descrição, editar com o valor preenchido).
+(vazio — escolher da caixa de entrada)
 
 ## Caixa de entrada
 
@@ -25,21 +24,18 @@ Já no master (16/11, feitos a pedido do Paulo, sem versão ainda): os quatro it
 ### Bugs
 
 ### Melhorias pedidas
-- **Cofre, menu de copiar** (2026-11-16, uso da 0.2.23): o layout ficou feio (a chave em `code` quebra o "Copiar a
-  chave" em três linhas, e tem a dica dos 30 s embaixo). Deixar só dois itens, só texto: **Copiar segredo** e
-  **Copiar chave**, sem mostrar a chave no menu e sem a dica. Em `LinhaSegredo` (`src/components/Cofre.tsx`).
-- **Cofre, documento do segredo** (2026-11-16): na linha do segredo aparece só `#24b0c15`; mostrar o **nome do
-  documento** (projeto), não só o código. Dá para usar o `ChipItem` (ícone + código + título), como na janelinha.
-- **Cofre, lista de segredos na ficha do documento** (2026-11-16): ali aparece **só nome e descrição** (sem chave,
-  sem o •••• do valor, sem os botões). Clicar no segredo **abre ele no Cofre**, com tudo (chave, valor, copiar,
-  editar). Precisa de rota do cofre com o segredo escolhido (ex.: `{ v: "cofre", id }`), que rola até ele e o
-  destaca. A tela Cofre continua como é hoje. (`SegredosDoDocumento` em `src/components/Cofre.tsx`.)
-- **Cofre, editar abre com o valor vazio** (2026-11-16, bug de uso): o Paulo achou que os segredos criados pelo
-  agente (#451998b, `cofre:2` e `cofre:3`) estavam sem valor, porque o editar mostra o campo vazio ("Novo valor").
-  Os valores estão lá (o agente conferiu com `segredo ler`). Editar tem de vir **com o valor já preenchido**
-  (escondido, com o olhinho), sem botão "Editar o valor atual".
-- **Checklist, campo `cofre:N`** (sugestão do agente em `pedidos-ao-atelier.md`, 16/11): hoje mostra "🔒 no cofre"
-  com copiar e trocar; falta um jeito de **ver** o valor ali (olhinho) e de ir ao segredo no Cofre.
+- **HTML de verdade dentro do atelier** (16/11): o atelier já mostra HTML (iframe com `allow-scripts`), mas falta
+  conferir página com CSS, script e imagens **relativos** (o iframe carrega pela URL da API: caminho relativo pode
+  não achar) e links. Se quebrar, servir a pasta do arquivo para os relativos funcionarem.
+- **Nome de parâmetro repetido também pelo agente** (16/11): a tela recusa e marca em alerta, e o formato do
+  checklist manda não repetir; o `checklist` do MCP ainda não recusa (o agente escreve o arquivo direto). Dá para
+  avisar no `checklist` ler/valor quando houver nome repetido.
+- **Ação `terminal` do agente no workspace dele** (16/11): `abrir`, `fechar`, `modo`, `fixar`... já valem no
+  workspace do terminal do agente (0.2.24); abrir terminal ainda abre no workspace à vista.
+- **Revisão completa do que o agente sabe** (16/11): na 0.2.24 entraram tela (tipos de arquivo, não usar
+  navegador, já aberto recarrega, abre no seu workspace), checklist (parâmetros, nome único, `{{chave}}` no título,
+  cofre) e "confira antes do `nao_consigo`". Falta: o `CLAUDE.md` da pasta do documento (`core/src/pastas.rs`) e
+  um manual que o agente consulta (ação "como_funciona"), em vez de tudo no texto do servidor.
 
 ### Ideias antigas (ninguém pediu agora)
 - Migrar o posto `daily-work` para dentro do atelier (é trabalho no outro repositório, não aqui).
@@ -73,6 +69,20 @@ Já no master (16/11, feitos a pedido do Paulo, sem versão ainda): os quatro it
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.24** (2026-11-16) · Tudo o que saiu do uso de 16/11:
+  - **cofre:** editar já abre com o valor guardado (o Paulo achou que os segredos do agente estavam sem valor);
+    menu de copiar só com "Copiar segredo" / "Copiar chave"; a linha mostra o nome do documento; na ficha do
+    documento, só nome e descrição, e o clique abre o segredo no Cofre, destacado;
+  - **toasts parados:** fechar o último toast com o mouse em cima deixava a pilha presa (aberta e parada, sem
+    `mouseleave`): os seguintes nasciam parados. Reproduzido no teste e corrigido; o mouse só pausa mexendo de
+    verdade; e o tempo só corre com o app à vista e em foco (o aviso espera o Paulo voltar);
+  - **checklist:** "Valores" virou **Parâmetros**; `{{chave}}` trocado também no título do passo (e nos avisos);
+    parâmetro no cofre mostra só **Abrir no Cofre**; nome de parâmetro não repete (a tela recusa ao criar e avisa ao
+    renomear); no painel, agrupados pelo passo dono, com a chave pequena ao lado e o repetido em alerta;
+  - **tela do agente:** o pedido leva o terminal de origem (`ATELIER_SESSAO`) e vale no **workspace dele**, sem
+    trocar o que o Paulo está vendo; abrir o que já está aberto traz a janela e **recarrega** (não abre outra);
+  - **instruções do agente:** os tipos de arquivo que o atelier mostra (HTML incluído; nunca o navegador), o
+    recarregar, o workspace dele, parâmetros e cofre no formato do checklist, e conferir antes do `nao_consigo`.
 - **0.2.23** (2026-11-16) · Cofre do jeito do Paulo (pedido do uso de 16/11, versão só com isso):
   - **janelinha de segredo** (criar e editar), aberta de qualquer lugar: descrição em várias linhas; um olhinho só
     (o nosso; o valor esconde com `-webkit-text-security`, sem `type=password`, e o `::-ms-reveal` do Edge saiu);

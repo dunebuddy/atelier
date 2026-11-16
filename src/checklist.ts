@@ -304,6 +304,27 @@ export const idNoCofre = (v: string | undefined): number | null => {
 export const preencher = (texto: string, valores: Record<string, string>) =>
   texto.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (_, k: string) => (idNoCofre(valores[k]) != null ? "••••••" : valores[k] ? valores[k] : `‹${k}›`));
 
+/** Já existe outro parâmetro com este nome (sem contar `menos`)? O nome não repete: senão não dá para saber de qual
+ *  app é cada "Client ID". */
+export function rotuloRepetido(doc: Checklist, rotulo: string, menos?: string): boolean {
+  const r = rotulo.trim().toLowerCase();
+  return !!r && Object.entries(doc.campos ?? {}).some(([k, v]) => k !== menos && v.trim().toLowerCase() === r);
+}
+
+/** Os parâmetros agrupados pelo passo dono (o primeiro, na ordem, que coleta o parâmetro); sem dono, no fim. */
+export function gruposDeParametros(doc: Checklist): { passo: string | null; chaves: string[] }[] {
+  const dono = new Map<string, string>();
+  for (const p of doc.passos) for (const k of p.pede ?? []) if (!dono.has(k)) dono.set(k, p.id);
+  const grupos: { passo: string | null; chaves: string[] }[] = [];
+  for (const p of doc.passos) {
+    const ks = Object.keys(doc.campos ?? {}).filter((k) => dono.get(k) === p.id);
+    if (ks.length) grupos.push({ passo: p.id, chaves: ks });
+  }
+  const soltos = Object.keys(doc.campos ?? {}).filter((k) => !dono.has(k));
+  if (soltos.length) grupos.push({ passo: null, chaves: soltos });
+  return grupos;
+}
+
 /** Chave de campo a partir do rótulo ("Nome do Key Vault" → "nome_do_key_vault"), sem repetir as que existem. */
 export function chaveDeCampo(doc: Checklist, rotulo: string): string {
   const base = rotulo.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "campo";

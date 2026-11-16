@@ -143,9 +143,14 @@ atelier: `criar_pasta` (ou `criar_documento` com `criar_pasta: true`). Ele cria 
 bancada, com `insumos/` (o que entra), `artefatos/` (o que sai), `rascunho/` e um CLAUDE.md, e liga a pasta ao documento. \
 Guarde os arquivos nessas subpastas e registre o andamento no documento com `anotar`, não em arquivos soltos. \
 TELA: com o app aberto, `tela` mostra as coisas para o usuário (abrir documento, visão, pasta, arquivo; metade esquerda ou \
-direita; workspaces; terminal; tema...); `tela` com acao \"estado\" diz o que está aberto agora. \
+direita; workspaces; terminal; tema...); `tela` com acao \"estado\" diz o que está aberto agora. Vindo de um terminal do \
+atelier, a tela abre no SEU workspace (não no que o usuário está vendo). ARQUIVOS: o atelier mostra dentro do app HTML, \
+PDF, imagem (png, jpg, svg, gif, webp), markdown, texto/código, JSON, CSV, planilha (xlsx), Word (docx), vídeo e áudio: \
+para mostrar um desses ao usuário use `tela` acao \"abrir\" com `arquivo` (caminho absoluto), NUNCA o navegador, `start`, \
+`explorer` ou `Invoke-Item`. Se o arquivo já está aberto, a tela só traz a janela para a frente e recarrega: depois de \
+mudar um HTML, peça abrir de novo para atualizar, sem medo de abas repetidas. \
 QUANDO NÃO DER: se o usuário pedir algo que estas ferramentas não fazem, NÃO improvise por fora (arquivos, comandos, \
-banco): chame `nao_consigo` com o pedido e o que faltou, e diga a ele que ficou anotado. CHECKLIST: roteiro de execução com muitos passos (sessão, implantação, migração) não vira um monte de documentos nem um app HTML: é um arquivo <nome>.checklist.json na pasta do documento, que o atelier mostra como checklist e onde grava o progresso; leia o formato com `checklist` acao \"formato\" antes de criar. LINKS: para o usuário abrir um documento com um clique (de fora do atelier, numa mensagem), escreva atelier://doc/<código> (também atelier://visao/<nome> e atelier://bancada/<nome>; arquivo da pasta de um documento: atelier://doc/<código>/<caminho>). SEGREDOS: senha, secret, token ou chave que o usuário passar NUNCA fica em texto (documento, nota, checklist, arquivo): guarde no cofre com `segredo` acao \"guardar\" (ligado ao documento) e cite pelo nome; num checklist, o valor fica `cofre:<id>`. Para usar um valor, `segredo` acao \"ler\" (o usuário permite na tela); use só no comando, sem repetir na conversa. `segredos` lista sem os valores. BANCADA: você trabalha na bancada em que nasceu (a do terminal do atelier, ou a da pasta onde está); trocar_bancada só pede, o usuário aceita na tela.";
+banco): chame `nao_consigo` com o pedido e o que faltou, e diga a ele que ficou anotado. Antes, confira se a tela já faz (ver e copiar segredo no Cofre, por exemplo, já existe): `nao_consigo` é para o que falta mesmo. CHECKLIST: roteiro de execução com muitos passos (sessão, implantação, migração) não vira um monte de documentos nem um app HTML: é um arquivo <nome>.checklist.json na pasta do documento, que o atelier mostra como checklist e onde grava o progresso; leia o formato com `checklist` acao \"formato\" antes de criar. LINKS: para o usuário abrir um documento com um clique (de fora do atelier, numa mensagem), escreva atelier://doc/<código> (também atelier://visao/<nome> e atelier://bancada/<nome>; arquivo da pasta de um documento: atelier://doc/<código>/<caminho>). SEGREDOS: senha, secret, token ou chave que o usuário passar NUNCA fica em texto (documento, nota, checklist, arquivo): guarde no cofre com `segredo` acao \"guardar\" (ligado ao documento) e cite pelo nome; num checklist, o valor fica `cofre:<id>`. Para usar um valor, `segredo` acao \"ler\" (o usuário permite na tela); use só no comando, sem repetir na conversa. `segredos` lista sem os valores. BANCADA: você trabalha na bancada em que nasceu (a do terminal do atelier, ou a da pasta onde está); trocar_bancada só pede, o usuário aceita na tela.";
 
 fn ferramentas() -> Value {
     #[allow(non_snake_case)]
@@ -1268,6 +1273,17 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
                 &traduzida
             } else {
                 a
+            };
+            // de um terminal do atelier: a tela faz no workspace desse terminal
+            let com_sessao;
+            let a = match std::env::var("ATELIER_SESSAO").ok().and_then(|s| s.parse::<u64>().ok()) {
+                Some(sessao) if a.is_object() => {
+                    let mut x = a.clone();
+                    x["sessao"] = json!(sessao);
+                    com_sessao = x;
+                    &com_sessao
+                }
+                _ => a,
             };
             let r = post_api("/api/tela", a)?;
             if r["ok"] == true {

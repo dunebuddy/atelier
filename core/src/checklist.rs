@@ -17,7 +17,7 @@ documento (tipo Passo/Task), não passo de checklist.
   "comentarios": [                                                      // blocos de markdown entre as seções
     { "id": "c1", "texto": "Para que serve, de onde veio…", "antes_de": "grupo-ad" }  // antes_de: id do passo seguinte (null = no fim)
   ],
-  "campos": { "tenant": "Tenant ID", "kv": "Nome do Key Vault" },      // os VALORES do checklist: chave → rótulo
+  "campos": { "tenant": "Tenant ID", "kv": "Nome do Key Vault" },      // os PARÂMETROS do checklist: chave → nome (o nome NÃO repete)
   "passos": [
     {
       "id": "grupo-ad",                       // obrigatório, único e ESTÁVEL (estado e dependências apontam para ele)
@@ -45,6 +45,15 @@ Regras:
   do secret) vira um campo em `campos`, com o valor planejado em `valores`, e o texto usa `{{chave}}` em TODO lugar
   onde ele aparece (inclusive dentro de `código` e de tabelas). Na tela, `{{chave}}` aparece como o valor, que copia
   com um clique e se edita ali mesmo: mudou num lugar, muda em todos, e a troca fica no `historico`.
+- PARÂMETROS (na tela, o painel "Parâmetros"): o NOME (o rótulo em `campos`) não pode repetir no checklist. Com dois
+  apps, nunca dois "Client ID": ponha o contexto no nome ("Client ID do app da API, DEV") e na chave
+  (`clientId_API_DEV`). O parâmetro pertence ao passo que o coleta (o primeiro com ele em `pede`): na tela eles
+  aparecem agrupados por esse passo. Nome repetido aparece em alerta para o Paulo renomear.
+- `{{chave}}` é trocado no `corpo`, nos comentários e no `titulo` do passo.
+- SEGREDO não fica no checklist: senha, secret ou token vai para o cofre (`segredo` acao "guardar", ligado ao
+  documento) e o valor no checklist fica `cofre:<id>`. Na tela, `{{chave}}` de segredo aparece 🔒 •••••• (o clique
+  copia o valor, vindo do cofre) e o parâmetro mostra "Abrir no Cofre", onde o Paulo vê, copia e troca. Ele já tem
+  tudo isso na tela: não diga que não dá para ver ou copiar.
 - Para mudar um valor depois de criado, use `checklist` ação "valor" (arquivo, chave, valor): grava e registra no
   `historico` (de → para). Não edite `valores` nem `historico` à mão.
 - `estado`, `valores` e `historico` são do Paulo. Como ele também edita os passos, NUNCA reescreva o arquivo de memória: leia o

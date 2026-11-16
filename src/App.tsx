@@ -109,6 +109,7 @@ export default function App() {
       return novo === atual ? w : { ...w, estados: { ...w.estados, [k]: novo } };
     }), []);
   const setPainel = useMemo(() => mudarDe(), [mudarDe]);
+  const setPainelAtivo = setPainel;
   const ativa = janelaAtiva(painel);
   const rota: Rota = ativa ? rotaDe(ativa) : { v: "inicio" };
   const bancadaAtual = bancadas?.ativa?.caminho ?? null;
@@ -336,17 +337,29 @@ export default function App() {
   };
   // pedidos para a tela, vindos do MCP (o agente) e do Comando: a lista está em core/src/api.rs (ACOES_TELA)
   const pedidoDaTela = (d: PedidoTela) => {
+    // pedido de um agente que roda num terminal do atelier: vale no workspace desse terminal (o Paulo continua no
+    // que está vendo); sem sessão (ou terminal não achado), no workspace à vista
+    const w0 = wsRef.current;
+    const doAgente = d.sessao != null && w0 ? Object.keys(w0.estados).find((k) => W.sessoesDe(w0.estados[k]).some((t) => t.sessao === d.sessao)) : undefined;
+    const setPainel = doAgente ? mudarDe(doAgente) : setPainelAtivo;
     const naMetade = (f: (s: EstadoPainel) => EstadoPainel) => setPainel((s) => {
       if (d.metade == null) return f(s);
       const n = d.metade > 0 && s.metades.length < 2 ? P.dividir(s) : s;
       return f(P.focar(n, Math.min(d.metade, n.metades.length - 1)));
     });
     switch (d.acao) {
-      case "abrir":
+      case "abrir": {
         if (!d.rota) return;
-        if (d.metade != null) setPainel((s) => P.abrirNaMetade(s, d.rota!, d.metade!, d.ao_lado));
-        else (d.ao_lado ? abrirAoLado : ir)(d.rota);
+        // já aberto (a mesma coisa numa janela do workspace): traz para a frente e recarrega, em vez de abrir outra
+        const ja = !d.ao_lado ? P.janelaCom((doAgente ? w0?.estados[doAgente] : null) ?? painel, d.rota) : null;
+        if (ja) {
+          setPainel((s) => P.ativar(s, ja.mi, ja.j.id));
+          if (d.rota.v === "arquivos" && d.rota.arquivo) window.dispatchEvent(new CustomEvent("atelier:recarregar-arquivo", { detail: d.rota.arquivo }));
+          else window.dispatchEvent(new Event("focus"));
+        } else if (d.metade != null) setPainel((s) => P.abrirNaMetade(s, d.rota!, d.metade!, d.ao_lado));
+        else setPainel((s) => (d.ao_lado ? P.abrirNova(s, d.rota!) : P.navegar(s, d.rota!)));
         return;
+      }
       case "workspace":
         setWs((w) => (w ? W.abrir(w, d.item ? W.chaveItem(d.item.id) : W.GERAL, d.item ? { titulo: d.item.titulo || "Sem título" } : undefined) : w));
         return;

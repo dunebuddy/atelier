@@ -967,6 +967,10 @@ async fn tela(State(b): State<Banco>, Json(d): Json<Value>) -> R {
     let txt = |k: &str| d.get(k).and_then(|v| v.as_str()).map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
     let sim = |k: &str| d.get(k).and_then(|v| v.as_bool());
     let mut ev = json!({ "acao": acao, "ao_lado": sim("ao_lado").unwrap_or(false) });
+    // o terminal do agente que pediu (o MCP manda o seu): a tela faz no workspace dele, não no que está à vista
+    if let Some(s) = d.get("sessao").and_then(|v| v.as_u64()) {
+        ev["sessao"] = json!(s);
+    }
     match txt("lado").as_deref() {
         Some("esquerda") => ev["metade"] = json!(0),
         Some("direita") => ev["metade"] = json!(1),

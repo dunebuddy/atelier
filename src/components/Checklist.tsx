@@ -3,7 +3,7 @@ import { copiarSegredo } from "./Cofre";
 import { copiarLink, linkDoArquivo } from "../links";
 import {
   ArrowDown, ArrowLeft, ArrowUp, Braces, Check, ChevronDown, ChevronRight, FilePlus, FileText, GripVertical, Link2, ListChecks,
-  Copy, Lock, Paperclip, Pencil, Plus, RefreshCw, SkipForward, Trash2, Undo2, X,
+  AlertTriangle, KeyRound, Lock, Paperclip, Pencil, Plus, RefreshCw, SkipForward, Trash2, Undo2, X,
 } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { api, BASE, Esquema, Props, Resumo } from "../api";
@@ -18,7 +18,7 @@ import { Editor } from "./Editor";
 import {
   alvoDe, apagarComentario, apagarPasso, blocos, chaveDeCampo, Checklist, corDaTag, criarComentario, criarPasso, dependeDe, dependentes, donoDaPasta, EstadoPasso,
   escreverChecklist, faltando, feito, juntar, lerChecklist, Link, moverParaSecao, moverPasso, moverSecao, Passo, preencher,
-  idNoCofre, marcarRefs, progresso, REF_FIM, REF_INI, relativo, renomearSecao, rotuloDe, tagsDe, trocarValor, valorParaOCofre,
+  gruposDeParametros, idNoCofre, marcarRefs, rotuloRepetido, progresso, REF_FIM, REF_INI, relativo, renomearSecao, rotuloDe, tagsDe, trocarValor, valorParaOCofre,
 } from "../checklist";
 import "../checklist.css";
 
@@ -124,7 +124,7 @@ function limpar(html: string, pasta: string, valores?: Record<string, string>): 
         frag.append(texto.slice(ultimo, m.index));
         const k = m[1];
         const chip = d.createElement("span");
-        // segredo do cofre: 🔒 e ••••••; o clique copia (vindo do cofre), sem lápis (muda-se no painel Valores)
+        // segredo do cofre: 🔒 e ••••••; o clique copia (vindo do cofre), sem lápis (muda-se no painel Parâmetros)
         const noCofre = idNoCofre(valores[k]);
         if (noCofre != null) {
           chip.className = "ck-ref segredo";
@@ -409,8 +409,9 @@ export function ChecklistTela({ caminho, raiz, aoVoltar, aoVerTexto }: { caminho
     tTexto.current = window.setTimeout(() => gravar(novo, f), 700);
   }, [gravar]);
 
-  const marcar = (p: Passo, pular = false) => {
+  const marcar = (p0: Passo, pular = false) => {
     const d = docRef.current!;
+    const p = { ...p0, titulo: preencher(p0.titulo, d.valores ?? {}) };
     // sem caixa de confirmação (o navegador embutido não mostra): marca e avisa, com Desfazer no aviso
     const falta = pular ? [] : faltando(d, p);
     const agora = new Date().toISOString();
@@ -653,24 +654,35 @@ export function ChecklistTela({ caminho, raiz, aoVoltar, aoVerTexto }: { caminho
             <>
               <h2 className="ck-h-recolhe">
                 <button onClick={() => setVerValores((v) => !v)}>
-                  {verValores ? <ChevronDown size={15} /> : <ChevronRight size={15} />} Valores
+                  {verValores ? <ChevronDown size={15} /> : <ChevronRight size={15} />} Parâmetros
                   <span className="ck-conta">{campos.filter(([k]) => doc.valores?.[k]).length}/{campos.length}</span>
                 </button>
               </h2>
               {verValores && (
                 <div className="ck-painel ck-painel-valores">
-                  <div className="ck-campos">
-                    {campos.map(([k, rot]) => (
-                      <label key={k} className="ck-campo">
-                        <span className="ck-campo-rot">{rot}</span>
-                        <EntradaValor ctx={ctx} k={k} placeholder="—" />
-                      </label>
-                    ))}
-                  </div>
+                  {gruposDeParametros(doc).map((g) => (
+                    <div key={g.passo ?? "-"} className="ck-param-grupo">
+                      <div className="ck-param-dono">{g.passo ? `${numDe(g.passo)}. ${preencher(passoDe(doc, g.passo)?.titulo ?? "", doc.valores ?? {})}` : "Sem passo"}</div>
+                      <div className="ck-campos">
+                        {g.chaves.map((k) => {
+                          const rot = doc.campos?.[k] ?? k;
+                          const rep = rotuloRepetido(doc, rot, k);
+                          return (
+                            <label key={k} className="ck-campo">
+                              <span className={`ck-campo-rot${rep ? " repetido" : ""}`} title={rep ? "Há outro parâmetro com este nome: renomeie com o contexto" : k}>
+                                {rep && <AlertTriangle size={12} />} {rot} <code className="ck-campo-chave">{k}</code>
+                              </span>
+                              <EntradaValor ctx={ctx} k={k} placeholder="—" />
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                   <button className="btn" onClick={() => copiar(campos.map(([k]) => `${k}: ${doc.valores?.[k] ?? ""}`).join("\n"))}>Copiar como YAML</button>
                   {(doc.historico ?? []).length > 0 && (
                     <details className="ck-historico">
-                      <summary>Histórico dos valores ({doc.historico!.length})</summary>
+                      <summary>Histórico dos parâmetros ({doc.historico!.length})</summary>
                       <ul>
                         {[...doc.historico!].reverse().map((h, i) => (
                           <li key={i}>
@@ -692,7 +704,7 @@ export function ChecklistTela({ caminho, raiz, aoVoltar, aoVerTexto }: { caminho
               <h2>Observações</h2>
               {comObs.map((p) => (
                 <div key={p.id} className="ck-obs-item">
-                  <b>{numDe(p.id)}. {p.titulo}</b>
+                  <b>{numDe(p.id)}. {preencher(p.titulo, doc.valores ?? {})}</b>
                   <div>{doc.estado?.[p.id]?.obs}</div>
                 </div>
               ))}
@@ -784,7 +796,7 @@ function CartaoPasso({ ctx, p, proximo, aberto, alternar, editando, setEditando,
               onFocus={() => ctx.fotoAoFocar(`Título · ${p.titulo}`)}
               onChange={(ev) => { const v = ev.target.value; ctx.digitar((d) => { const x = passoDe(d, p.id); if (x) x.titulo = v; }); }} />
           ) : (
-            <span className="ck-titulo">{p.titulo}</span>
+            <span className="ck-titulo">{preencher(p.titulo, ctx.doc.valores ?? {})}</span>
           )}
           {!aberto && (
             <span className="ck-cab-tags">
@@ -1036,7 +1048,6 @@ function ConfirmarApagar({ mensagem, detalhe, aoApagar, children }: {
 function EntradaValor({ ctx, k, placeholder }: { ctx: Ctx; k: string; placeholder?: string }) {
   const { doc, digitar, fotoAoFocar, mudar, caminho } = ctx;
   const antes = useRef<string | null>(null);
-  const [trocando, setTrocando] = useState<string | null>(null);
   const noCofre = idNoCofre(doc.valores?.[k]);
   const rotulo = doc.campos?.[k] ?? k;
   // guardar como segredo: o valor vai para o cofre (ligado ao documento do checklist) e o arquivo fica com a referência
@@ -1055,28 +1066,12 @@ function EntradaValor({ ctx, k, placeholder }: { ctx: Ctx; k: string; placeholde
     }
   };
   if (noCofre != null) {
-    // trocar o valor: um campo de senha ali mesmo (a caixa do sistema não aparece na janela do app)
-    const trocar = async (novo: string) => {
-      setTrocando(null);
-      if (!novo) return;
-      try {
-        await api.cofreMudar(noCofre, { valor: novo });
-        mudar(null, (d) => { (d.historico ??= []).push({ quando: new Date().toISOString(), chave: k, de: "••••", para: "•••• (trocado no cofre)", por: "Paulo" }); });
-        avisar(`Valor de “${rotulo}” trocado no cofre.`);
-      } catch (e) { falhou(e); }
-    };
+    // no cofre: aqui só a referência e o caminho até ele (ver, copiar e trocar ficam no Cofre)
     return (
       <span className="ck-valor-cofre">
-        {trocando != null ? (
-          <input className="campo" type="password" autoFocus autoComplete="off" placeholder="Novo valor e Enter (Esc cancela)" value={trocando}
-            onChange={(ev) => setTrocando(ev.target.value)}
-            onKeyDown={(ev) => { if (ev.key === "Enter") trocar(trocando); if (ev.key === "Escape") setTrocando(null); }}
-            onBlur={() => setTrocando(null)} />
-        ) : (
-          <span className="ck-valor-cofre-txt" title="O valor está no cofre de segredos; no arquivo fica só a referência"><Lock size={12} /> no cofre</span>
-        )}
-        <button className="btn-icone" title="Copiar (limpa a área de transferência em 30 s)" onClick={() => copiarSegredo(noCofre, rotulo)}><Copy size={13} /></button>
-        <button className="btn-icone" title="Trocar o valor no cofre" onClick={() => setTrocando("")}><Pencil size={13} /></button>
+        <span className="ck-valor-cofre-txt" title="O valor está no cofre de segredos; no arquivo fica só a referência"><Lock size={12} /> no cofre</span>
+        <button className="btn ck-abrir-cofre" title="Abrir este segredo no Cofre (ver, copiar, trocar)"
+          onClick={(ev) => abrir({ v: "cofre", segredo: noCofre }, ev.ctrlKey || ev.metaKey)}><KeyRound size={13} /> Abrir no Cofre</button>
       </span>
     );
   }
@@ -1121,8 +1116,9 @@ function PainelDados({ ctx, p, editando }: { ctx: Ctx; p: Passo; editando: boole
   const criar = () => {
     const rotulo = novo.trim();
     if (!rotulo) return;
+    if (rotuloRepetido(doc, rotulo)) return avisar(`Já existe um parâmetro “${rotulo}”. Dê um nome com o contexto (ex.: “${rotulo} do app da API, DEV”), ou escolha o que já existe na lista.`);
     setNovo("");
-    mudar(`Dado novo · ${rotulo}`, (d) => {
+    mudar(`Parâmetro novo · ${rotulo}`, (d) => {
       const k = chaveDeCampo(d, rotulo);
       (d.campos ??= {})[k] = rotulo;
       const x = passoDe(d, p.id);
@@ -1131,21 +1127,22 @@ function PainelDados({ ctx, p, editando }: { ctx: Ctx; p: Passo; editando: boole
   };
   return (
     <div className={`ck-dados${editando ? " editando" : ""}`}>
-      <div className="ck-painel-rot">Dados deste passo</div>
-      {pede.length === 0 && <div className="ck-nada">Nenhum dado ainda.</div>}
+      <div className="ck-painel-rot">Parâmetros deste passo</div>
+      {pede.length === 0 && <div className="ck-nada">Nenhum parâmetro ainda.</div>}
       <div className={`ck-campos${editando ? " com-x" : ""}`}>
         {pede.map((k) => (
           <div key={k} className="ck-campo">
             {editando ? (
-              <input className="campo ck-campo-rot" value={doc.campos?.[k] ?? k} title="Rótulo do dado (vale para o checklist inteiro)"
+              <input className="campo ck-campo-rot" value={doc.campos?.[k] ?? k} title="Nome do parâmetro (vale para o checklist inteiro; não pode repetir)"
                 onFocus={() => fotoAoFocar(`Rótulo · ${doc.campos?.[k] ?? k}`)}
+                onBlur={(ev) => { const v = ev.target.value.trim(); if (rotuloRepetido(doc, v, k)) avisar(`Já existe outro parâmetro “${v}”. Ponha o contexto no nome, senão não dá para saber qual é qual.`, undefined, true); }}
                 onChange={(ev) => { const v = ev.target.value; digitar((d) => { (d.campos ??= {})[k] = v; }); }} />
             ) : (
               <span className="ck-campo-rot">{doc.campos?.[k] ?? k}</span>
             )}
             <EntradaValor ctx={ctx} k={k} />
             {editando && (
-              <button className="btn-icone" title="Tirar este dado do passo (o valor fica guardado)"
+              <button className="btn-icone" title="Tirar este parâmetro do passo (o valor fica guardado)"
                 onClick={() => mudarPasso("Tirar dado", (x) => { x.pede = (x.pede ?? []).filter((y) => y !== k); if (!x.pede.length) delete x.pede; })}><X size={13} /></button>
             )}
           </div>
@@ -1155,11 +1152,11 @@ function PainelDados({ ctx, p, editando }: { ctx: Ctx; p: Passo; editando: boole
         <div className="ck-dados-mais">
           {outros.length > 0 && (
             <select className="campo" value="" onChange={(ev) => { const k = ev.target.value; if (k) mudarPasso("Dado do passo", (x) => { x.pede = [...new Set([...(x.pede ?? []), k])]; }); }}>
-              <option value="">+ dado que o checklist já tem…</option>
+              <option value="">+ parâmetro que o checklist já tem…</option>
               {outros.map(([k, r]) => <option key={k} value={k}>{r}</option>)}
             </select>
           )}
-          <input className="campo" placeholder="+ dado novo: rótulo e Enter" value={novo}
+          <input className="campo" placeholder="+ parâmetro novo: nome e Enter" value={novo}
             onChange={(ev) => setNovo(ev.target.value)} onKeyDown={(ev) => { if (ev.key === "Enter") criar(); }} />
         </div>
       )}

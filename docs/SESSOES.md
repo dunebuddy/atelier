@@ -600,3 +600,13 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   caminho, `item/` e `?bancada=`. **Ctrl+K:** `instalarDoisTempos` (captura, só tecla de verdade), `dois` em cada
   atalho, `SeloDoisTempos`.
 - A conferir no app de verdade: Credential Manager, MCP real pedindo segredo, sempre por cima, Ctrl+K no WebView2.
+
+## 2026-11-16 — 0.2.23 (cofre do jeito do Paulo)
+- O Paulo usou o cofre e pediu mudanças "de imediato", com versão só com isso. Tudo em `src/components/Cofre.tsx`:
+  `FormSegredo` virou a janelinha `JanelaSegredo` (montada no `App` e na `JanelaSolta`), aberta por `novoSegredo({
+  documento | inicial })` (evento `atelier:form-segredo`). Valor: `textarea` + classe `mascarado`
+  (`-webkit-text-security`), abas Texto / Chave-valor (`objetoJson`, `paraPares`, `paraTexto`; valor não-texto
+  volta a ser JSON ao salvar). Documento: `ChipItem` + `EscolherItem` + "Workspace atual" (`W.itemDa(ws.ativo)`).
+  Exibição: `copiarSecreto` (limpa em 30 s) e `copiarAberto` (a chave); menu de copiar; clique copia.
+- Botão **Segredo** em `PaginaItem` (barra `meta-acoes`).
+- A conferir no app de verdade: o `-webkit-text-security` no WebView2 (no Chromium do teste funciona).

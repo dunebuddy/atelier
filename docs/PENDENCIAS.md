@@ -57,6 +57,16 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.23** (2026-11-16) · Cofre do jeito do Paulo (pedido do uso de 16/11, versão só com isso):
+  - **janelinha de segredo** (criar e editar), aberta de qualquer lugar: descrição em várias linhas; um olhinho só
+    (o nosso; o valor esconde com `-webkit-text-security`, sem `type=password`, e o `::-ms-reveal` do Edge saiu);
+  - **valor em várias linhas com abas Texto / Chave-valor**, como no Secrets Manager da AWS: a aba chave/valor só
+    aparece quando o texto é um objeto JSON (ou está vazio) e uma reflete a outra; editando, "Editar o valor atual"
+    traz o valor guardado;
+  - **documento** com busca pelo nome (o mesmo seletor das relações), botão **Workspace atual** e botão **Segredo**
+    na barra de toda página de documento (abre a janelinha já ligada a ele);
+  - **exibição:** copiar abre um menu (copiar o segredo ou a chave, como no Dashlane); clicar na chave ou no valor
+    mostrado copia (como no checklist); valor JSON aparece em linhas chave/valor, cada uma copiável sozinha.
 - **0.2.22** (2026-11-13) · "Uma versão com tudo": a caixa de entrada inteira, pedidos de 13/11 e o Ctrl+K de 04/11:
   - **cofre de segredos da bancada:** `<bancada>/cofre.db`, um SQLite **criptografado inteiro** (SQLite3 Multiple
     Ciphers, ChaCha20, o mesmo do torii: `vendor/`), com a chave no **Credential Manager** do Windows (Secret

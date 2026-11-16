@@ -1438,16 +1438,44 @@ body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grab
 .cofre-info { flex: 1; min-width: 0; }
 .cofre-nome { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-weight: 600; }
 .cofre-chave { font: 12px "Cascadia Code", Consolas, monospace; color: var(--texto-2); background: var(--codigo); padding: 0 6px; border-radius: 5px; font-weight: 400; }
-.cofre-desc { color: var(--texto-2); font-size: 12.5px; margin-top: 2px; }
+.cofre-desc { color: var(--texto-2); font-size: 12.5px; margin-top: 2px; white-space: pre-wrap; }
 .cofre-valor { margin-top: 3px; font: 12.5px "Cascadia Code", Consolas, monospace; color: var(--texto-3); overflow-wrap: anywhere; }
-.cofre-valor code { color: var(--texto); background: var(--codigo); padding: 1px 6px; border-radius: 5px; user-select: all; }
+.cofre-valor code { color: var(--texto); background: var(--codigo); padding: 1px 6px; border-radius: 5px; }
+/* clique copia (como o código solto no checklist) */
+.cofre-linha code.copiavel { cursor: copy; }
+.cofre-linha code.copiavel:hover { outline: 1px solid var(--acento); }
+.cofre-texto { white-space: pre-wrap; display: inline-block; max-width: 100%; }
+.cofre-kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 10px; margin-top: 4px; align-items: start; }
+.cofre-kv-linha { display: contents; }
+.cofre-kv-linha code:first-child { color: var(--texto-2); }
+.cofre-kv-linha code:last-child { justify-self: start; white-space: pre-wrap; }
+.cofre-copiar { width: auto; padding: 0 4px; display: flex; gap: 1px; }
 .cofre-acoes { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 .cofre-confirma { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--t-red); }
-.cofre-form { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--acento); border-radius: 10px; background: var(--bg-elev); margin-bottom: 8px; }
-.cofre-form-linha { display: flex; gap: 6px; align-items: center; }
-.cofre-form-linha .campo { flex: 1; }
-.cofre-campo-valor { font-family: "Cascadia Code", Consolas, monospace; }
-.cofre-form-acoes { display: flex; justify-content: flex-end; gap: 6px; }
+/* a janelinha de criar/editar segredo */
+.modal-fundo.topo:has(> .cofre-modal) { padding-top: 6vh; }
+.modal.cofre-modal { width: min(600px, calc(100vw - 36px)); height: auto; max-height: 88vh; overflow-y: auto; }
+.cofre-form { display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; }
+.cofre-form-titulo { display: flex; align-items: center; gap: 8px; font-size: 15px; margin-bottom: 6px; }
+.cofre-rot { font-size: 12px; font-weight: 600; color: var(--texto-2); margin-top: 8px; }
+.cofre-opcional { font-weight: 400; color: var(--texto-3); }
+.cofre-desc-campo { resize: vertical; min-height: 54px; font-family: inherit; }
+.cofre-mono { font-family: "Cascadia Code", Consolas, monospace; }
+.cofre-campo-valor { resize: vertical; min-height: 96px; white-space: pre; }
+/* esconder o que se digita sem type=password: um olhinho só (o nosso) e funciona no texto de várias linhas */
+.campo.mascarado:not(:placeholder-shown) { -webkit-text-security: disc; }
+input::-ms-reveal, input::-ms-clear { display: none; }
+.cofre-doc-escolha { display: flex; align-items: center; gap: 6px; min-height: 32px; flex-wrap: wrap; }
+.cofre-nenhum { color: var(--texto-3); font-size: 13px; }
+.cofre-valor-cab { display: flex; align-items: flex-end; gap: 8px; margin-top: 8px; }
+.cofre-valor-cab .cofre-rot { margin-top: 0; align-self: center; }
+.cofre-abas { display: inline-flex; border: 1px solid var(--borda); border-radius: 8px; padding: 2px; gap: 2px; }
+.cofre-abas button { padding: 2px 10px; border-radius: 6px; font-size: 12.5px; color: var(--texto-2); }
+.cofre-abas button.ativo { background: var(--acento-suave); color: var(--acento); font-weight: 600; }
+.cofre-kv-edita { display: flex; flex-direction: column; gap: 4px; }
+.cofre-kv-edita-linha { display: grid; grid-template-columns: minmax(120px, 2fr) 3fr 28px; gap: 6px; align-items: center; }
+.cofre-kv-mais { align-self: flex-start; }
+.cofre-form-acoes { display: flex; align-items: center; gap: 6px; margin-top: 14px; }
 .cofre-doc { margin: 14px 0 6px; display: flex; flex-direction: column; gap: 6px; }
 .cofre-doc.vazio { flex-direction: row; }
 .cofre-doc-cab { display: flex; align-items: center; gap: 6px; color: var(--texto-2); font-size: 13px; }

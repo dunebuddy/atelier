@@ -1,5 +1,5 @@
 import { abrirCodigo } from "./components/Mencoes";
-import { PedidoDoAgente } from "./components/Cofre";
+import { JanelaSegredo, PedidoDoAgente } from "./components/Cofre";
 import { SeloDoisTempos } from "./components/DoisTempos";
 import { partesDoLink } from "./links";
 import { abrirJanelaDaBancada, ABRIR_AO_CARREGAR, BANCADA_DA_JANELA, bancadaNaQuery, codificarBancada, decodificarBancada, mesmaBancada } from "./janela";
@@ -771,6 +771,7 @@ export default function App() {
       <PilhaDeAvisos />
       <SeloDoisTempos />
       <PedidoDoAgente />
+      {esquema && <JanelaSegredo esquema={esquema} wsItem={ws ? W.itemDa(ws.ativo) : null} />}
       {pedidoTroca && (
         <div className="modal-fundo" onMouseDown={(e) => e.target === e.currentTarget && setPedidoTroca(null)}>
           <div className="modal confirmar-bancada">

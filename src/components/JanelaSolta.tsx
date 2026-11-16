@@ -10,7 +10,7 @@ import * as P from "../painel";
 import { aplicarTema } from "../tema";
 import { PainelTrabalho, Contexto } from "./Painel";
 import { PilhaDeAvisos } from "./Avisos";
-import { PedidoDoAgente } from "./Cofre";
+import { JanelaSegredo, PedidoDoAgente } from "./Cofre";
 import { BANCADA_DA_JANELA } from "../janela";
 
 const params = new URLSearchParams(location.search);
@@ -105,6 +105,7 @@ export function JanelaSolta({ rota }: { rota: Rota }) {
       </div>
       <PilhaDeAvisos />
       <PedidoDoAgente />
+      <JanelaSegredo esquema={esquema} wsItem={null} />
     </div>
   );
 }

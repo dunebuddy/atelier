@@ -1,29 +1,79 @@
 // Cofre de segredos da bancada (o arquivo `cofre.db`, todo criptografado; a chave fica no cofre do Windows).
 // - TelaCofre: todos os segredos da bancada, com busca;
 // - SegredosDoDocumento: a parte "Segredos" da página do documento (os dele e os dos descendentes);
+// - JanelaSegredo: a janelinha de criar/editar (abre de qualquer lugar com `novoSegredo`);
 // - PedidoDoAgente: a caixa "o agente quer o segredo X: Permitir por 5 min / Só desta vez / Negar".
 // O valor nunca vem na lista: só ao clicar em mostrar ou copiar (e a área de transferência se limpa em 30 s).
+// Valor que é um objeto JSON aparece (e se edita) como chave/valor, como no Secrets Manager da AWS.
 import { useCallback, useEffect, useState } from "react";
-import { Bot, Copy, Eye, EyeOff, KeyRound, Lock, Pencil, Plus, Search, Trash2, X } from "lucide-react";
-import { api, Segredo } from "../api";
-import { avisar, falhou } from "../ui";
+import { Bot, ChevronDown, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { api, Esquema, Segredo } from "../api";
+import { abrir, avisar, falhou } from "../ui";
 import { abrirCodigo } from "./Mencoes";
-import { abrir } from "../ui";
+import { Popover, usePopover } from "./Popover";
+import { ChipItem, EscolherItem } from "./Valor";
+import { lembrarResumo, useResumos } from "../resumos";
 
 const LIMPAR_EM = 30_000;
 let limpeza = 0;
 
-/** Copia o valor e limpa a área de transferência depois de 30 s. */
-export async function copiarSegredo(id: number, nome: string) {
+/** Copia um pedaço secreto e limpa a área de transferência depois de 30 s. */
+async function copiarSecreto(texto: string, rotulo: string) {
   try {
-    const { valor } = await api.cofreValor(id);
-    await navigator.clipboard.writeText(valor);
-    avisar(`Copiado: ${nome}. A área de transferência se limpa em 30 s.`);
+    await navigator.clipboard.writeText(texto);
+    avisar(`Copiado: ${rotulo}. A área de transferência se limpa em 30 s.`);
     window.clearTimeout(limpeza);
     limpeza = window.setTimeout(() => { navigator.clipboard.writeText("").catch(() => {}); }, LIMPAR_EM);
   } catch (e) {
     falhou(e);
   }
+}
+
+/** Copia o que não é segredo (o nome da chave). */
+function copiarAberto(texto: string) {
+  navigator.clipboard.writeText(texto).then(() => avisar("Copiado")).catch(falhou);
+}
+
+/** Um clique copia, menos quando você está selecionando texto (como no checklist). */
+const seNaoSeleciona = (f: () => void) => () => { if (!window.getSelection()?.toString()) f(); };
+
+/** Copia o valor e limpa a área de transferência depois de 30 s. */
+export async function copiarSegredo(id: number, nome: string) {
+  try {
+    const { valor } = await api.cofreValor(id);
+    await copiarSecreto(valor, nome);
+  } catch (e) {
+    falhou(e);
+  }
+}
+
+/** O valor como objeto JSON (`{...}`), ou null se não for um. */
+export function objetoJson(t: string): Record<string, unknown> | null {
+  const s = t.trim();
+  if (!s.startsWith("{")) return null;
+  try {
+    const o = JSON.parse(s);
+    return o && typeof o === "object" && !Array.isArray(o) ? o : null;
+  } catch {
+    return null;
+  }
+}
+const textoDe = (v: unknown) => (typeof v === "string" ? v : JSON.stringify(v));
+
+/** Uma linha da aba chave/valor; `cru` = o valor não era texto (número, lista...) e volta a ser JSON ao salvar. */
+interface Par { k: string; v: string; cru: boolean }
+const paraPares = (o: Record<string, unknown>): Par[] =>
+  Object.entries(o).map(([k, v]) => ({ k, v: textoDe(v), cru: typeof v !== "string" }));
+function paraTexto(pares: Par[]): string {
+  const cheios = pares.filter((p) => p.k || p.v);
+  if (!cheios.length) return "";
+  const o: Record<string, unknown> = {};
+  for (const p of cheios) {
+    let v: unknown = p.v;
+    if (p.cru) { try { v = JSON.parse(p.v); } catch { /* ficou texto */ } }
+    o[p.k] = v;
+  }
+  return JSON.stringify(o, null, 2);
 }
 
 /** Recarrega quando o cofre muda (aqui ou pelo agente). */
@@ -41,31 +91,59 @@ function useCofre(carregar: () => void) {
 
 function LinhaSegredo({ s, aoMudar, mostrarDocumento = true }: { s: Segredo; aoMudar: () => void; mostrarDocumento?: boolean }) {
   const [valor, setValor] = useState<string | null>(null);
-  const [editando, setEditando] = useState(false);
   const [apagando, setApagando] = useState(false);
+  const menu = usePopover();
   const mostrar = async () => {
     if (valor != null) return setValor(null);
     try { setValor((await api.cofreValor(s.id)).valor); } catch (e) { falhou(e); }
   };
-  if (editando) return <FormSegredo inicial={s} aoFechar={() => { setEditando(false); aoMudar(); }} />;
+  const obj = valor != null ? objetoJson(valor) : null;
   return (
     <div className="cofre-linha">
       <KeyRound size={15} className="cofre-icone" />
       <div className="cofre-info">
         <div className="cofre-nome">
           {s.nome}
-          {s.chave && <code className="cofre-chave">{s.chave}</code>}
+          {s.chave && <code className="cofre-chave copiavel" title="Clique para copiar a chave" onClick={seNaoSeleciona(() => copiarAberto(s.chave))}>{s.chave}</code>}
           {mostrarDocumento && s.documento && (
             <button className="mencao" title="Abrir o documento que gerou este segredo" onClick={() => abrirCodigo(s.documento!, (r) => abrir(r))}>#{s.documento}</button>
           )}
         </div>
         {s.descricao && <div className="cofre-desc">{s.descricao}</div>}
-        <div className="cofre-valor">{valor != null ? <code>{valor}</code> : <span>••••••••</span>}</div>
+        <div className="cofre-valor">
+          {valor == null ? <span>••••••••</span> : obj ? (
+            <div className="cofre-kv">
+              {Object.entries(obj).map(([k, v]) => (
+                <div className="cofre-kv-linha" key={k}>
+                  <code className="copiavel" title="Clique para copiar a chave" onClick={seNaoSeleciona(() => copiarAberto(k))}>{k}</code>
+                  <code className="copiavel" title="Clique para copiar o valor (limpa a área de transferência em 30 s)"
+                    onClick={seNaoSeleciona(() => copiarSecreto(textoDe(v), `${s.nome} › ${k}`))}>{textoDe(v)}</code>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <code className="copiavel cofre-texto" title="Clique para copiar (limpa a área de transferência em 30 s)"
+              onClick={seNaoSeleciona(() => copiarSecreto(valor, s.nome))}>{valor}</code>
+          )}
+        </div>
       </div>
       <div className="cofre-acoes">
         <button className="btn-icone" title={valor != null ? "Esconder" : "Mostrar o valor"} onClick={mostrar}>{valor != null ? <EyeOff size={14} /> : <Eye size={14} />}</button>
-        <button className="btn-icone" title="Copiar o valor (limpa a área de transferência em 30 s)" onClick={() => copiarSegredo(s.id, s.nome)}><Copy size={14} /></button>
-        <button className="btn-icone" title="Editar" onClick={() => setEditando(true)}><Pencil size={14} /></button>
+        <button className="btn-icone cofre-copiar" title="Copiar…" onClick={menu.abrir}><Copy size={14} /><ChevronDown size={10} /></button>
+        {menu.ancora && (
+          <Popover ancora={menu.ancora} aoFechar={menu.fechar} largura={300}>
+            <button className="menu-item" onClick={() => { menu.fechar(); copiarSegredo(s.id, s.nome); }}>
+              <Lock size={14} /> Copiar o segredo{obj ? " (o JSON inteiro)" : ""}
+            </button>
+            {s.chave && (
+              <button className="menu-item" onClick={() => { menu.fechar(); copiarAberto(s.chave); }}>
+                <KeyRound size={14} /> Copiar a chave <code className="cofre-chave">{s.chave}</code>
+              </button>
+            )}
+            <div className="dica" style={{ padding: "4px 8px" }}>O segredo some da área de transferência em 30 s.</div>
+          </Popover>
+        )}
+        <button className="btn-icone" title="Editar" onClick={() => novoSegredo({ inicial: s })}><Pencil size={14} /></button>
         {apagando ? (
           <span className="cofre-confirma">
             Apagar de vez?
@@ -80,9 +158,39 @@ function LinhaSegredo({ s, aoMudar, mostrarDocumento = true }: { s: Segredo; aoM
   );
 }
 
-/** Criar (sem `inicial`) ou editar um segredo. Editando, o valor só muda se você digitar um novo. */
-export function FormSegredo({ inicial, documento, aoFechar, aoCriar }: {
-  inicial?: Segredo; documento?: string; aoFechar: () => void; aoCriar?: (id: number, nome: string) => void;
+interface PedidoForm { inicial?: Segredo; documento?: string; aoCriar?: (id: number, nome: string) => void }
+
+/** Abre a janelinha de segredo: novo (já ligado a `documento`, se vier) ou editando `inicial`. */
+export function novoSegredo(p: PedidoForm = {}) {
+  window.dispatchEvent(new CustomEvent("atelier:form-segredo", { detail: p }));
+}
+
+/** A janelinha de criar/editar segredo; fica montada no app (e na janelinha destacada). */
+export function JanelaSegredo({ esquema, wsItem }: { esquema: Esquema; wsItem: number | null }) {
+  const [p, setP] = useState<(PedidoForm & { n: number }) | null>(null);
+  useEffect(() => {
+    let n = 0;
+    const f = (e: Event) => setP({ ...(e as CustomEvent<PedidoForm>).detail, n: ++n });
+    window.addEventListener("atelier:form-segredo", f);
+    return () => window.removeEventListener("atelier:form-segredo", f);
+  }, []);
+  if (!p) return null;
+  const fechar = () => {
+    setP(null);
+    window.dispatchEvent(new CustomEvent("atelier:cofre", { detail: { acao: "cofre-mudou" } }));
+  };
+  return (
+    <div className="modal-fundo topo">
+      <div className="modal cofre-modal" role="dialog" aria-label="Segredo">
+        <FormSegredo key={p.n} {...p} esquema={esquema} wsItem={wsItem} aoFechar={fechar} />
+      </div>
+    </div>
+  );
+}
+
+/** Criar (sem `inicial`) ou editar um segredo. Editando, o valor só muda se você digitar (ou abrir) um novo. */
+function FormSegredo({ inicial, documento, esquema, wsItem, aoFechar, aoCriar }: PedidoForm & {
+  esquema: Esquema; wsItem: number | null; aoFechar: () => void;
 }) {
   const [nome, setNome] = useState(inicial?.nome ?? "");
   const [descricao, setDescricao] = useState(inicial?.descricao ?? "");
@@ -90,13 +198,41 @@ export function FormSegredo({ inicial, documento, aoFechar, aoCriar }: {
   const [valor, setValor] = useState("");
   const [doc, setDoc] = useState(inicial?.documento ?? documento ?? "");
   const [ver, setVer] = useState(false);
+  const [aba, setAba] = useState<"texto" | "kv">("texto");
+  const [pares, setPares] = useState<Par[]>([]);
+  const docPop = usePopover();
+  const resumos = useResumos(doc ? [doc] : []);
+  // a aba chave/valor só aparece quando o texto é um objeto JSON (ou ainda está vazio, para começar por ela)
+  const kvPode = !valor.trim() || objetoJson(valor) != null;
+
+  const irPara = (a: "texto" | "kv", texto = valor) => {
+    if (a === "kv") {
+      const ps = paraPares(objetoJson(texto) ?? {});
+      setPares(ps.length ? ps : [{ k: "", v: "", cru: false }]);
+    }
+    setAba(a);
+  };
+  const mudarPares = (n: Par[]) => { setPares(n); setValor(paraTexto(n)); };
+  const doWorkspace = async () => {
+    if (wsItem == null) return;
+    try { const it = await api.item(wsItem); lembrarResumo(it); setDoc(it.codigo); } catch (e) { falhou(e); }
+  };
+  const abrirAtual = async () => {
+    if (!inicial) return;
+    try {
+      const v = (await api.cofreValor(inicial.id)).valor;
+      setValor(v);
+      irPara(objetoJson(v) ? "kv" : "texto", v);
+    } catch (e) { falhou(e); }
+  };
   const salvar = async () => {
     try {
+      if (!nome.trim()) return avisar("O segredo precisa de um nome.");
       if (inicial) {
-        await api.cofreMudar(inicial.id, { nome, descricao, chave, documento: doc.trim() || null, ...(valor ? { valor } : {}) });
+        await api.cofreMudar(inicial.id, { nome, descricao, chave, documento: doc || null, ...(valor ? { valor } : {}) });
       } else {
-        if (!nome.trim() || !valor) return avisar("O segredo precisa de nome e valor.");
-        const { id } = await api.cofreCriar({ nome, descricao, chave, valor, documento: doc.trim() || null });
+        if (!valor) return avisar("O segredo precisa de um valor.");
+        const { id } = await api.cofreCriar({ nome, descricao, chave, valor, documento: doc || null });
         aoCriar?.(id, nome);
       }
       aoFechar();
@@ -104,21 +240,76 @@ export function FormSegredo({ inicial, documento, aoFechar, aoCriar }: {
       falhou(e);
     }
   };
+  const mascara = ver ? "" : " mascarado";
   return (
-    <div className="cofre-form" onKeyDown={(e) => { if (e.key === "Escape") aoFechar(); }}>
-      <input className="campo" autoFocus placeholder="Nome (ex.: Secret do app da API, DEV)" value={nome} onChange={(e) => setNome(e.target.value)} />
-      <input className="campo" placeholder="Descrição (de onde veio, para que serve)" value={descricao} onChange={(e) => setDescricao(e.target.value)} />
-      <div className="cofre-form-linha">
-        <input className="campo" placeholder="Chave (ex.: client_secret)" value={chave} onChange={(e) => setChave(e.target.value)} />
-        <input className="campo" placeholder="Documento (#código)" value={doc} onChange={(e) => setDoc(e.target.value.replace(/^#/, ""))} style={{ maxWidth: 150 }} />
+    <div className="cofre-form"
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && !docPop.ancora) aoFechar();
+        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); salvar(); }
+      }}>
+      <div className="cofre-form-titulo">
+        <Lock size={16} /> <strong>{inicial ? "Editar segredo" : "Novo segredo"}</strong>
+        <span style={{ flex: 1 }} />
+        <button className="btn-icone" title="Fechar (Esc)" onClick={aoFechar}><X size={15} /></button>
       </div>
-      <div className="cofre-form-linha">
-        <input className="campo cofre-campo-valor" type={ver ? "text" : "password"} autoComplete="off"
-          placeholder={inicial ? "Novo valor (vazio: fica o atual)" : "Valor"} value={valor}
-          onChange={(e) => setValor(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") salvar(); }} />
+
+      <label className="cofre-rot">Nome</label>
+      <input className="campo" autoFocus placeholder="ex.: Secret do app da API, DEV" value={nome} onChange={(e) => setNome(e.target.value)} />
+
+      <label className="cofre-rot">Descrição</label>
+      <textarea className="campo cofre-desc-campo" rows={3} placeholder="De onde veio, para que serve" value={descricao} onChange={(e) => setDescricao(e.target.value)} />
+
+      <label className="cofre-rot">Documento</label>
+      <div className="cofre-doc-escolha">
+        {doc ? <ChipItem esquema={esquema} r={resumos.get(doc) ?? null} codigo={doc} remover={() => setDoc("")} /> : <span className="cofre-nenhum">Nenhum</span>}
+        <span style={{ flex: 1 }} />
+        <button className="btn" onClick={docPop.abrir}><Search size={13} /> Buscar</button>
+        {wsItem != null && (
+          <button className="btn" onClick={doWorkspace} title="Ligar ao documento do workspace em que você está"><LayoutDashboard size={13} /> Workspace atual</button>
+        )}
+      </div>
+      {docPop.ancora && (
+        <EscolherItem ancora={docPop.ancora} aoFechar={docPop.fechar} esquema={esquema} selecionados={doc ? [doc] : []} titulo="Documento do segredo"
+          aoEscolher={(it) => { lembrarResumo(it); setDoc(it.codigo); docPop.fechar(); }} />
+      )}
+
+      <label className="cofre-rot">Chave <span className="cofre-opcional">(opcional, ex.: client_secret, usuário)</span></label>
+      <input className="campo cofre-mono" placeholder="client_secret" value={chave} onChange={(e) => setChave(e.target.value)} />
+
+      <div className="cofre-valor-cab">
+        <label className="cofre-rot">Valor</label>
+        <div className="cofre-abas">
+          <button className={aba === "texto" ? "ativo" : ""} onClick={() => irPara("texto")}>Texto</button>
+          {(kvPode || aba === "kv") && (
+            <button className={aba === "kv" ? "ativo" : ""} title="O JSON como chave e valor" onClick={() => irPara("kv")}>Chave/valor</button>
+          )}
+        </div>
+        <span style={{ flex: 1 }} />
+        {inicial && !valor && <button className="btn" onClick={abrirAtual} title="Traz o valor guardado para você mudar">Editar o valor atual</button>}
         <button className="btn-icone" title={ver ? "Esconder" : "Ver o que está digitando"} onClick={() => setVer((v) => !v)}>{ver ? <EyeOff size={14} /> : <Eye size={14} />}</button>
       </div>
+      {aba === "texto" ? (
+        <textarea className={`campo cofre-mono cofre-campo-valor${mascara}`} rows={5} autoComplete="off" spellCheck={false}
+          placeholder={inicial ? "Novo valor (vazio: fica o atual). Texto ou JSON." : "Texto ou JSON ({\"usuario\": \"...\", \"senha\": \"...\"})"}
+          value={valor} onChange={(e) => setValor(e.target.value)} />
+      ) : (
+        <div className="cofre-kv-edita">
+          {pares.map((p, i) => (
+            <div className="cofre-kv-edita-linha" key={i}>
+              <input className="campo cofre-mono" placeholder="chave" value={p.k}
+                onChange={(e) => mudarPares(pares.map((x, j) => (j === i ? { ...x, k: e.target.value } : x)))} />
+              <input className={`campo cofre-mono${mascara}`} placeholder="valor" value={p.v} autoComplete="off" spellCheck={false}
+                onChange={(e) => mudarPares(pares.map((x, j) => (j === i ? { ...x, v: e.target.value } : x)))} />
+              <button className="btn-icone" title="Tirar esta linha" onClick={() => mudarPares(pares.filter((_, j) => j !== i))}><X size={13} /></button>
+            </div>
+          ))}
+          <button className="btn cofre-kv-mais" onClick={() => setPares([...pares, { k: "", v: "", cru: false }])}><Plus size={13} /> Linha</button>
+        </div>
+      )}
+
       <div className="cofre-form-acoes">
+        <span className="dica-inline">Ctrl+Enter guarda · Esc fecha</span>
+        <span style={{ flex: 1 }} />
         <button className="btn" onClick={aoFechar}>Cancelar</button>
         <button className="btn primario" onClick={salvar}><Lock size={13} /> {inicial ? "Salvar" : "Guardar no cofre"}</button>
       </div>
@@ -130,7 +321,6 @@ export function FormSegredo({ inicial, documento, aoFechar, aoCriar }: {
 export function TelaCofre() {
   const [lista, setLista] = useState<Segredo[] | null>(null);
   const [q, setQ] = useState("");
-  const [novo, setNovo] = useState(false);
   const carregar = useCallback(() => { api.cofre().then(setLista).catch((e) => { setLista([]); falhou(e); }); }, []);
   useCofre(carregar);
   const b = q.trim().toLowerCase().replace(/^#/, "");
@@ -143,11 +333,10 @@ export function TelaCofre() {
       </div>
       <div className="cofre-barra">
         <span className="cofre-busca"><Search size={14} /><input className="campo" placeholder="Buscar no nome, descrição, chave ou documento…" value={q} onChange={(e) => setQ(e.target.value)} /></span>
-        <button className="btn primario" onClick={() => setNovo(true)}><Plus size={14} /> Novo segredo</button>
+        <button className="btn primario" onClick={() => novoSegredo()}><Plus size={14} /> Novo segredo</button>
       </div>
-      {novo && <FormSegredo aoFechar={() => { setNovo(false); carregar(); }} />}
       {lista == null && <div className="vazio-grande">Abrindo o cofre…</div>}
-      {lista?.length === 0 && !novo && <div className="vazio-grande">Nenhum segredo ainda. Senha, secret ou token que você receber vem para cá, não para o texto.</div>}
+      {lista?.length === 0 && <div className="vazio-grande">Nenhum segredo ainda. Senha, secret ou token que você receber vem para cá, não para o texto.</div>}
       <div className="cofre-lista">
         {vis.map((s) => <LinhaSegredo key={s.id} s={s} aoMudar={carregar} />)}
       </div>
@@ -158,15 +347,15 @@ export function TelaCofre() {
 /** A parte "Segredos" da página do documento: os dele e, à parte, os dos descendentes (a cadeia). */
 export function SegredosDoDocumento({ codigo }: { codigo: string }) {
   const [lista, setLista] = useState<Segredo[]>([]);
-  const [novo, setNovo] = useState(false);
   const carregar = useCallback(() => { api.cofre({ de: codigo }).then(setLista).catch(() => setLista([])); }, [codigo]);
   useCofre(carregar);
+  const novo = () => novoSegredo({ documento: codigo });
   const proprios = lista.filter((s) => s.documento === codigo);
   const dosFilhos = lista.filter((s) => s.documento !== codigo);
-  if (!lista.length && !novo) {
+  if (!lista.length) {
     return (
       <div className="cofre-doc vazio">
-        <button className="btn" onClick={() => setNovo(true)} title="Guardar uma senha, secret ou token ligado a este documento"><Lock size={13} /> Guardar segredo</button>
+        <button className="btn" onClick={novo} title="Guardar uma senha, secret ou token ligado a este documento"><Lock size={13} /> Guardar segredo</button>
       </div>
     );
   }
@@ -175,9 +364,8 @@ export function SegredosDoDocumento({ codigo }: { codigo: string }) {
       <div className="cofre-doc-cab">
         <Lock size={14} /> <strong>Segredos</strong> <span className="ck-conta">{lista.length}</span>
         <span style={{ flex: 1 }} />
-        <button className="btn" onClick={() => setNovo(true)}><Plus size={13} /> Guardar segredo</button>
+        <button className="btn" onClick={novo}><Plus size={13} /> Guardar segredo</button>
       </div>
-      {novo && <FormSegredo documento={codigo} aoFechar={() => { setNovo(false); carregar(); }} />}
       {proprios.map((s) => <LinhaSegredo key={s.id} s={s} aoMudar={carregar} mostrarDocumento={false} />)}
       {dosFilhos.length > 0 && (
         <details className="cofre-filhos">

@@ -22,6 +22,10 @@ Como usar:
 > 0.2.7). Pedido novo entra aqui.
 
 ### Bugs
+- **Toast com as pontas aparecendo** (17/11, visual, para a próxima versão): o cartão do aviso (ex.: "um agente
+  terminou") tem a borda arredondada, mas atrás dele aparece um fundo de cantos retos: nos quatro cantos dá para ver
+  as pontinhas fora da borda. Achar quem pinta o fundo quadrado (o contêiner do cartão, `.pilha-avisos .cartao-aviso`
+  com `overflow: hidden`, ou a janela do aviso, se for uma janela à parte) e deixar transparente / com o mesmo raio.
 ### Melhorias pedidas
 
 ### Ideias antigas (ninguém pediu agora)

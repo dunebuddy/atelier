@@ -23,6 +23,18 @@ Como usar:
 
 ### Bugs
 ### Melhorias pedidas
+- **Comentar no texto de qualquer arquivo aberto no atelier** (17/11, como o Paulo usava no Claude Code do VS Code
+  para revisar planos): selecionar um trecho de markdown, texto/código ou HTML e pôr um comentário; depois dizer ao
+  agente "comentei, olha lá" e ele lê, ajusta o arquivo e reabre. Proposta:
+  - os comentários ficam **fora do arquivo**, ao lado dele: `<nome do arquivo>.comentarios.json` (trecho citado,
+    o comentário, quando, e um pedaço de contexto para achar o trecho mesmo se o arquivo mudar);
+  - na tela: selecionou → botão "Comentar"; o trecho fica grifado e o comentário aparece na margem; dá para editar
+    e apagar; um contador "N comentários abertos" no cabeçalho do arquivo;
+  - MCP: `comentarios` (ler os abertos de um arquivo ou de uma pasta; resolver um comentário com a resposta do
+    agente). Resolvido não some: fica no histórico do arquivo (riscado / "resolvido: ..."), e o Paulo limpa quando
+    quiser. Instrução do agente: "o usuário disse que comentou → `comentarios` ler, ajustar, resolver, abrir de novo";
+  - ordem: markdown e texto primeiro (são o grosso do que o agente gera), depois HTML (o iframe precisa repassar a
+    seleção por `postMessage`); PDF e Word ficam para depois.
 - **HTML de verdade dentro do atelier** (16/11): o atelier já mostra HTML (iframe com `allow-scripts`), mas falta
   conferir página com CSS, script e imagens **relativos** (o iframe carrega pela URL da API: caminho relativo pode
   não achar) e links. Se quebrar, servir a pasta do arquivo para os relativos funcionarem.
@@ -68,6 +80,15 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.26** (2026-11-17) · Janela destacada com cara de atelier (o Paulo testou a 0.2.25):
+  - **Janela destacada com a barra do atelier** (sem a moldura do Windows): título, **Devolver** (a aba volta para a
+    janela de onde saiu, pelo evento `atelier:devolver`), sempre por cima, minimizar, maximizar e fechar.
+  - **Não fica janela vazia:** de dentro de uma janela destacada não dá mais para destacar de novo (nem arrastando
+    para fora, nem pelo menu); e a janela fecha sozinha quando a última aba sai.
+  - **Devolver cada aba para o lugar de onde saiu:** cada aba da janela destacada tem um botão de devolver ao lado do
+    fechar; ela volta para a mesma bancada (janela), o mesmo workspace e o mesmo painel (esquerda/direita), perto da
+    aba que estava depois dela. O botão da barra devolve todas. Se o workspace não existe mais, volta no que está à vista.
+  - O menu diz só **Destacar** (o Paulo: "destacar numa janelinha" era jeito de falar; app sério).
 - **0.2.25** (2026-11-17) · Correções do uso de 17/11:
   - **Destacar: janela branca que não fecha** (e travava o atelier inteiro): os comandos que criam janela
     (`abrir_janela_solta`, `abrir_janela_bancada`, `seguir_link`) viraram `async` (comando síncrono criando janela

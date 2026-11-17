@@ -176,7 +176,8 @@ fn abrir_bancada_em_janela(app: tauri::AppHandle, caminho: String, nome: String,
 /// A janelinha destacada: uma aba numa janela pequena (`?solta=<rota em JSON>`), com a bancada da janela que pediu.
 /// `x`/`y`: onde a aba foi solta ao ser arrastada para fora (posição na tela); sem eles, o sistema escolhe.
 #[tauri::command]
-async fn abrir_janela_solta(app: tauri::AppHandle, rota: String, titulo: String, bancada: Option<String>, largura: Option<f64>, altura: Option<f64>, x: Option<f64>, y: Option<f64>) -> Result<(), String> {
+/// `origem`: o rótulo da janela de onde saiu (o "devolver" manda a aba de volta para ela).
+async fn abrir_janela_solta(app: tauri::AppHandle, rota: String, titulo: String, bancada: Option<String>, largura: Option<f64>, altura: Option<f64>, x: Option<f64>, y: Option<f64>, origem: Option<String>, de: Option<String>) -> Result<(), String> {
     static N: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
     // a rota vem codificada pela tela (encodeURIComponent): vai como está
@@ -185,10 +186,19 @@ async fn abrir_janela_solta(app: tauri::AppHandle, rota: String, titulo: String,
         // já vem codificada (como a API recebe); na URL, o % vira %25
         url.push_str(&format!("&bancada={}", b.replace('%', "%25").replace('&', "%26").replace('#', "%23")));
     }
+    if let Some(o) = origem.filter(|o| o.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')) {
+        url.push_str(&format!("&origem={o}"));
+    }
+    // de onde saiu (workspace, painel, aba seguinte): vem codificado pela tela (encodeURIComponent)
+    if let Some(d) = de.filter(|d| d.chars().all(|c| c.is_ascii_alphanumeric() || "-_.!~*'()%".contains(c))) {
+        url.push_str(&format!("&de={d}"));
+    }
     let w = tauri::WebviewWindowBuilder::new(&app, format!("solta-{n}"), tauri::WebviewUrl::App(url.into()))
         .title(format!("{titulo} · atelier"))
         .inner_size(largura.unwrap_or(480.0).clamp(320.0, 2000.0), altura.unwrap_or(820.0).clamp(300.0, 2000.0))
-        .min_inner_size(320.0, 300.0);
+        .min_inner_size(320.0, 300.0)
+        // a barra de título é a do atelier (a mesma cara da janela principal), com "devolver" e "sempre por cima"
+        .decorations(false);
     let w = match (x, y) {
         (Some(x), Some(y)) => w.position(x, y),
         _ => w,
@@ -196,6 +206,8 @@ async fn abrir_janela_solta(app: tauri::AppHandle, rota: String, titulo: String,
     let w = w
         .build()
         .map_err(|e| e.to_string())?;
+    #[cfg(windows)]
+    ajustar_janela(&w);
     let _ = w.set_focus();
     Ok(())
 }

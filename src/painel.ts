@@ -152,6 +152,16 @@ export function abrirNaMetade(e: EstadoPainel, r: Rota, mi: number, nova = false
   return nova ? abrirNova(n, r, alvo) : navegar(n, r);
 }
 
+/** Uma aba que volta de uma janela destacada: no painel `mi` (esquerda/direita), antes de `antes` (a aba que estava
+ *  logo depois dela), se ainda existe; senão, no fim. */
+export function devolverNa(e: EstadoPainel, r: Rota, mi: number, antes?: string): EstadoPainel {
+  const n = abrirNaMetade(e, r, mi, true);
+  const m = n.metades[n.foco];
+  const nova = m?.ativa;
+  if (!nova || !antes || !m.janelas.some((x) => x.id === antes)) return n;
+  return mover(n, nova, n.foco, antes);
+}
+
 /** Fecha janelas da metade com o foco (ou `mi`): "atual", "todas" ou as que têm `texto` no título. */
 export function fecharJanelas(e: EstadoPainel, qual: string, mi = e.foco): EstadoPainel {
   const m = e.metades[mi];

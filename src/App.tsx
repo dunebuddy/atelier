@@ -23,6 +23,9 @@ import { cliqueNoOutro, Contexto, PainelTrabalho } from "./components/Painel";
 import * as P from "./painel";
 import { EstadoPainel, janelaAtiva, rotaDe } from "./painel";
 import { avisar, falhou, guardar, ler, Rota, Tema } from "./ui";
+import type { Lugar } from "./components/JanelaSolta";
+
+type Devolvida = { rota: Rota; de?: Lugar | null };
 import * as W from "./workspaces";
 import { bate, definirAtalhos, doPainel } from "./atalhos";
 import { BarraStatus, diasAutoArquivar, SeletorWorkspace, VisaoGeralWorkspaces } from "./components/Workspaces";
@@ -336,6 +339,15 @@ export default function App() {
       window.dispatchEvent(new Event("focus"));
     }, 300);
   };
+  // uma aba devolvida por uma janela destacada: volta para o workspace e o painel de onde saiu (e para perto da aba
+  // que estava depois dela); o workspace dela fica à vista. Workspace que não existe mais: no que está à vista.
+  const receberDevolvida = (d: Devolvida) => {
+    const lugar = d.de;
+    const k = lugar?.ws && wsRef.current?.estados[lugar.ws] ? lugar.ws : undefined;
+    if (k) setWs((w) => (w && w.ativo !== k ? W.abrir(w, k) : w));
+    mudarDe(k)((s) => P.devolverNa(s, d.rota, lugar?.mi ?? s.foco, lugar?.antes));
+  };
+
   // pedidos para a tela, vindos do MCP (o agente) e do Comando: a lista está em core/src/api.rs (ACOES_TELA)
   const pedidoDaTela = (d: PedidoTela) => {
     // pedido de um agente que roda num terminal do atelier: vale no workspace desse terminal (o Paulo continua no
@@ -519,11 +531,20 @@ export default function App() {
     // no navegador de teste (sem o núcleo), o link colado na busca abre aqui mesmo
     const local = (e: Event) => seguir((e as CustomEvent<string>).detail);
     window.addEventListener("atelier:link-local", local);
+    // navegador de teste: a janela destacada chama direto (sem Tauri)
+    const devolvidaLocal = (e: Event) => receberDevolvida((e as CustomEvent<Devolvida>).detail);
+    window.addEventListener("atelier:devolver", devolvidaLocal);
     (async () => {
       try {
         const { listen } = await import("@tauri-apps/api/event");
         const { getCurrentWebviewWindow } = await import("@tauri-apps/api/webviewWindow");
-        solta = await getCurrentWebviewWindow().listen<string>("atelier:link", (e) => seguir(e.payload));
+        const largarLink = await getCurrentWebviewWindow().listen<string>("atelier:link", (e) => seguir(e.payload));
+        // uma janela destacada devolveu a aba: ela volta como aba nova aqui
+        const largarDevolver = await getCurrentWebviewWindow().listen<Devolvida>("atelier:devolver", (e) => {
+          receberDevolvida(e.payload);
+          import("@tauri-apps/api/window").then(({ getCurrentWindow }) => getCurrentWindow().setFocus()).catch(() => {});
+        });
+        solta = () => { largarLink(); largarDevolver(); };
         void listen;
         if (!BANCADA_DA_JANELA) {
           const { invoke } = await import("@tauri-apps/api/core");
@@ -533,7 +554,7 @@ export default function App() {
       } catch { /* no navegador de teste não há Tauri */ }
       if (ABRIR_AO_CARREGAR) window.setTimeout(() => seguir(`atelier://doc/${ABRIR_AO_CARREGAR}`), 800);
     })();
-    return () => { solta?.(); window.removeEventListener("atelier:link-local", local); };
+    return () => { solta?.(); window.removeEventListener("atelier:link-local", local); window.removeEventListener("atelier:devolver", devolvidaLocal); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // o que está na tela, em texto: vai para a API (o agente consulta com tela → estado) e para o Comando
@@ -742,7 +763,7 @@ export default function App() {
           {/* os workspaces abertos ficam montados por trás: trocar não mata terminal nem agente */}
           {ws.abertos.filter((k) => ws.estados[k]).map((k) => (
             <div key={k} className="workspace" style={{ display: k === ws.ativo ? undefined : "none" }}>
-              <PainelTrabalho estado={ws.estados[k]} mudar={mudarDe(k)} ctx={ctx} ativo={k === ws.ativo} />
+              <PainelTrabalho estado={ws.estados[k]} mudar={mudarDe(k)} ctx={ctx} ativo={k === ws.ativo} workspace={k} />
             </div>
           ))}
         </main>

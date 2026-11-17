@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ExternalLink, Globe } from "lucide-react";
-import { destacarEmJanela } from "./JanelaSolta";
+import { ExternalLink, Globe, Undo2,
+} from "lucide-react";
+import { destacarEmJanela, devolverAba, ROTA_SOLTA } from "./JanelaSolta";
 import { Site } from "./Site";
 import { TelaCofre } from "./Cofre";
 import { createPortal } from "react-dom";
@@ -83,7 +84,7 @@ function IconeJanela({ j }: { j: Janela }) {
 }
 
 /** `ativo`: é o workspace que está na tela (os outros ficam montados por trás). */
-export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPainel; mudar: Mudar; ctx: Contexto; ativo: boolean }) {
+export function PainelTrabalho({ estado, mudar, ctx, ativo, workspace }: { estado: EstadoPainel; mudar: Mudar; ctx: Contexto; ativo: boolean; workspace?: string }) {
   const caixa = useRef<HTMLDivElement>(null);
   const [tam, setTam] = useState({ w: 0, h: 0 });
   const [rolagem, setRolagem] = useState<number[]>([0, 0]);
@@ -180,7 +181,8 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
     let alvo: { mi: number; antes?: string } | null = null;
     // fora da janela do atelier: soltar ali destaca a aba numa janelinha (terminal não destaca)
     let fora = false;
-    const podeSair = P.rotaDe(j).v !== "terminal";
+    // (de dentro de uma janela destacada, não: ela já é a janela separada)
+    const podeSair = P.rotaDe(j).v !== "terminal" && !ROTA_SOLTA;
     const mover = (ev: PointerEvent) => {
       if (ev.pointerId !== pid) return;
       // só vira arrasto depois de andar uns pixels: clique normal continua ativando a aba
@@ -227,8 +229,17 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
     window.addEventListener("keydown", aoTecla, true);
   };
   // destacar tira a aba daqui: ela passa para a janelinha (não fica duas)
+  // e lembra de onde saiu (workspace, painel e a aba seguinte), para o "devolver" pôr de volta no mesmo lugar
   const destacar = (j: Janela, onde?: { x: number; y: number }) => {
-    destacarEmJanela(P.rotaDe(j), j.titulo ?? "atelier", onde).then((ok) => { if (ok) mudar((s) => P.fechar(s, j.id)); });
+    const a = P.acharJanela(estado, j.id);
+    const lista = a ? estado.metades[a.mi].janelas : [];
+    const antes = lista[lista.findIndex((x) => x.id === j.id) + 1]?.id;
+    destacarEmJanela(P.rotaDe(j), j.titulo ?? "atelier", onde, { ws: workspace, mi: a?.mi ?? 0, antes })
+      .then((ok) => { if (ok) mudar((s) => P.fechar(s, j.id)); });
+  };
+  // na janela destacada: a aba volta para a janela de onde saiu
+  const devolver = (j: Janela) => {
+    devolverAba(P.rotaDe(j)).then((ok) => { if (ok) mudar((s) => P.fechar(s, j.id)); });
   };
   const alvo = (chave: string, mi: number, antesDe?: string) => ({
     "data-soltar-chave": chave, "data-soltar-metade": mi, ...(antesDe ? { "data-soltar-antes": antesDe } : {}),
@@ -289,6 +300,9 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
                 >
                   <IconeJanela j={j} />
                   <span className="aba-rotulo">{j.titulo ?? "…"}</span>
+                  {ROTA_SOLTA && (
+                    <button className="aba-fechar aba-devolver" title="Devolver: volta para a janela do atelier de onde saiu" onClick={(e) => { e.stopPropagation(); devolver(j); }}><Undo2 size={12} /></button>
+                  )}
                   {j.fixada ? (
                     <button className="aba-pino" title="Fixada. Clique para tirar o alfinete" onClick={(e) => { e.stopPropagation(); mudar((s) => P.alternarFixada(s, j.id)); }}><Pin size={12} /></button>
                   ) : (
@@ -394,6 +408,7 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
                 {m.modo === "tile" && m.janelas[0].id !== j.id && (
                   <button className="btn-icone mini" title="Virar a principal (Ctrl+Alt+Enter)" onClick={() => mudar((s) => P.promover(s, j.id))}><LayoutPanelLeft size={13} /></button>
                 )}
+                {ROTA_SOLTA && <button className="btn-icone mini" title="Devolver: volta para a janela do atelier de onde saiu" onClick={() => devolver(j)}><Undo2 size={13} /></button>}
                 {!j.fixada && <button className="btn-icone mini" title="Fechar (Ctrl+W)" onClick={() => mudar((s) => P.fechar(s, j.id))}><X size={13} /></button>}
               </div>
             )}
@@ -458,10 +473,10 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
                   {estado.expandida === menu.id ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                   <span style={{ flex: 1 }}>{estado.expandida === menu.id ? "Voltar ao tamanho de antes" : "Expandir"}</span> <kbd>{combinacao("maximizar")}</kbd>
                 </button>
-                {j && P.rotaDe(j).v !== "terminal" && (
+                {j && P.rotaDe(j).v !== "terminal" && !ROTA_SOLTA && (
                   <button className="menu-item" onClick={() => { setMenu(null); destacar(j); }}
-                    title="Abre esta aba numa janela pequena, para pôr do lado do que você está fazendo (com “sempre por cima”)">
-                    <ExternalLink size={14} /> Destacar numa janelinha
+                    title="Abre esta aba numa janela separada, com “sempre por cima” (também dá para arrastar a aba para fora)">
+                    <ExternalLink size={14} /> Destacar
                   </button>
                 )}
                 <button className="menu-item" onClick={doMenu(P.moverParaOutraMetade)}>

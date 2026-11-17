@@ -1499,11 +1499,15 @@ input::-ms-reveal, input::-ms-clear { display: none; }
 .cofre-pedido-tempo { display: inline-flex; gap: 4px; align-items: center; }
 .cofre-pedido-tempo .campo { width: auto; }
 
-/* janelinha destacada: só a aba, com uma barrinha em cima (título e "sempre por cima") */
+/* janela destacada: só a aba, com a barra de título do atelier (devolver, "sempre por cima" e os botões da janela) */
 .app.janela-solta { display: flex; flex-direction: column; height: 100vh; }
-.solta-barra { display: flex; align-items: center; gap: 6px; height: 30px; flex-shrink: 0; padding: 0 6px 0 12px; border-bottom: 1px solid var(--borda); background: var(--bg-elev); font-size: 12.5px; }
-.solta-titulo { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--texto-2); font-weight: 600; }
-.solta-barra .btn-icone.ativo { color: var(--acento); background: var(--acento-suave); }
+.solta-barra { display: flex; align-items: center; gap: 2px; height: 40px; flex-shrink: 0; padding-left: 12px; user-select: none; font-size: 12.5px; }
+.solta-titulo { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--texto-2); font-weight: 600; }
+.solta-barra > .bt-btn { min-width: 32px; height: 30px; padding: 0 8px; border-radius: 8px; color: var(--texto-3); }
+.solta-barra > .bt-btn:hover { background: var(--hover); color: var(--texto); }
+.solta-barra > .bt-btn.ativo { color: var(--acento); background: var(--acento-suave); }
+.solta-barra .bt-janela { height: 37px; margin-left: 6px; }
+.solta-barra .bt-janela button { width: 42px; }
 .solta-corpo { flex: 1; min-height: 0; position: relative; display: flex; }
 .solta-corpo > * { flex: 1; min-width: 0; }
 

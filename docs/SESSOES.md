@@ -646,3 +646,15 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   tem coisa suficiente.
 - Toast: o tempo para só com o mouse em cima ou o app escondido (`document.hidden`); sem foco, corre.
 - Ficou: HTML com recursos relativos e o resto da caixa.
+
+## 2026-11-17 — 0.2.26: janela destacada com cara de atelier, devolver por aba
+- O Paulo testou a 0.2.25: destacar e arrastar para fora funcionam. Pediu: barra de título do atelier (não a do
+  Windows), um jeito de voltar a aba, e só "Destacar" no menu. A janela vazia que ele viu era a destacada de onde
+  ele arrastou a aba para fora de novo.
+- `abrir_janela_solta`: `decorations(false)`, `ajustar_janela`, e `origem` (rótulo da janela que destacou) na URL.
+  `JanelaSolta`: barra com `data-tauri-drag-region`, `bt-janela`; devolver faz `emitTo(origem, "atelier:devolver",
+  rota)` e o `App` abre como aba nova; janela sem abas fecha. No `Painel`, `ROTA_SOLTA` desliga o destacar.
+- Não testado no app de verdade (o teste sem janela não tem Tauri): arrastar a barra, maximizar e o devolver.
+- Devolver por aba: o `Painel` destacando manda o `Lugar` (`ws` = workspace do painel, `mi`, `antes` = a aba
+  seguinte) no `?de=`; `devolverAba` manda `{ rota, de }` em `atelier:devolver`; o `App` (`receberDevolvida`) abre o
+  workspace e usa `P.devolverNa`. Para o Paulo, "aba" quer dizer o painel (esquerda/direita).

@@ -235,19 +235,21 @@ export function Sidebar({
             );
           })}
         </div>
-        <div className="sb-secao">
-          <button className={`sb-item${rota.v === "cofre" ? " ativo" : ""}`} onClick={() => ir({ v: "cofre" })} style={{ color: "var(--texto-3)" }}
-            title="Cofre de segredos da bancada (criptografado)">
-            <span className="tipo-chip vazio" style={{ borderStyle: "solid" }}><Lock size={14} /></span>
-            <span className="rotulo">Cofre</span>
-          </button>
-          <button className={`sb-item${rota.v === "lixeira" ? " ativo" : ""}`} onClick={() => ir({ v: "lixeira" })} style={{ color: "var(--texto-3)" }}>
-            <span className="tipo-chip vazio" style={{ borderStyle: "solid" }}><Trash2 size={14} /></span>
-            <span className="rotulo">Lixeira</span>
-          </button>
-        </div>
       </div>
       )}
+
+      {/* Cofre e Lixeira ficam sempre à vista, colados no seletor de bancada: a rolagem acaba em cima deles */}
+      <div className="sb-fixos">
+        <button className={`sb-item${rota.v === "cofre" ? " ativo" : ""}`} onClick={() => ir({ v: "cofre" })} style={{ color: "var(--texto-3)" }}
+          title="Cofre de segredos da bancada (criptografado)">
+          <span className="tipo-chip vazio" style={{ borderStyle: "solid" }}><Lock size={14} /></span>
+          <span className="rotulo">Cofre</span>
+        </button>
+        <button className={`sb-item${rota.v === "lixeira" ? " ativo" : ""}`} onClick={() => ir({ v: "lixeira" })} style={{ color: "var(--texto-3)" }}>
+          <span className="tipo-chip vazio" style={{ borderStyle: "solid" }}><Trash2 size={14} /></span>
+          <span className="rotulo">Lixeira</span>
+        </button>
+      </div>
 
       <div className="sb-rodape">
         <button className="bancada-atual" onClick={seletor.abrir} title="Trocar de bancada">

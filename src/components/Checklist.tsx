@@ -5,7 +5,6 @@ import {
   ArrowDown, ArrowLeft, ArrowUp, Braces, Check, ChevronDown, ChevronRight, FilePlus, FileText, GripVertical, Link2, ListChecks,
   AlertTriangle, KeyRound, Lock, Paperclip, Pencil, Plus, RefreshCw, SkipForward, Trash2, Undo2, X,
 } from "lucide-react";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { api, BASE, Esquema, Props, Resumo } from "../api";
 import { abrir, avisar, falhou, lerBase64 } from "../ui";
 import { useAoReaparecer, useVisivel } from "../visivel";
@@ -65,7 +64,7 @@ function tabelaEmMarkdown(t: HTMLTableElement): string {
 function seguir(link: Link, pasta: string, raiz: string) {
   const a = alvoDe(link, pasta);
   if (a.tipo === "doc") abrirCodigo(a.codigo, (r) => abrir(r, true, true));
-  else if (a.tipo === "url") openUrl(a.url).catch(() => window.open(a.url, "_blank"));
+  else if (a.tipo === "url") abrir({ v: "site", url: a.url }, true, true);
   else {
     const caminho = raiz.includes("\\") ? a.caminho.replace(/\//g, "\\") : a.caminho;
     abrir({ v: "arquivos", raiz: caminho.toLowerCase().startsWith(raiz.toLowerCase()) ? raiz : pastaDe(caminho), arquivo: caminho }, true, true);

@@ -55,6 +55,7 @@ function rotuloSimples(r: Rota): string {
     case "terminal": return r.titulo ?? "terminal";
     case "arquivos": return r.titulo ?? "arquivos";
     case "pastas": return r.titulo ?? "pastas";
+    case "site": return r.titulo ?? r.url;
     default: return r.v;
   }
 }

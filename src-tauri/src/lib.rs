@@ -128,8 +128,14 @@ fn rotulo_da_bancada(caminho: &str) -> String {
 
 /// Abre a bancada numa janela nova (ou traz para a frente a que já está com ela). A janela principal é a da bancada
 /// ativa: pedir a ativa só traz a principal. `abrir` (código de documento) é aberto quando a janela carrega.
+// Criar janela num comando síncrono trava o WebView2 no Windows (a janela nova fica branca e nada fecha): os
+// comandos que abrem janela são `async`.
 #[tauri::command]
-fn abrir_janela_bancada(app: tauri::AppHandle, caminho: String, nome: String, abrir: Option<String>) -> Result<(), String> {
+async fn abrir_janela_bancada(app: tauri::AppHandle, caminho: String, nome: String, abrir: Option<String>) -> Result<(), String> {
+    abrir_bancada_em_janela(app, caminho, nome, abrir)
+}
+
+fn abrir_bancada_em_janela(app: tauri::AppHandle, caminho: String, nome: String, abrir: Option<String>) -> Result<(), String> {
     let ativa = bancada::carregar().ativa().map(|b| b.caminho.clone()).unwrap_or_default();
     if bancada::mesmo_caminho(&ativa, &caminho) && abrir.is_none() {
         trazer_para_frente(&app);
@@ -168,8 +174,9 @@ fn abrir_janela_bancada(app: tauri::AppHandle, caminho: String, nome: String, ab
 }
 
 /// A janelinha destacada: uma aba numa janela pequena (`?solta=<rota em JSON>`), com a bancada da janela que pediu.
+/// `x`/`y`: onde a aba foi solta ao ser arrastada para fora (posição na tela); sem eles, o sistema escolhe.
 #[tauri::command]
-fn abrir_janela_solta(app: tauri::AppHandle, rota: String, titulo: String, bancada: Option<String>, largura: Option<f64>, altura: Option<f64>) -> Result<(), String> {
+async fn abrir_janela_solta(app: tauri::AppHandle, rota: String, titulo: String, bancada: Option<String>, largura: Option<f64>, altura: Option<f64>, x: Option<f64>, y: Option<f64>) -> Result<(), String> {
     static N: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
     // a rota vem codificada pela tela (encodeURIComponent): vai como está
@@ -181,7 +188,12 @@ fn abrir_janela_solta(app: tauri::AppHandle, rota: String, titulo: String, banca
     let w = tauri::WebviewWindowBuilder::new(&app, format!("solta-{n}"), tauri::WebviewUrl::App(url.into()))
         .title(format!("{titulo} · atelier"))
         .inner_size(largura.unwrap_or(480.0).clamp(320.0, 2000.0), altura.unwrap_or(820.0).clamp(300.0, 2000.0))
-        .min_inner_size(320.0, 300.0)
+        .min_inner_size(320.0, 300.0);
+    let w = match (x, y) {
+        (Some(x), Some(y)) => w.position(x, y),
+        _ => w,
+    };
+    let w = w
         .build()
         .map_err(|e| e.to_string())?;
     let _ = w.set_focus();
@@ -203,7 +215,7 @@ fn tratar_link(app: &tauri::AppHandle, url: &str) {
         let na_pedida = pedida.and_then(|n| cfg.bancadas.iter().find(|b| b.nome.eq_ignore_ascii_case(&n)).cloned());
         match na_pedida.or_else(|| bancada::achar_codigo(&codigo)) {
             Some(b) if !bancada::mesmo_caminho(&b.caminho, &ativa) => {
-                let _ = abrir_janela_bancada(app.clone(), b.caminho, b.nome, Some(alvo.to_string()));
+                let _ = abrir_bancada_em_janela(app.clone(), b.caminho, b.nome, Some(alvo.to_string()));
                 return;
             }
             _ => {}
@@ -216,9 +228,9 @@ fn tratar_link(app: &tauri::AppHandle, url: &str) {
 /// O link com que o app foi aberto (a tela pede quando termina de carregar).
 static LINK_INICIAL: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
 
-/// A tela manda seguir um link (o inicial, ou um clicado dentro do app).
+/// A tela manda seguir um link (o inicial, ou um clicado dentro do app). `async`: pode abrir janela.
 #[tauri::command]
-fn seguir_link(app: tauri::AppHandle, url: String) {
+async fn seguir_link(app: tauri::AppHandle, url: String) {
     tratar_link(&app, &url);
 }
 

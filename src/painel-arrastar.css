@@ -13,3 +13,7 @@
   border-radius: 8px; border: 1px solid var(--borda); background: var(--bg-elev, var(--bg)); color: var(--texto);
   font-size: 12.5px; white-space: nowrap; box-shadow: var(--sombra); opacity: .92;
 }
+
+/* fora da janela: soltar ali destaca numa janelinha */
+.aba-fantasma.fora { border-color: var(--acento, #6b8afd); box-shadow: 0 0 0 2px var(--acento, #6b8afd), var(--sombra); }
+.aba-fantasma.fora::after { content: "Soltar para destacar"; margin-left: 6px; font-size: 11px; color: var(--acento, #6b8afd); }

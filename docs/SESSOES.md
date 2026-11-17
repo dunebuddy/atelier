@@ -632,3 +632,17 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   `atelier:recarregar-arquivo` relê no `Explorador`. Testado com a API: o workspace à vista não muda.
 - Ficou na caixa: HTML com recursos relativos, nome repetido pelo agente, `terminal` no workspace do agente,
   `CLAUDE.md` da pasta e manual do agente.
+
+## 2026-11-17 — 0.2.25: destacar, site no atelier, barra lateral, toast
+- O Paulo com a 0.2.24: destacar abria janela branca e travava o atelier todo (nem minimizar). Causa: comando Tauri
+  síncrono criando `WebviewWindow` (deadlock do WebView2). `abrir_janela_solta`, `abrir_janela_bancada` (o link
+  usa `abrir_bancada_em_janela`) e `seguir_link` agora são `async`. Não dá para ver no teste sem janela: conferir
+  no app instalado.
+- Arrastar para fora: no `pegar` do `Painel.tsx`, ponteiro fora de `innerWidth/innerHeight` marca `fora`; soltar
+  chama `destacar(j, screenX/Y)` (`abrir_janela_solta` ganhou `x`, `y`). Destacar fecha a aba de origem.
+- Aba `site` (`Site.tsx`, rota `{ v: "site", url }`, `fixa`); `/api/tela` abrir com `url` (só http/https).
+- Sidebar: `.sb-fixos` (Cofre, Lixeira) fora da `.sb-rolagem`. Barra de título 49 px, botões da janela 46 px.
+- O Paulo mudou o jeito do dia: corrigir aos poucos enquanto conversa; versão no fim do dia, quando ele achar que
+  tem coisa suficiente.
+- Toast: o tempo para só com o mouse em cima ou o app escondido (`document.hidden`); sem foco, corre.
+- Ficou: HTML com recursos relativos e o resto da caixa.

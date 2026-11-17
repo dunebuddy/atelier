@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Globe } from "lucide-react";
 import { destacarEmJanela } from "./JanelaSolta";
+import { Site } from "./Site";
 import { TelaCofre } from "./Cofre";
 import { createPortal } from "react-dom";
 import { combinacao, dispararAtalho } from "../atalhos";
@@ -77,6 +78,7 @@ function IconeJanela({ j }: { j: Janela }) {
   if (r.v === "terminal") return r.programa ? <Bot size={13} /> : <SquareTerminal size={13} />;
   if (r.v === "arquivos") return <FolderOpen size={13} />;
   if (r.v === "pastas") return <FolderTree size={13} />;
+  if (r.v === "site") return <Globe size={13} />;
   return <span className="j-emoji">{j.icone ?? "·"}</span>;
 }
 
@@ -176,6 +178,9 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
     const { pointerId: pid, clientX: x0, clientY: y0 } = e;
     let ativo = false;
     let alvo: { mi: number; antes?: string } | null = null;
+    // fora da janela do atelier: soltar ali destaca a aba numa janelinha (terminal não destaca)
+    let fora = false;
+    const podeSair = P.rotaDe(j).v !== "terminal";
     const mover = (ev: PointerEvent) => {
       if (ev.pointerId !== pid) return;
       // só vira arrasto depois de andar uns pixels: clique normal continua ativando a aba
@@ -188,7 +193,9 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
       }
       posFantasma.current = { x: ev.clientX, y: ev.clientY };
       if (fantasma.current) fantasma.current.style.transform = `translate(${ev.clientX + 12}px, ${ev.clientY + 10}px)`;
-      const t = document.elementFromPoint(ev.clientX, ev.clientY)?.closest<HTMLElement>("[data-soltar-metade]");
+      fora = podeSair && (ev.clientX < 0 || ev.clientY < 0 || ev.clientX >= window.innerWidth || ev.clientY >= window.innerHeight);
+      fantasma.current?.classList.toggle("fora", fora);
+      const t = fora ? null : document.elementFromPoint(ev.clientX, ev.clientY)?.closest<HTMLElement>("[data-soltar-metade]");
       const dentro = !!t && !!caixa.current?.contains(t);
       alvo = dentro ? { mi: Number(t.dataset.soltarMetade), antes: t.dataset.soltarAntes } : null;
       setSobre(dentro ? t.dataset.soltarChave ?? null : null);
@@ -207,15 +214,21 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
       setArrastando(null);
       setSobre(null);
       const a = alvo;
-      if (soltar && a) mudar((s) => P.mover(s, j.id, a.mi, a.antes));
+      if (soltar && fora) destacar(j, { x: ultimo.x, y: ultimo.y });
+      else if (soltar && a) mudar((s) => P.mover(s, j.id, a.mi, a.antes));
     };
-    const aoSoltar = (ev: PointerEvent) => { if (ev.pointerId === pid) fim(true); };
+    const ultimo = { x: 0, y: 0 };
+    const aoSoltar = (ev: PointerEvent) => { if (ev.pointerId === pid) { ultimo.x = ev.screenX; ultimo.y = ev.screenY; fim(true); } };
     const aoCancelar = (ev: PointerEvent) => { if (ev.pointerId === pid) fim(false); };
     const aoTecla = (ev: KeyboardEvent) => { if (ev.key === "Escape" && ativo) { ev.stopPropagation(); fim(false); } };
     window.addEventListener("pointermove", mover);
     window.addEventListener("pointerup", aoSoltar);
     window.addEventListener("pointercancel", aoCancelar);
     window.addEventListener("keydown", aoTecla, true);
+  };
+  // destacar tira a aba daqui: ela passa para a janelinha (não fica duas)
+  const destacar = (j: Janela, onde?: { x: number; y: number }) => {
+    destacarEmJanela(P.rotaDe(j), j.titulo ?? "atelier", onde).then((ok) => { if (ok) mudar((s) => P.fechar(s, j.id)); });
   };
   const alvo = (chave: string, mi: number, antesDe?: string) => ({
     "data-soltar-chave": chave, "data-soltar-metade": mi, ...(antesDe ? { "data-soltar-antes": antesDe } : {}),
@@ -446,7 +459,7 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo }: { estado: EstadoPa
                   <span style={{ flex: 1 }}>{estado.expandida === menu.id ? "Voltar ao tamanho de antes" : "Expandir"}</span> <kbd>{combinacao("maximizar")}</kbd>
                 </button>
                 {j && P.rotaDe(j).v !== "terminal" && (
-                  <button className="menu-item" onClick={() => { setMenu(null); destacarEmJanela(P.rotaDe(j), j.titulo ?? "atelier"); }}
+                  <button className="menu-item" onClick={() => { setMenu(null); destacar(j); }}
                     title="Abre esta aba numa janela pequena, para pôr do lado do que você está fazendo (com “sempre por cima”)">
                     <ExternalLink size={14} /> Destacar numa janelinha
                   </button>
@@ -530,6 +543,7 @@ function Conteudo({ j, ctx, visivel, mudar }: { j: Janela; ctx: Contexto; visive
     else if (tipoConfig) rotular({ titulo: `Tipo: ${tipoConfig.nome}`, icone: tipoConfig.icone, tipo_id: null });
     else if (r.v === "terminal") rotular({ titulo: r.titulo ?? "terminal", tipo_id: null });
     else if (r.v === "pastas") rotular({ titulo: r.titulo ?? r.raiz.split(/[\\/]/).filter(Boolean).pop() ?? "pastas", tipo_id: null });
+    else if (r.v === "site") rotular({ titulo: r.titulo ?? hostDe(r.url), tipo_id: null });
     else if (r.v === "arquivos") rotular({ titulo: r.titulo ?? r.raiz.split(/[\\/]/).filter(Boolean).pop() ?? "arquivos", tipo_id: null });
   }, [JSON.stringify(r), visao?.nome, visao?.icone, tipoDaLista?.nome, tipoConfig?.nome]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -612,9 +626,15 @@ function Conteudo({ j, ctx, visivel, mudar }: { j: Janela; ctx: Contexto; visive
       return <TerminalJanela sessao={r.sessao} cwd={r.cwd} programa={r.programa} shell={r.shell} visivel={visivel} />;
     case "pastas":
       return <ArvoreArquivos key={r.raiz} raiz={r.raiz} titulo={r.titulo} />;
+    case "site":
+      return <Site url={r.url} />;
     case "arquivos":
       return <Explorador key={r.raiz + (r.arquivo ?? "")} raiz={r.raiz} arquivo={r.arquivo} titulo={r.titulo} />;
     default:
       return null;
   }
+}
+
+function hostDe(url: string) {
+  try { return new URL(url).host || url; } catch { return url; }
 }

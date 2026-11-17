@@ -22,7 +22,6 @@ Como usar:
 > 0.2.7). Pedido novo entra aqui.
 
 ### Bugs
-
 ### Melhorias pedidas
 - **HTML de verdade dentro do atelier** (16/11): o atelier já mostra HTML (iframe com `allow-scripts`), mas falta
   conferir página com CSS, script e imagens **relativos** (o iframe carrega pela URL da API: caminho relativo pode
@@ -69,6 +68,20 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.25** (2026-11-17) · Correções do uso de 17/11:
+  - **Destacar: janela branca que não fecha** (e travava o atelier inteiro): os comandos que criam janela
+    (`abrir_janela_solta`, `abrir_janela_bancada`, `seguir_link`) viraram `async` (comando síncrono criando janela
+    trava o WebView2 no Windows).
+  - **Arrastar a aba para fora da janela destaca** (a fantasma mostra "Soltar para destacar"); a janelinha nasce onde
+    soltou. Destacar (arrastando ou pelo menu) **move** a aba: ela sai daqui, não fica duas.
+  - **Toast parado sem foco:** desde a 0.2.24 o tempo só corria com o atelier em foco (de propósito, mas o Paulo via
+    como bug). Agora só para com o mouse em cima ou com o app minimizado/escondido.
+  - **Borda do conteúdo não encosta no fechar:** a barra de título tem 3 px a mais que os botões da janela.
+  - **Cofre e Lixeira fixos embaixo** da barra lateral, colados no seletor de bancada; a rolagem acaba em cima deles.
+  - **Site dentro do atelier:** aba nova `site` (barra com recarregar e "abrir no navegador do sistema"); `tela`
+    abrir aceita `url`; links http do editor e do checklist abrem nela; instruções do MCP: o que o agente gera abre
+    no atelier e site também, navegador só pelo botão. Site que recusa ser mostrado dentro (Google, bancos) fica em
+    branco, com a dica do botão embaixo.
 - **0.2.24** (2026-11-16) · Tudo o que saiu do uso de 16/11:
   - **cofre:** editar já abre com o valor guardado (o Paulo achou que os segredos do agente estavam sem valor);
     menu de copiar só com "Copiar segredo" / "Copiar chave"; a linha mostra o nome do documento; na ficha do

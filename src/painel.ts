@@ -66,7 +66,7 @@ const novoId = () => `j${Date.now().toString(36)}${(seq++).toString(36)}`;
 export const rotaDe = (j: Janela): Rota => j.hist[j.pos];
 
 /** Terminal e arquivos não navegam para outra coisa: o que se abre "nele" vai para uma janela nova. */
-export const fixa = (r: Rota) => r.v === "terminal" || r.v === "arquivos" || r.v === "pastas";
+export const fixa = (r: Rota) => r.v === "terminal" || r.v === "arquivos" || r.v === "pastas" || r.v === "site";
 
 export function novaJanela(r: Rota, largura = 2): Janela {
   return { id: novoId(), hist: [r], pos: 0, largura };

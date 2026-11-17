@@ -157,13 +157,13 @@ kbd {
 .corpo-app.sem-barra { padding-left: 8px; }
 
 .barra-titulo {
-  height: 46px; flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding-left: 12px;
+  height: 49px; flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding-left: 12px;
   user-select: none; position: relative;
 }
 .bt-esq, .bt-dir { display: flex; align-items: center; gap: 2px; min-width: 0; }
 .bt-esq { flex: 1; }
 /* à direita, como na barra do app do Claude: só ícones, discretos, do mesmo tamanho; depois os da janela */
-.bt-dir { flex: 1; justify-content: flex-end; gap: 2px; }
+.bt-dir { flex: 1; justify-content: flex-end; gap: 2px; align-self: stretch; }
 .bt-dir > .bt-btn { min-width: 32px; height: 32px; padding: 0 8px; border-radius: 8px; color: var(--texto-3); }
 .marca { flex-shrink: 0; margin-right: 8px; }
 .bt-btn {
@@ -193,7 +193,8 @@ kbd {
 .bt-busca:hover { border-color: var(--borda-forte); color: var(--texto-2); }
 .bt-busca span { flex: 1; text-align: left; white-space: nowrap; overflow: hidden; }
 
-.bt-janela { display: flex; height: 46px; margin-left: 12px; }
+.bt-janela { display: flex; height: 46px; margin-left: 12px; align-self: flex-start; }
+/* a barra tem 3 px a mais que os botões da janela: a borda do conteúdo não encosta no vermelho do fechar */
 .bt-janela button { width: 46px; height: 100%; display: grid; place-items: center; color: var(--texto-2); }
 .bt-janela button:hover { background: var(--hover); color: var(--texto); }
 .bt-janela button.fechar:hover { background: #c42b1c; color: #fff; }
@@ -230,7 +231,9 @@ body.redimensionando .sidebar { transition: none; }
 .arv-icone { width: 18px; text-align: center; flex-shrink: 0; font-size: 13px; }
 .arv-vazio { font-size: 12.5px; color: var(--texto-3); padding: 4px 8px; }
 
-.sb-rolagem { flex: 1; overflow-y: auto; padding: 4px 10px 12px; }
+.sb-rolagem { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 10px 12px; }
+/* Cofre e Lixeira: fora da rolagem, sempre à vista em cima do seletor de bancada */
+.sb-fixos { flex-shrink: 0; padding: 6px 10px 0; border-top: 1px solid var(--borda); }
 .sb-secao { margin-top: 18px; }
 .sb-titulo-secao {
   display: flex; align-items: center; justify-content: space-between;
@@ -1503,3 +1506,10 @@ input::-ms-reveal, input::-ms-clear { display: none; }
 .solta-barra .btn-icone.ativo { color: var(--acento); background: var(--acento-suave); }
 .solta-corpo { flex: 1; min-height: 0; position: relative; display: flex; }
 .solta-corpo > * { flex: 1; min-width: 0; }
+
+/* ---------- site numa aba (tela abrir url; links do editor e do checklist) ---------- */
+.site { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.site-barra { display: flex; align-items: center; gap: 4px; padding: 4px 6px; border-bottom: 1px solid var(--borda); flex-shrink: 0; }
+.site-url { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--texto-3); }
+.site-moldura { flex: 1; min-height: 0; width: 100%; border: 0; background: #fff; }
+.site-dica { flex-shrink: 0; padding: 3px 8px; font-size: 11px; color: var(--texto-3); border-top: 1px solid var(--borda); }

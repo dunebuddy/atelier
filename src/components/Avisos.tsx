@@ -99,10 +99,11 @@ export function PilhaDeAvisos() {
     pausada.current = false;
     [...resta.current].forEach(([id, ms]) => correr(id, ms));
   };
-  // o tempo para por dois motivos: o mouse em cima da pilha, ou o app fora de vista / sem foco (o aviso espera você
-  // voltar, em vez de sumir sem você ver). Os dois juntos decidem; a barrinha para junto.
+  // o tempo para por dois motivos: o mouse em cima da pilha, ou o app fora de vista (minimizado/escondido: o aviso
+  // espera você voltar). Só sem foco (o atelier à vista, você em outra janela) o tempo corre: pedido do Paulo, 17/11.
+  // Os dois juntos decidem; a barrinha para junto.
   const sobre = useRef(false);
-  const fora = useRef(typeof document !== "undefined" && (document.hidden || !document.hasFocus()));
+  const fora = useRef(typeof document !== "undefined" && document.hidden);
   const [parada, setParada] = useState(fora.current);
   const decidir = () => {
     const deve = sobre.current || fora.current;
@@ -112,7 +113,7 @@ export function PilhaDeAvisos() {
   };
   useEffect(() => {
     if (fora.current) pausada.current = true;
-    const olhar = () => { fora.current = document.hidden || !document.hasFocus(); decidir(); };
+    const olhar = () => { fora.current = document.hidden; decidir(); };
     window.addEventListener("focus", olhar);
     window.addEventListener("blur", olhar);
     document.addEventListener("visibilitychange", olhar);

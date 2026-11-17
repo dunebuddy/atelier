@@ -17,9 +17,12 @@ import {
   Bold, Code, Heading2, Heading3, Italic, Link2, List, ListChecks, ListOrdered, Paperclip, Quote, SquareCode, Strikethrough, Table as IconeTabela,
 } from "lucide-react";
 import { api, Entrada } from "../api";
+import { abrirSite } from "./Site";
 
-/** Abre no navegador do sistema (no app) ou numa aba nova (no navegador de teste). */
+/** Site (http/https) abre numa aba do atelier (lá tem o botão para o navegador do sistema); o resto (mailto...) vai
+ *  para o sistema. */
 export function abrirLink(url: string) {
+  if (/^https?:\/\//i.test(url)) { abrirSite(url); return; }
   // arquivo local (imagem colada etc.): abre no programa padrão
   if (url.startsWith("file:///")) {
     import("../api").then(({ api }) => api.abrirArquivo(decodeURI(url.slice(8)).replace(/\//g, navigator.userAgent.includes("Windows") ? "\\" : "/")));

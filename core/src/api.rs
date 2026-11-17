@@ -934,7 +934,7 @@ async fn exportar(State(b): State<Banco>, Json(d): Json<Value>) -> R {
 }
 
 /// Ações que a tela entende (o MCP `tela` e o Comando do app usam esta lista).
-pub const ACOES_TELA: &str = "abrir (codigo | visao | pasta | arquivo | lixeira | tipo | lista), workspace, fechar_workspace, renomear_workspace, \
+pub const ACOES_TELA: &str = "abrir (codigo | visao | pasta | arquivo | url | lixeira | tipo | lista), workspace, fechar_workspace, renomear_workspace, \
 visao_geral, dividir, esconder_direita, mostrar_direita, juntar, modo, fechar, fixar, desafixar, expandir, focar, terminal, explorador_sistema, barra_lateral, tema, zoom, configuracoes, \
 busca, recarregar, filtrar, destacar, estado";
 
@@ -999,6 +999,13 @@ async fn tela(State(b): State<Banco>, Json(d): Json<Value>) -> R {
             if let Some(c) = txt("pasta") {
                 let (raiz, titulo) = pasta_do(&c)?;
                 ev["rota"] = json!({ "v": "pastas", "raiz": raiz, "titulo": titulo });
+            } else if let Some(u) = txt("url") {
+                // site: aba dentro do atelier (com botão para o navegador do sistema); arquivo local vai como arquivo
+                let u = u.trim().to_string();
+                if !(u.starts_with("http://") || u.starts_with("https://")) {
+                    return Err(Erro::Invalido(format!("url precisa começar com http:// ou https:// (arquivo do computador: use `arquivo`): {u}")));
+                }
+                ev["rota"] = json!({ "v": "site", "url": u });
             } else if let Some(arq) = txt("arquivo") {
                 let p = std::path::Path::new(&arq);
                 if !p.is_absolute() || !p.is_file() {

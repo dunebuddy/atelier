@@ -19,7 +19,9 @@ export type Rota =
   /** janela de arquivos: navega a partir de `raiz` */
   | { v: "arquivos"; raiz: string; arquivo?: string; titulo?: string }
   /** árvore de pastas: clicar num arquivo abre ele numa janela ao lado */
-  | { v: "pastas"; raiz: string; titulo?: string };
+  | { v: "pastas"; raiz: string; titulo?: string }
+  /** um site (http/https) dentro do atelier, com botão para o navegador do sistema */
+  | { v: "site"; url: string; titulo?: string };
 
 /** Abre uma rota de qualquer lugar (um chip de relação, a barra lateral, o MCP). `nova`: ao lado, sem trocar a atual.
  *  `outro`: na outra metade do painel (a referência fica à vista ao lado do que você está fazendo). */

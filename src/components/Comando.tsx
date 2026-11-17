@@ -47,6 +47,7 @@ function descreverRota(r: Rota): string {
     case "terminal": return r.programa ? `agente ${r.programa} no terminal` : "terminal";
     case "arquivos": return `arquivo/pasta ${r.arquivo ?? r.raiz}`;
     case "pastas": return `árvore da pasta ${r.raiz}`;
+    case "site": return `site ${r.url}`;
     default: return r.v;
   }
 }

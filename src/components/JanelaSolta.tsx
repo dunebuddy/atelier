@@ -24,17 +24,28 @@ export const ROTA_SOLTA: Rota | null = (() => {
 
 const TAMANHO = "janela-solta.tamanho";
 
-/** Destaca a rota numa janelinha (o tamanho da última fica lembrado). */
-export async function destacarEmJanela(rota: Rota, titulo: string) {
+/** Destaca a rota numa janelinha (o tamanho da última fica lembrado). `onde`: posição na tela (arrastou para fora);
+ *  a janelinha nasce com o canto ali. Devolve se abriu. */
+export async function destacarEmJanela(rota: Rota, titulo: string, onde?: { x: number; y: number }): Promise<boolean> {
   const t = ler<{ largura: number; altura: number }>(TAMANHO, { largura: 480, altura: 820 });
-  try {
-    const { invoke } = await import("@tauri-apps/api/core");
-    await invoke("abrir_janela_solta", { rota: encodeURIComponent(JSON.stringify(rota)), titulo, bancada: BANCADA_DA_JANELA, largura: t.largura, altura: t.altura });
-  } catch {
-    const q = new URLSearchParams({ solta: JSON.stringify(rota) });
-    if (BANCADA_DA_JANELA) q.set("bancada", BANCADA_DA_JANELA);
-    window.open(`${location.pathname}?${q}`, "_blank", `popup,width=${t.largura},height=${t.altura}`);
+  let invoke: typeof import("@tauri-apps/api/core").invoke | null = null;
+  try { invoke = (await import("@tauri-apps/api/core")).invoke; if (!("__TAURI_INTERNALS__" in window)) invoke = null; } catch { invoke = null; }
+  if (invoke) {
+    try {
+      await invoke("abrir_janela_solta", {
+        rota: encodeURIComponent(JSON.stringify(rota)), titulo, bancada: BANCADA_DA_JANELA, largura: t.largura, altura: t.altura,
+        x: onde ? Math.max(0, onde.x - 40) : null, y: onde ? Math.max(0, onde.y - 15) : null,
+      });
+      return true;
+    } catch (e) {
+      falhou(`Não consegui destacar: ${e}`);
+      return false;
+    }
   }
+  const q = new URLSearchParams({ solta: JSON.stringify(rota) });
+  if (BANCADA_DA_JANELA) q.set("bancada", BANCADA_DA_JANELA);
+  const pos = onde ? `,left=${Math.round(onde.x - 40)},top=${Math.round(onde.y - 15)}` : "";
+  return !!window.open(`${location.pathname}?${q}`, "_blank", `popup,width=${t.largura},height=${t.altura}${pos}`);
 }
 
 export function JanelaSolta({ rota }: { rota: Rota }) {

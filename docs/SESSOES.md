@@ -658,3 +658,16 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 - Devolver por aba: o `Painel` destacando manda o `Lugar` (`ws` = workspace do painel, `mi`, `antes` = a aba
   seguinte) no `?de=`; `devolverAba` manda `{ rota, de }` em `atelier:devolver`; o `App` (`receberDevolvida`) abre o
   workspace e usa `P.devolverNa`. Para o Paulo, "aba" quer dizer o painel (esquerda/direita).
+
+## 2026-11-17 — 0.2.27: comentários em arquivos e o resto da caixa
+- Comentários: `core/src/comentarios.rs` (arquivo `.comentarios.json`, teste do ciclo), rotas `/api/comentarios`
+  (GET/POST) em `explorador.rs`, script `core/src/comentar.js` (seleção → botão; grifos por trecho + contexto antes/
+  depois; mensagens `comentar`, `comentario-clicado`, `grifos`, `ir`). O script vai **embutido** (na moldura do
+  markdown/texto com o nonce, via `scriptDaMoldura`; no HTML o `/api/ver` injeta com `?comentar=1`): por endereço,
+  o navegador de teste barrava (ERR_BLOCKED_BY_CLIENT). Tela: `Comentarios.tsx` (margem, `useComentarios` vigia a
+  cada 2,5 s). Texto simples passou a abrir em modo leitura (`<pre>` na moldura).
+- `/api/ver/<bancada em hex>/<caminho>`: HTML pelo caminho (relativos funcionam); o `info` devolve `ver`.
+- `checklist::resumo` avisa nome repetido (`atencao`); `tela` terminal do agente usa `rotaTerminal` no workspace dele;
+  MCP `como_funciona` (manual); CLAUDE.md das pastas atualizado.
+- Testado no navegador de teste: comentário criado pela API aparece na margem e grifado; script na página HTML
+  (seleção → mensagem, grifo). Selecionar com o mouse dentro da moldura não deu para simular aqui: conferir no app.

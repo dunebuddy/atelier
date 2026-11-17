@@ -23,30 +23,6 @@ Como usar:
 
 ### Bugs
 ### Melhorias pedidas
-- **Comentar no texto de qualquer arquivo aberto no atelier** (17/11, como o Paulo usava no Claude Code do VS Code
-  para revisar planos): selecionar um trecho de markdown, texto/código ou HTML e pôr um comentário; depois dizer ao
-  agente "comentei, olha lá" e ele lê, ajusta o arquivo e reabre. Proposta:
-  - os comentários ficam **fora do arquivo**, ao lado dele: `<nome do arquivo>.comentarios.json` (trecho citado,
-    o comentário, quando, e um pedaço de contexto para achar o trecho mesmo se o arquivo mudar);
-  - na tela: selecionou → botão "Comentar"; o trecho fica grifado e o comentário aparece na margem; dá para editar
-    e apagar; um contador "N comentários abertos" no cabeçalho do arquivo;
-  - MCP: `comentarios` (ler os abertos de um arquivo ou de uma pasta; resolver um comentário com a resposta do
-    agente). Resolvido não some: fica no histórico do arquivo (riscado / "resolvido: ..."), e o Paulo limpa quando
-    quiser. Instrução do agente: "o usuário disse que comentou → `comentarios` ler, ajustar, resolver, abrir de novo";
-  - ordem: markdown e texto primeiro (são o grosso do que o agente gera), depois HTML (o iframe precisa repassar a
-    seleção por `postMessage`); PDF e Word ficam para depois.
-- **HTML de verdade dentro do atelier** (16/11): o atelier já mostra HTML (iframe com `allow-scripts`), mas falta
-  conferir página com CSS, script e imagens **relativos** (o iframe carrega pela URL da API: caminho relativo pode
-  não achar) e links. Se quebrar, servir a pasta do arquivo para os relativos funcionarem.
-- **Nome de parâmetro repetido também pelo agente** (16/11): a tela recusa e marca em alerta, e o formato do
-  checklist manda não repetir; o `checklist` do MCP ainda não recusa (o agente escreve o arquivo direto). Dá para
-  avisar no `checklist` ler/valor quando houver nome repetido.
-- **Ação `terminal` do agente no workspace dele** (16/11): `abrir`, `fechar`, `modo`, `fixar`... já valem no
-  workspace do terminal do agente (0.2.24); abrir terminal ainda abre no workspace à vista.
-- **Revisão completa do que o agente sabe** (16/11): na 0.2.24 entraram tela (tipos de arquivo, não usar
-  navegador, já aberto recarrega, abre no seu workspace), checklist (parâmetros, nome único, `{{chave}}` no título,
-  cofre) e "confira antes do `nao_consigo`". Falta: o `CLAUDE.md` da pasta do documento (`core/src/pastas.rs`) e
-  um manual que o agente consulta (ação "como_funciona"), em vez de tudo no texto do servidor.
 
 ### Ideias antigas (ninguém pediu agora)
 - Migrar o posto `daily-work` para dentro do atelier (é trabalho no outro repositório, não aqui).
@@ -80,6 +56,17 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.27** (2026-11-17) · A caixa de entrada inteira (o Paulo: "pega tudo que está faltando"):
+  - **Comentários em arquivos:** em markdown, texto e HTML abertos no atelier, selecionar um trecho → "💬 Comentar"; o
+    trecho fica grifado e o comentário vai para a margem (editar, resolver, reabrir, apagar, limpar os resolvidos;
+    painel estreito: a margem desce). Ficam em `<arquivo>.comentarios.json` (escondido na lista da pasta). O agente
+    tem `comentarios` (ler um arquivo, uma pasta ou o documento; resolver/responder/reabrir) e a margem acompanha
+    sozinha. Texto simples agora abre para ler (e comentar); "Editar" edita.
+  - **HTML com CSS, imagens e scripts relativos:** o HTML abre pelo caminho da pasta (`/api/ver/<bancada>/<caminho>`).
+  - **Parâmetro com nome repetido:** o `checklist` do agente avisa em `atencao` (ler, marcar, valor).
+  - **Terminal pedido pelo agente** nasce no workspace dele (na pasta do terminal dele, se não disser outra).
+  - **Manual do agente:** ferramenta `como_funciona` (tela, arquivos, sites, pastas, checklist, cofre, comentários,
+    relações, workspace); o CLAUDE.md das pastas novas fala de abrir no atelier, comentários e cofre.
 - **0.2.26** (2026-11-17) · Janela destacada com cara de atelier (o Paulo testou a 0.2.25):
   - **Janela destacada com a barra do atelier** (sem a moldura do Windows): título, **Devolver** (a aba volta para a
     janela de onde saiu, pelo evento `atelier:devolver`), sempre por cima, minimizar, maximizar e fechar.

@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { AppWindow, Bot, ChevronDown, FolderOpen, FolderTree, SquareTerminal } from "lucide-react";
 import { Popover, usePopover } from "./Popover";
 import { api, BASE } from "../api";
-import { abrir, avisar, falhou } from "../ui";
+import { abrir, avisar, falhou, Rota } from "../ui";
 import { bate } from "../atalhos";
 
 interface Programa {
@@ -75,10 +75,15 @@ async function abrirNoApp(app: AppExterno, pasta: string) {
 
 /** Abre um terminal (o shell, ou um agente) numa janela ao lado. */
 export async function abrirTerminal(cwd?: string, programa?: string, titulo?: string, shell?: string) {
+  abrir(await rotaTerminal(cwd, programa, titulo, shell), true);
+}
+
+/** A rota de um terminal novo (sessão nova); sem `cwd`, a pasta do workspace à vista. */
+export async function rotaTerminal(cwd?: string, programa?: string, titulo?: string, shell?: string): Promise<Rota> {
   cwd ??= await pastaDoWorkspace().catch(() => undefined);
   const sessao = proximaSessao++;
   vivas.add(sessao);
-  abrir({ v: "terminal", sessao, cwd, programa, shell, titulo: titulo ?? nomePasta(cwd) ?? "terminal" }, true);
+  return { v: "terminal", sessao, cwd, programa, shell, titulo: titulo ?? nomePasta(cwd) ?? "terminal" };
 }
 
 /** Botão de terminal, como no VS Code: clique abre o shell padrão; a setinha escolhe o tipo (shells e agentes). */

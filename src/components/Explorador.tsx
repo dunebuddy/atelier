@@ -11,7 +11,8 @@ import { useAoReaparecer, useVisivel } from "../visivel";
 import { dataHora } from "../visao";
 import { MenuPasta } from "./MenuPasta";
 import { DocumentoWord, Planilha } from "./Documentos";
-import { repasseDaMoldura } from "../moldura";
+import { repasseDaMoldura, scriptDaMoldura } from "../moldura";
+import { BotaoComentarios, enviarGrifos, MargemComentarios, Selecao, useComentarios } from "./Comentarios";
 import { verImagem } from "./VerImagem";
 import { ChecklistTela } from "./Checklist";
 import { ehChecklist } from "../checklist";
@@ -220,7 +221,7 @@ export function Explorador({ raiz, arquivo, titulo }: { raiz: string; arquivo?: 
 }
 
 function Previa({ caminho, aoVoltar, aoVerChecklist }: { caminho: string; aoVoltar: () => void; aoVerChecklist?: () => void }) {
-  const [info, setInfo] = useState<{ especie: string; tamanho: number; modificado: string | null } | null>(null);
+  const [info, setInfo] = useState<{ especie: string; tamanho: number; modificado: string | null; ver?: string | null } | null>(null);
   const [texto, setTexto] = useState<string | null>(null);
   const [editado, setEditado] = useState<string | null>(null);
   const [editando, setEditando] = useState(false);
@@ -320,10 +321,39 @@ function Previa({ caminho, aoVoltar, aoVerChecklist }: { caminho: string; aoVolt
     return () => window.removeEventListener("keydown", f);
   }, [pendente, salvar]);
 
+  // comentários: markdown, texto e HTML, vendo (não editando)
+  const comoTabela = !!info && ehCsv && tabela && info.especie === "texto";
+  const comentavel = !!info && !editando && texto != null && !comoTabela && ["markdown", "texto", "html"].includes(info.especie);
+  const { dados: coments, mexer } = useComentarios(caminho, comentavel);
+  const [margem, setMargem] = useState<boolean | null>(null);
+  const [compondo, setCompondo] = useState<Selecao | null>(null);
+  const [focoC, setFocoC] = useState<number | null>(null);
+  const moldura = useRef<HTMLIFrameElement | null>(null);
+  const verMargem = comentavel && (margem ?? (coments.abertos > 0 || compondo != null));
+  const grifar = useCallback(() => enviarGrifos(moldura.current, coments.comentarios), [coments]);
+  useEffect(() => { grifar(); }, [grifar]);
+  useEffect(() => {
+    const f = (ev: MessageEvent) => {
+      if (!moldura.current || ev.source !== moldura.current.contentWindow) return;
+      const d = ev.data as { atelier?: string; trecho?: string; antes?: string; depois?: string; id?: number } | null;
+      if (!d || typeof d !== "object") return;
+      if (d.atelier === "comentar" && typeof d.trecho === "string") {
+        setCompondo({ trecho: d.trecho, antes: d.antes ?? "", depois: d.depois ?? "" });
+        setMargem(true);
+      } else if (d.atelier === "comentario-clicado" && typeof d.id === "number") {
+        setFocoC(d.id);
+        setMargem(true);
+      } else if (d.atelier === "comentar-pronto") grifar();
+    };
+    window.addEventListener("message", f);
+    return () => window.removeEventListener("message", f);
+  }, [grifar]);
+  const irPara = (id: number) => { setFocoC(id); moldura.current?.contentWindow?.postMessage({ atelier: "ir", id }, "*"); };
+
   if (!info) return <div className="vazio-grande">Abrindo…</div>;
-  // CSV/TSV abre como tabela; "Editar" volta para o texto
-  const comoTabela = ehCsv && tabela && info.especie === "texto";
-  const mostrarEditor = ehTexto && ((info.especie === "texto" && !comoTabela) || editando);
+  // CSV/TSV abre como tabela; "Editar" volta para o texto. Texto abre para ler (e comentar); "Editar" edita.
+  const mostrarEditor = ehTexto && editando && !comoTabela;
+  const origemApi = BASE.replace(/\/api\/?$/, "");
   const ext = caminho.split(".").pop()?.toLowerCase();
 
   return (
@@ -345,7 +375,10 @@ function Previa({ caminho, aoVoltar, aoVerChecklist }: { caminho: string; aoVolt
             onClick={() => copiarLink(linkDoArquivo(caminho)!)}><Link2 size={14} /></button>
         )}
         {aoVerChecklist && <button className="btn" onClick={aoVerChecklist}><ListChecks size={14} /> Ver como checklist</button>}
-        {ehTexto && info.especie !== "texto" && (
+        {comentavel && (
+          <BotaoComentarios abertos={coments.abertos} total={coments.comentarios.length} aberto={verMargem} alternar={() => setMargem(!verMargem)} />
+        )}
+        {ehTexto && !(ehCsv && info.especie === "texto") && (
           <button className="btn" onClick={() => setEditando((v) => !v)}>{editando ? <><Eye size={14} /> Ver</> : <><Pencil size={14} /> Editar</>}</button>
         )}
         {ehCsv && info.especie === "texto" && (
@@ -362,6 +395,7 @@ function Previa({ caminho, aoVoltar, aoVerChecklist }: { caminho: string; aoVolt
           <button className="btn" onClick={() => { setEditado(null); carregar(); }}>Recarregar e perder a edição</button>
         </div>
       )}
+      <div className={`ex-corpo${verMargem ? " com-margem" : ""}`}>
       <div className="ex-conteudo">
         {mostrarEditor && texto != null ? (
           <textarea
@@ -386,9 +420,14 @@ function Previa({ caminho, aoVoltar, aoVerChecklist }: { caminho: string; aoVolt
         ) : info.especie === "documento" && ext === "docx" ? (
           <DocumentoWord key={versao} url={urlDo(caminho) + `&v=${versao}`} />
         ) : info.especie === "markdown" && texto != null ? (
-          md && <Moldura html={md.marked.parse(editado ?? texto, { async: false }) as string} />
+          md && <Moldura html={md.marked.parse(editado ?? texto, { async: false }) as string} frame={moldura} aoCarregar={grifar} />
+        ) : info.especie === "texto" && texto != null ? (
+          <Moldura html={`<pre class="txt">${escaparHtml(editado ?? texto)}</pre>`} frame={moldura} aoCarregar={grifar} />
         ) : info.especie === "html" ? (
-          <iframe key={versao} className="ex-moldura" src={urlDo(caminho) + `&v=${versao}`} sandbox="allow-scripts allow-popups" title="HTML" />
+          // pelo caminho da pasta (CSS, imagens e scripts relativos funcionam), com o script de comentar
+          <iframe key={versao} ref={moldura} onLoad={grifar} className="ex-moldura"
+            src={info.ver ? `${origemApi}${info.ver}?comentar=1&v=${versao}` : urlDo(caminho) + `&v=${versao}`}
+            sandbox="allow-scripts allow-popups allow-forms" title="HTML" />
         ) : info.especie === "pdf" ? (
           <Pdf key={versao} url={urlDo(caminho) + `&v=${versao}`} />
         ) : info.especie === "imagem" ? (
@@ -409,15 +448,33 @@ function Previa({ caminho, aoVoltar, aoVerChecklist }: { caminho: string; aoVolt
           </div>
         )}
       </div>
+      {verMargem && (
+        <MargemComentarios dados={coments} compondo={compondo} aoCancelar={() => setCompondo(null)} mexer={mexer} foco={focoC} aoIr={irPara} />
+      )}
+      </div>
     </div>
   );
 }
 
+/** O script de comentar (do núcleo: /api/comentar.js), buscado uma vez e embutido na moldura. */
+let scriptComentar = "";
+const buscandoScript = fetch(`${BASE}/comentar.js`).then((r) => r.text()).then((t) => { scriptComentar = t; }).catch(() => {});
+function useScriptComentar() {
+  const [s, setS] = useState(scriptComentar);
+  useEffect(() => { if (!s) buscandoScript.then(() => setS(scriptComentar)); }, [s]);
+  return s;
+}
+
+function escaparHtml(s: string) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 /** Markdown renderizado numa caixa isolada (sem script, sem acesso ao atelier), com as cores do tema. */
-function Moldura({ html }: { html: string }) {
+function Moldura({ html, frame, aoCarregar }: { html: string; frame?: React.MutableRefObject<HTMLIFrameElement | null>; aoCarregar?: () => void }) {
+  const comentar = useScriptComentar();
   const cs = getComputedStyle(document.documentElement);
   const v = (n: string) => cs.getPropertyValue(`--${n}`).trim();
-  const doc = `<!doctype html><html><head><meta charset="utf-8"><base target="_blank">${repasseDaMoldura()}<style>
+  const doc = `<!doctype html><html><head><meta charset="utf-8"><base target="_blank">${repasseDaMoldura()}${scriptDaMoldura(comentar)}<style>
     body{margin:0;padding:18px 22px 40px;font:14.5px/1.65 "Inter Variable","Segoe UI",system-ui,sans-serif;color:${v("texto")};background:${v("bg")}}
     h1,h2,h3{font-family:"Fraunces Variable",Georgia,serif;font-weight:600;line-height:1.25;margin:1.2em 0 .4em}
     h1{font-size:26px} h2{font-size:21px} h3{font-size:17px}
@@ -426,8 +483,9 @@ function Moldura({ html }: { html: string }) {
     blockquote{border-left:3px solid ${v("acento")};margin:.6em 0;padding:2px 14px;color:${v("texto-2")}}
     table{border-collapse:collapse} td,th{border:1px solid ${v("borda-forte")};padding:5px 9px}
     img{max-width:100%} hr{border:0;border-top:1px dashed ${v("borda-forte")}}
+    pre.txt{margin:0;padding:0;background:none;white-space:pre-wrap;word-break:break-word;font:13px/1.55 "Cascadia Code",Consolas,monospace}
   </style></head><body>${html}</body></html>`;
-  return <iframe className="ex-moldura" sandbox="allow-popups allow-scripts" srcDoc={doc} title="Markdown" />;
+  return <iframe ref={frame} onLoad={aoCarregar} className="ex-moldura" sandbox="allow-popups allow-scripts" srcDoc={doc} title="Markdown" />;
 }
 
 /** PDF pelo pdf.js (igual no Windows e no Linux). As páginas ficam uma embaixo da outra, mas só as que estão à vista

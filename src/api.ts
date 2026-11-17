@@ -300,7 +300,7 @@ export const api = {
   abrirArquivo: (caminho: string) => req("POST", "/abrir-arquivo", { caminho }),
   explorar: (caminho: string) => req<{ caminho: string; pai: string | null; entradas: Entrada[] }>("GET", `/explorar?caminho=${encodeURIComponent(caminho)}`),
   infoArquivo: (caminho: string) =>
-    req<{ caminho: string; nome: string; especie: string; tamanho: number; modificado: string | null }>("GET", `/arquivo/info?caminho=${encodeURIComponent(caminho)}`),
+    req<{ caminho: string; nome: string; especie: string; tamanho: number; modificado: string | null; ver?: string | null }>("GET", `/arquivo/info?caminho=${encodeURIComponent(caminho)}`),
   salvarArquivo: (caminho: string, conteudo: string, modificado: string | null) =>
     req<{ ok: boolean; modificado: string | null }>("PUT", "/arquivo", { caminho, conteudo, modificado }),
   colarArquivo: (id: number, nome: string, base64: string) => req<{ caminho: string }>("POST", `/itens/${id}/colar`, { nome, base64 }),

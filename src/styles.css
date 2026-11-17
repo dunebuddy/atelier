@@ -1517,3 +1517,29 @@ input::-ms-reveal, input::-ms-clear { display: none; }
 .site-url { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--texto-3); }
 .site-moldura { flex: 1; min-height: 0; width: 100%; border: 0; background: #fff; }
 .site-dica { flex-shrink: 0; padding: 3px 8px; font-size: 11px; color: var(--texto-3); border-top: 1px solid var(--borda); }
+
+/* ---------- comentários num arquivo (Comentarios.tsx): a margem à direita do conteúdo ---------- */
+.ex-corpo { flex: 1; min-height: 0; display: flex; container-type: inline-size; }
+.ex-corpo > .ex-conteudo { flex: 1; min-width: 0; }
+.cm-margem { width: 290px; flex-shrink: 0; overflow-y: auto; border-left: 1px solid var(--borda); padding: 8px 10px 20px; display: flex; flex-direction: column; gap: 8px; background: var(--bg); }
+.cm-topo { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--texto-2); }
+.cm-conta { font-weight: 400; color: var(--texto-3); }
+.cm-cartao { border: 1px solid var(--borda); border-radius: 9px; padding: 8px 10px; background: var(--bg-elev, var(--bg)); cursor: pointer; display: flex; flex-direction: column; gap: 6px; }
+.cm-cartao:hover { border-color: var(--borda-forte); }
+.cm-cartao.foco { border-color: var(--acento); box-shadow: 0 0 0 1px var(--acento); }
+.cm-cartao.resolvido { opacity: .7; }
+.cm-cartao.resolvido .cm-texto { text-decoration: line-through; text-decoration-color: var(--texto-3); }
+.cm-novo { cursor: default; border-color: var(--acento); }
+.cm-trecho { margin: 0; padding: 2px 8px; border-left: 3px solid rgba(250, 190, 60, .8); font-size: 12px; color: var(--texto-3); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; white-space: pre-wrap; }
+.cm-texto { font-size: 13px; white-space: pre-wrap; word-break: break-word; }
+.cm-meta { display: flex; align-items: center; gap: 2px; font-size: 11px; color: var(--texto-3); }
+.cm-resposta { font-size: 12px; padding: 5px 8px; border-radius: 7px; background: var(--acento-suave); white-space: pre-wrap; }
+.cm-cartao.resolvido .cm-resposta { background: rgba(120, 180, 120, .15); }
+.cm-acoes { display: flex; justify-content: flex-end; gap: 6px; }
+.cm-vazio { font-size: 12.5px; color: var(--texto-3); line-height: 1.5; padding: 4px 2px; }
+.cm-margem textarea.campo { width: 100%; resize: vertical; font: inherit; font-size: 13px; }
+/* painel estreito: a margem vai para baixo do texto */
+@container (max-width: 620px) {
+  .ex-corpo.com-margem { flex-direction: column; }
+  .ex-corpo.com-margem .cm-margem { width: auto; max-height: 45%; border-left: 0; border-top: 1px solid var(--borda); }
+}

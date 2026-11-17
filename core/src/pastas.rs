@@ -73,6 +73,16 @@ pub fn criar(conn: &Connection, bancada: &Path, nome_bancada: &str, id: i64, aut
             "Roteiro com muitos passos (sessão, implantação): um `artefatos/<nome>.checklist.json`, que o atelier mostra como".into(),
             "checklist e onde grava o progresso. O formato: ferramenta `checklist` do MCP, ação \"formato\".".into(),
             String::new(),
+            "Para mostrar algo ao usuário (relatório, HTML, slides, markdown, PDF, site), abra **dentro do atelier**: ferramenta".into(),
+            "`tela`, ação \"abrir\", com `arquivo` (caminho absoluto) ou `url`. Nunca o navegador, `start` ou `explorer`.".into(),
+            String::new(),
+            "O usuário pode **comentar** trechos dos arquivos abertos no atelier (ficam em `<arquivo>.comentarios.json`; não".into(),
+            "edite esse arquivo). Quando ele disser que comentou: `comentarios` ler, ajuste o arquivo, `comentarios` resolver".into(),
+            "cada um com uma resposta curta e abra o arquivo de novo.".into(),
+            String::new(),
+            "Senha, token ou chave nunca ficam em texto aqui: vão para o cofre (`segredo` guardar). Dúvida de como fazer algo".into(),
+            "no atelier: `como_funciona` com o assunto.".into(),
+            String::new(),
         ]
         .join("\n");
         std::fs::write(&leia, texto).map_err(|e| Erro::Invalido(format!("não gravei {leia:?}: {e}")))?;

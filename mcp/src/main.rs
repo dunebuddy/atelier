@@ -151,6 +151,10 @@ para mostrar um desses ao usuário use `tela` acao \"abrir\" com `arquivo` (cami
 também abrem dentro do atelier: `tela` acao \"abrir\" com `url` (http/https); a aba tem um botão para o usuário levar ao \
 navegador do sistema quando ele quiser; nunca abra o navegador por conta própria. Se o arquivo já está aberto, a tela só traz a janela para a frente e recarrega: depois de \
 mudar um HTML, peça abrir de novo para atualizar, sem medo de abas repetidas. \
+COMENTÁRIOS: o usuário pode selecionar trechos de um arquivo aberto no atelier e comentar (como numa revisão). Quando ele \
+disser que comentou/respondeu lá: `comentarios` ler, ajuste o arquivo, `comentarios` resolver cada um com uma resposta \
+curta, e abra o arquivo de novo. MANUAL: `como_funciona` com um assunto (tela, arquivos, sites, pastas, checklist, cofre, \
+comentarios...) traz o detalhe; consulte antes de improvisar. \
 QUANDO NÃO DER: se o usuário pedir algo que estas ferramentas não fazem, NÃO improvise por fora (arquivos, comandos, \
 banco): chame `nao_consigo` com o pedido e o que faltou, e diga a ele que ficou anotado. Antes, confira se a tela já faz (ver e copiar segredo no Cofre, por exemplo, já existe): `nao_consigo` é para o que falta mesmo. CHECKLIST: roteiro de execução com muitos passos (sessão, implantação, migração) não vira um monte de documentos nem um app HTML: é um arquivo <nome>.checklist.json na pasta do documento, que o atelier mostra como checklist e onde grava o progresso; leia o formato com `checklist` acao \"formato\" antes de criar. LINKS: para o usuário abrir um documento com um clique (de fora do atelier, numa mensagem), escreva atelier://doc/<código> (também atelier://visao/<nome> e atelier://bancada/<nome>; arquivo da pasta de um documento: atelier://doc/<código>/<caminho>). SEGREDOS: senha, secret, token ou chave que o usuário passar NUNCA fica em texto (documento, nota, checklist, arquivo): guarde no cofre com `segredo` acao \"guardar\" (ligado ao documento) e cite pelo nome; num checklist, o valor fica `cofre:<id>`. Para usar um valor, `segredo` acao \"ler\" (o usuário permite na tela); use só no comando, sem repetir na conversa. `segredos` lista sem os valores. BANCADA: você trabalha na bancada em que nasceu (a do terminal do atelier, ou a da pasta onde está); trocar_bancada só pede, o usuário aceita na tela.";
 
@@ -373,6 +377,25 @@ fn ferramentas() -> Value {
                 "pulado": { "type": "boolean", "description": "marcar: feito como \"não se aplica\"" },
                 "obs": { "type": "string", "description": "marcar: observação do passo (vazio apaga)" }
             }, "required": ["acao"] }
+        },
+        {
+            "name": "comentarios",
+            "description": "Comentários do usuário num arquivo (markdown, texto, HTML), feitos selecionando um trecho no atelier, como numa revisão. Quando ele disser que comentou: ler, ajustar o arquivo, resolver cada um com uma resposta curta e abrir o arquivo de novo com `tela`. Ações: ler (arquivo; ou pasta / id do documento = todos os arquivos com comentário aberto ali dentro; `todos`: true traz também os resolvidos) · resolver (arquivo, id do comentário, resposta: o que você fez) · responder (arquivo, id, resposta: responde sem resolver, ex.: uma dúvida de volta) · reabrir (arquivo, id).",
+            "inputSchema": { "type": "object", "properties": {
+                "acao": { "type": "string", "enum": ["ler", "resolver", "responder", "reabrir"] },
+                "arquivo": { "type": "string", "description": "caminho absoluto do arquivo comentado (não o .comentarios.json)" },
+                "pasta": { "type": "string", "description": "ler: pasta onde procurar arquivos com comentários abertos" },
+                "id": { "description": "ler: o código do documento (procura na pasta dele); resolver/responder/reabrir: o número do comentário" },
+                "resposta": { "type": "string" },
+                "todos": { "type": "boolean" }
+            }, "required": ["acao"] }
+        },
+        {
+            "name": "como_funciona",
+            "description": "Manual do atelier para o agente: como fazer cada coisa direito. Assuntos: tela, arquivos, sites, pastas, checklist, cofre, comentarios, relacoes, workspace. Sem assunto, a lista. Consulte antes de improvisar.",
+            "inputSchema": { "type": "object", "properties": {
+                "assunto": { "type": "string" }
+            } }
         },
         {
             "name": "espaco_em_disco",
@@ -1429,6 +1452,44 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
                 }).collect::<Map<_, _>>()),
             })).collect::<Vec<_>>() }))
         }
+        "comentarios" => {
+            use atelier_core::comentarios as cm;
+            use std::path::Path;
+            let n = |a: &Value| a.get("id").and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| s.trim().parse().ok()))).ok_or("informe o id do comentário (número)".to_string());
+            match s(a, "acao").unwrap_or("") {
+                "ler" => {
+                    if let Some(arq) = s(a, "arquivo") {
+                        let p = Path::new(arq);
+                        return Ok(if a.get("todos").and_then(|v| v.as_bool()) == Some(true) { cm::ler(p) } else { cm::abertos(p) });
+                    }
+                    let pasta = match s(a, "pasta") {
+                        Some(p) => p.to_string(),
+                        None => {
+                            let id = id_de(&conn, a)?;
+                            db::ler_item(&conn, id).map_err(e)?.pasta.filter(|p| !p.is_empty()).ok_or("o documento não tem pasta")?
+                        }
+                    };
+                    Ok(cm::abertos_na_pasta(Path::new(&pasta)))
+                }
+                "resolver" => {
+                    let arq = s(a, "arquivo").ok_or("informe o arquivo")?;
+                    cm::resolver(Path::new(arq), n(a)?, s(a, "resposta").unwrap_or(""), autor)?;
+                    Ok(json!({ "ok": true, "lembrete": "abra o arquivo de novo com `tela` abrir para o usuário ver" }))
+                }
+                "responder" => {
+                    let arq = s(a, "arquivo").ok_or("informe o arquivo")?;
+                    cm::responder(Path::new(arq), n(a)?, s(a, "resposta").unwrap_or(""), autor)?;
+                    Ok(json!({ "ok": true }))
+                }
+                "reabrir" => {
+                    let arq = s(a, "arquivo").ok_or("informe o arquivo")?;
+                    cm::reabrir(Path::new(arq), n(a)?)?;
+                    Ok(json!({ "ok": true }))
+                }
+                outra => Err(format!("ação desconhecida: {outra:?} (ler, resolver, responder ou reabrir)")),
+            }
+        }
+        "como_funciona" => Ok(manual(s(a, "assunto"))),
         "checklist" => {
             use atelier_core::checklist as ck;
             use std::path::{Path, PathBuf};
@@ -1525,4 +1586,43 @@ fn visao_por_nome(conn: &Connection, nome: &str) -> Result<i64, String> {
         .find(|v| v.nome.to_lowercase() == nome.trim().to_lowercase())
         .map(|v| v.id)
         .ok_or_else(|| format!("visão \"{nome}\" não existe (visões: {})", vs.iter().map(|v| v.nome.as_str()).collect::<Vec<_>>().join(", ")))
+}
+
+/// O manual que o agente consulta (`como_funciona`): o detalhe de cada assunto, em vez de tudo no texto do servidor.
+fn manual(assunto: Option<&str>) -> Value {
+    const ASSUNTOS: &[(&str, &str)] = &[
+        ("tela", "`tela` mexe no app aberto. abrir: codigo (documento), visao (nome), lista (temporária, não salva), \
+tipo, pasta (código do documento: árvore da pasta), arquivo (caminho absoluto), url (site), lixeira. Vindo de um terminal do \
+atelier, tudo acontece no SEU workspace (o do terminal), sem trocar o que o usuário está vendo; abrir o que já está aberto \
+traz para a frente e recarrega. `tela` acao \"estado\" mostra o que está aberto (painéis, janelas, ids). painel 0 = \
+esquerda, 1 = direita."),
+        ("arquivos", "O atelier mostra dentro dele: HTML (com CSS, imagens e scripts relativos à pasta do arquivo), PDF, imagem, \
+markdown, texto/código, JSON, CSV, planilha, Word (docx), vídeo e áudio. Para mostrar: `tela` abrir com `arquivo` (caminho \
+absoluto). NUNCA o navegador, `start`, `explorer` ou `Invoke-Item`. O que você gera (relatório, slides, página) abre sempre \
+no atelier. Depois de mudar o arquivo, peça abrir de novo: ele recarrega."),
+        ("sites", "Site (http/https) abre numa aba do atelier: `tela` abrir com `url`. A aba tem um botão para o usuário levar \
+ao navegador do sistema, se ele quiser; você não abre o navegador por conta própria. Alguns sites (Google, bancos) não deixam \
+ser mostrados dentro de outro app: a aba fica em branco e o usuário usa o botão."),
+        ("pastas", "Nunca crie pasta de trabalho por conta própria: `criar_pasta` (ou `criar_documento` com criar_pasta) cria \
+itens/<código>-<título>/ com insumos/ (o que entra), artefatos/ (o que sai), rascunho/ e um CLAUDE.md, ligada ao documento. \
+Registre o andamento no documento com `anotar`, não em arquivos soltos."),
+        ("checklist", "Roteiro de execução com muitos passos é um arquivo <nome>.checklist.json na pasta do documento (a tela \
+mostra como checklist e grava o progresso). Leia o formato com `checklist` acao \"formato\" antes de criar. Parâmetros têm \
+nome único; `{{chave}}` é trocado no texto e no título do passo; valor secreto vai para o cofre e fica `cofre:<id>`."),
+        ("cofre", "Senha, token ou chave NUNCA ficam em texto (documento, nota, checklist, arquivo): `segredo` acao \"guardar\" \
+(ligado ao documento) e cite pelo nome. Para usar: `segredo` acao \"ler\" (o usuário permite na tela); use só no comando, \
+sem repetir na conversa. `segredos` lista sem os valores. Ver e copiar segredo o usuário já faz no Cofre."),
+        ("comentarios", atelier_core::comentarios::COMO_FUNCIONA),
+        ("relacoes", "Ligações entre documentos (pai, bloqueio...) são propriedades da espécie relacao, criadas pelo usuário. \
+Use `esquema` para ver quais existem e `relacionar` para ligar. Antes de criar documento, `buscar` para ver se já existe."),
+        ("workspace", "Cada documento tem um workspace (um painel só dele) e a bancada tem o seu. `tela` acao \"workspace\" com \
+codigo abre o do documento. O terminal de um agente vive no workspace onde foi aberto, e o que o agente pede à tela vale ali."),
+    ];
+    match assunto.map(|a| a.trim().to_lowercase()) {
+        Some(a) if !a.is_empty() => match ASSUNTOS.iter().find(|(n, _)| *n == a || n.starts_with(a.as_str())) {
+            Some((n, t)) => json!({ "assunto": n, "texto": t }),
+            None => json!({ "erro": format!("assunto desconhecido: {a}"), "assuntos": ASSUNTOS.iter().map(|(n, _)| *n).collect::<Vec<_>>() }),
+        },
+        _ => json!({ "assuntos": ASSUNTOS.iter().map(|(n, _)| *n).collect::<Vec<_>>(), "dica": "como_funciona com assunto" }),
+    }
 }

@@ -11,7 +11,7 @@ import { api, BASE, Bancadas, Esquema, Preferencias, TemaArquivo, Visao } from "
 import { aplicarTema } from "./tema";
 import { BarraTitulo } from "./components/BarraTitulo";
 import type { SecaoConfig } from "./components/Configuracoes";
-import { abrirTerminal, definirInfoWorkspace, definirPastaDoWorkspace, EscolherAgente } from "./components/Terminal";
+import { abrirTerminal, rotaTerminal, definirInfoWorkspace, definirPastaDoWorkspace, EscolherAgente } from "./components/Terminal";
 import { ComandoAgente, descreverTela, PedidoTela } from "./components/Comando";
 import { AvisoAtualizacao } from "./components/Atualizacao";
 import { CapturaGlobal } from "./components/Captura";
@@ -406,6 +406,13 @@ export default function App() {
         return;
       }
       case "terminal":
+        // pedido de um agente: o terminal novo nasce no workspace dele (na pasta do terminal dele, se não disser)
+        if (doAgente && w0) {
+          const dele = W.sessoesDe(w0.estados[doAgente]).find((t) => t.sessao === d.sessao);
+          rotaTerminal(d.cwd ?? dele?.cwd ?? undefined, d.programa ?? undefined, d.titulo ?? undefined, d.shell ?? undefined)
+            .then((r) => naMetade((s) => P.abrirNova(s, r)));
+          return;
+        }
         naMetade((s) => s);
         // espera o foco mudar de metade antes de abrir
         window.setTimeout(() => abrirTerminal(d.cwd ?? undefined, d.programa ?? undefined, d.titulo ?? undefined, d.shell ?? undefined), 0);

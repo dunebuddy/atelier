@@ -136,7 +136,30 @@ pub fn resumo(p: &Path, base: Option<&Path>) -> Value {
     if let Some(vs) = v["valores"].as_object().filter(|m| !m.is_empty()) {
         r["valores"] = Value::Object(vs.clone());
     }
+    // nome de parâmetro repetido (a tela recusa; o agente escreve o arquivo direto, então avisa aqui)
+    let repetidos = nomes_repetidos(&v);
+    if !repetidos.is_empty() {
+        r["atencao"] = json!(format!(
+            "nome de parâmetro repetido em `campos`: {}. O nome não pode repetir no checklist: renomeie no arquivo para nomes únicos (a chave fica).",
+            repetidos.join("; ")
+        ));
+    }
     r
+}
+
+/// Os nomes de parâmetro (rótulos em `campos`) que aparecem mais de uma vez, com as chaves: "Tenant (a, b)".
+fn nomes_repetidos(v: &Value) -> Vec<String> {
+    let Some(campos) = v["campos"].as_object() else { return vec![] };
+    let mut por_nome: Vec<(String, String, Vec<String>)> = Vec::new();
+    for (chave, nome) in campos {
+        let nome = nome.as_str().unwrap_or(chave).trim().to_string();
+        let norm = nome.to_lowercase();
+        match por_nome.iter_mut().find(|(n, _, _)| *n == norm) {
+            Some((_, _, chaves)) => chaves.push(chave.clone()),
+            None => por_nome.push((norm, nome, vec![chave.clone()])),
+        }
+    }
+    por_nome.into_iter().filter(|(_, _, c)| c.len() > 1).map(|(_, nome, c)| format!("\"{nome}\" ({})", c.join(", "))).collect()
 }
 
 /// Marca (ou desmarca) um passo, grava e devolve o resumo. Mexe só no `estado` daquele passo.
@@ -221,6 +244,15 @@ pub fn valor(p: &Path, chave: &str, novo: &str, por: &str) -> Result<Value, Stri
 #[cfg(test)]
 mod testes {
     use super::*;
+
+    #[test]
+    fn avisa_nome_repetido() {
+        let v = json!({ "campos": { "a": "Tenant", "b": " tenant ", "c": "Key Vault" } });
+        let r = nomes_repetidos(&v);
+        assert_eq!(r.len(), 1);
+        assert!(r[0].contains("a, b"));
+        assert!(nomes_repetidos(&json!({ "campos": { "a": "A", "b": "B" } })).is_empty());
+    }
 
     #[test]
     fn resume_e_marca() {

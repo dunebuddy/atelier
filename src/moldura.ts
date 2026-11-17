@@ -23,6 +23,11 @@ var l=Array.prototype.map.call(document.images,function(x){return x.src});p.post
   return `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src * data: blob:; media-src * data: blob:; style-src 'unsafe-inline' *; font-src * data:; script-src 'nonce-${nonce}'"><script nonce="${nonce}">${js}</script>`;
 }
 
+/** Um script a mais na moldura (ex.: o de comentar, do núcleo), embutido e com o nonce. */
+export function scriptDaMoldura(codigo: string): string {
+  return codigo ? `<script nonce="${nonce}">${codigo.replace(/<\/script/gi, "<\\/script")}</script>` : "";
+}
+
 window.addEventListener("message", (ev) => {
   const d = ev.data as { atelier?: string; lista?: string[]; i?: number; key?: string; code?: string; ctrlKey?: boolean; altKey?: boolean; shiftKey?: boolean; metaKey?: boolean } | null;
   if (!d || typeof d !== "object" || !d.atelier) return;

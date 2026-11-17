@@ -74,6 +74,8 @@ pub async fn explorar(State(b): State<Banco>, Query(q): Query<HashMap<String, St
     let mut lista: Vec<Value> = std::fs::read_dir(&dir)
         .map_err(|e| Erro::Invalido(e.to_string()))?
         .filter_map(|e| e.ok())
+        // os comentários de um arquivo (`x.md.comentarios.json`) aparecem no próprio arquivo, não na lista
+        .filter(|e| !e.file_name().to_string_lossy().ends_with(crate::comentarios::SUFIXO))
         .map(|e| {
             let meta = e.metadata().ok();
             let nome = e.file_name().to_string_lossy().into_owned();
@@ -109,10 +111,14 @@ pub async fn arquivo(State(b): State<Banco>, Query(q): Query<HashMap<String, Str
         let tipo = mime_guess::from_path(&p).first_or_octet_stream().essence_str().to_string();
         Ok((p, tipo))
     })();
-    let (p, tipo) = match r {
-        Ok(x) => x,
-        Err(e) => return e.into_response(),
-    };
+    match r {
+        Ok((p, tipo)) => servir(p, tipo).await,
+        Err(e) => e.into_response(),
+    }
+}
+
+/// Manda o arquivo (em fluxo), com o tipo certo; HTML e SVG com CSP `sandbox` (script roda isolado, sem o atelier).
+async fn servir(p: PathBuf, tipo: String) -> Response {
     // em fluxo: um vídeo ou PDF grande não entra inteiro na memória
     match tokio::fs::File::open(&p).await {
         Ok(f) => {
@@ -166,6 +172,110 @@ fn modificado(p: &Path) -> Option<String> {
         .map(|t| chrono::DateTime::<chrono::Local>::from(t).format("%Y-%m-%dT%H:%M:%S%.3f%:z").to_string())
 }
 
+/// Uma bancada no caminho da URL (`/api/ver/<bancada em hex>/...`): o HTML carrega CSS, imagens e scripts **relativos**
+/// pela própria URL, e um pedido relativo não leva `?bancada=` nem cabeçalho.
+fn hex(s: &str) -> String {
+    s.bytes().map(|b| format!("{b:02x}")).collect()
+}
+
+fn de_hex(s: &str) -> Option<String> {
+    if s.len() % 2 != 0 {
+        return None;
+    }
+    let bytes: Option<Vec<u8>> = (0..s.len()).step_by(2).map(|i| u8::from_str_radix(&s[i..i + 2], 16).ok()).collect();
+    String::from_utf8(bytes?).ok()
+}
+
+/// O endereço do arquivo pelo caminho (para o HTML achar o que é relativo a ele).
+fn url_ver(raiz: &Path, p: &Path) -> Option<String> {
+    let r = sem_prefixo(raiz.canonicalize().ok()?);
+    let rel = p.strip_prefix(&r).ok()?;
+    let partes: Vec<String> = rel
+        .components()
+        .map(|c| {
+            c.as_os_str().to_string_lossy().bytes().map(|b| if b.is_ascii_alphanumeric() || b"-_.~".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }).collect()
+        })
+        .collect();
+    Some(format!("/api/ver/{}/{}", hex(&r.to_string_lossy()), partes.join("/")))
+}
+
+/// `GET /api/ver/<bancada em hex>/<caminho relativo>`: o arquivo pelo caminho. Só de uma bancada conhecida e só de
+/// dentro dela. HTML com `?comentar=1` ganha o script de comentar (selecionar um trecho e comentar).
+pub async fn ver(axum::extract::Path((banc, resto)): axum::extract::Path<(String, String)>, Query(q): Query<HashMap<String, String>>) -> Response {
+    let r = (|| -> Result<(PathBuf, String), Erro> {
+        let caminho = de_hex(&banc).ok_or(Erro::Invalido("bancada inválida".into()))?;
+        let cfg = crate::bancada::carregar();
+        let b = cfg.bancadas.iter().find(|x| crate::bancada::mesmo_caminho(&x.caminho, &caminho)).ok_or(Erro::NaoEncontrado("bancada".into()))?;
+        let raiz = PathBuf::from(&b.caminho);
+        let p = dentro(&raiz, &raiz.join(resto.replace('/', std::path::MAIN_SEPARATOR_STR)))?;
+        if !p.is_file() {
+            return Err(Erro::NaoEncontrado(resto.clone()));
+        }
+        let tipo = mime_guess::from_path(&p).first_or_octet_stream().essence_str().to_string();
+        Ok((p, tipo))
+    })();
+    let (p, tipo) = match r {
+        Ok(x) => x,
+        Err(e) => return e.into_response(),
+    };
+    if tipo == "text/html" && q.get("comentar").is_some_and(|v| v == "1") {
+        let Ok(mut html) = std::fs::read_to_string(&p) else { return servir(p, tipo).await };
+        // embutido (não por endereço): carregar de outro lugar pode ser barrado
+        let script = format!("<script>{}</script>", include_str!("comentar.js"));
+        match html.to_lowercase().rfind("</body>") {
+            Some(i) => html.insert_str(i, &script),
+            None => html.push_str(&script),
+        }
+        return Response::builder()
+            .status(StatusCode::OK)
+            .header(header::CONTENT_TYPE, "text/html; charset=utf-8")
+            .header(header::CACHE_CONTROL, "no-store")
+            .header(header::CONTENT_SECURITY_POLICY, "sandbox allow-scripts allow-popups; default-src * data: blob: 'unsafe-inline' 'unsafe-eval'")
+            .body(Body::from(html))
+            .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response());
+    }
+    servir(p, tipo).await
+}
+
+/// `GET /api/comentar.js`: o script que roda dentro do markdown/HTML mostrado (seleção → "Comentar", grifos).
+pub async fn comentar_js() -> Response {
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "text/javascript; charset=utf-8")
+        .header(header::CACHE_CONTROL, "no-store")
+        .body(Body::from(include_str!("comentar.js")))
+        .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+}
+
+/// `GET /api/comentarios?caminho=` → os comentários do arquivo.
+pub async fn comentarios(State(b): State<Banco>, Query(q): Query<HashMap<String, String>>) -> Result<Json<Value>, Erro> {
+    let raiz = raiz(&b)?;
+    let p = dentro(&raiz, &caminho_de(&q)?)?;
+    Ok(Json(crate::comentarios::ler(&p)))
+}
+
+/// `POST /api/comentarios { caminho, acao, ... }`: criar (trecho, antes, depois, comentario), editar (id, comentario),
+/// apagar (id), resolver (id, resposta), reabrir (id), limpar_resolvidos.
+pub async fn mexer_comentarios(State(b): State<Banco>, Json(d): Json<Value>) -> Result<Json<Value>, Erro> {
+    use crate::comentarios as c;
+    let raiz = raiz(&b)?;
+    let p = dentro(&raiz, Path::new(d.get("caminho").and_then(|v| v.as_str()).unwrap_or("")))?;
+    let s = |k: &str| d.get(k).and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let id = || d.get("id").and_then(|v| v.as_u64()).ok_or(Erro::Invalido("informe o id".into()));
+    let r = match s("acao").as_str() {
+        "criar" => c::criar(&p, &s("trecho"), &s("antes"), &s("depois"), &s("comentario"), "Paulo").map(|id| json!({ "id": id })),
+        "editar" => c::editar(&p, id()?, &s("comentario")).map(|_| json!({})),
+        "apagar" => c::apagar(&p, id()?).map(|_| json!({})),
+        "resolver" => c::resolver(&p, id()?, &s("resposta"), "Paulo").map(|_| json!({})),
+        "reabrir" => c::reabrir(&p, id()?).map(|_| json!({})),
+        "limpar_resolvidos" => c::limpar_resolvidos(&p).map(|n| json!({ "removidos": n })),
+        outra => Err(format!("ação desconhecida: {outra}")),
+    };
+    let mut v = r.map_err(Erro::Invalido)?;
+    v["comentarios"] = c::ler(&p);
+    Ok(Json(v))
+}
+
 /// `GET /api/arquivo/info?caminho=` → espécie, tamanho e hora de modificação (com milissegundos, para editar com segurança).
 pub async fn info(State(b): State<Banco>, Query(q): Query<HashMap<String, String>>) -> Result<Json<Value>, Erro> {
     let raiz = raiz(&b)?;
@@ -174,6 +284,8 @@ pub async fn info(State(b): State<Banco>, Query(q): Query<HashMap<String, String
     Ok(Json(json!({
         "caminho": p, "nome": nome, "especie": espécie(&nome),
         "tamanho": std::fs::metadata(&p).map(|m| m.len()).unwrap_or(0), "modificado": modificado(&p),
+        // pelo caminho: o HTML acha CSS, imagens e scripts relativos
+        "ver": url_ver(&raiz, &p),
     })))
 }
 

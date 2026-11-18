@@ -1,6 +1,6 @@
 // Comentários num arquivo aberto no atelier (markdown, texto, HTML), como numa revisão: seleciona um trecho do que
-// está vendo → "Comentar" (o botão aparece dentro da moldura, pelo /api/comentar.js) → o comentário entra aqui, na
-// margem, e o trecho fica grifado. Guardados em <arquivo>.comentarios.json (core/src/comentarios.rs); o agente lê,
+// está vendo → escreve na caixinha que aparece ali mesmo (core/src/comentar.js, embutido na moldura) e dá Enter → o
+// trecho fica grifado (passar o mouse mostra o comentário) e a margem lista todos (clicar leva ao trecho). Guardados em <arquivo>.comentarios.json (core/src/comentarios.rs); o agente lê,
 // ajusta e resolve pelo MCP (`comentarios`), e esta margem acompanha sozinha.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, MessageSquare, Pencil, RotateCcw, Trash2, X } from "lucide-react";
@@ -21,7 +21,6 @@ export type Comentario = {
   resolvido?: { em: string; autor: string; resposta: string } | null;
 };
 type Dados = { comentarios: Comentario[]; abertos: number; modificado: string | null };
-export type Selecao = { trecho: string; antes: string; depois: string };
 
 async function pedir<T>(metodo: string, caminho: string, corpo?: unknown): Promise<T> {
   const r = await fetch(`${BASE}${caminho}`, {
@@ -66,11 +65,20 @@ export function useComentarios(caminho: string, ligado: boolean) {
   return { dados, mexer };
 }
 
-/** Manda os grifos para a moldura (ela acha cada trecho e grifa). */
+/** Manda os grifos para a moldura (ela acha cada trecho, grifa e mostra o comentário ao passar o mouse), com as
+ *  cores do tema para a caixinha de comentar. */
 export function enviarGrifos(frame: HTMLIFrameElement | null, lista: Comentario[]) {
+  const cs = getComputedStyle(document.documentElement);
+  const v = (n: string) => cs.getPropertyValue(`--${n}`).trim();
   frame?.contentWindow?.postMessage({
     atelier: "grifos",
-    lista: lista.map((c) => ({ id: c.id, trecho: c.trecho, antes: c.antes, depois: c.depois, resolvido: !!c.resolvido })),
+    tema: { bg: v("bg-elev"), texto: v("texto"), texto3: v("texto-3"), borda: v("borda-forte"), acento: v("acento") },
+    lista: lista.map((c) => ({
+      id: c.id, trecho: c.trecho, antes: c.antes, depois: c.depois, resolvido: !!c.resolvido,
+      comentario: c.comentario, autor: c.autor,
+      resposta: c.resolvido ? (c.resolvido.resposta ? `${c.resolvido.autor || "agente"}: ${c.resolvido.resposta}` : "")
+        : c.resposta ? `${c.resposta.autor}: ${c.resposta.texto}` : "",
+    })),
   }, "*");
 }
 
@@ -78,25 +86,21 @@ export function enviarGrifos(frame: HTMLIFrameElement | null, lista: Comentario[
 export function BotaoComentarios({ abertos, total, aberto, alternar }: { abertos: number; total: number; aberto: boolean; alternar: () => void }) {
   return (
     <button className={`btn${aberto ? " ativo" : ""}`} onClick={alternar}
-      title="Comentários: selecione um trecho do texto e clique em “Comentar”. Depois é só dizer ao agente que comentou.">
+      title="Comentários: selecione um trecho do texto, escreva na caixinha que aparece e dê Enter. Aqui abre e fecha a lista.">
       <MessageSquare size={14} /> {abertos > 0 ? `${abertos} ${abertos === 1 ? "aberto" : "abertos"}` : total > 0 ? "Comentários" : "Comentar"}
     </button>
   );
 }
 
-/** A margem: o comentário novo (quando selecionou), e a lista. */
-export function MargemComentarios({ dados, compondo, aoCancelar, mexer, foco, aoIr }: {
+/** A margem: a lista dos comentários (clicar leva ao trecho no texto). */
+export function MargemComentarios({ dados, mexer, foco, aoIr }: {
   dados: Dados;
-  compondo: Selecao | null;
-  aoCancelar: () => void;
   mexer: (acao: string, extra?: Record<string, unknown>) => Promise<unknown>;
   foco: number | null;
   aoIr: (id: number) => void;
 }) {
-  const [texto, setTexto] = useState("");
   const [editando, setEditando] = useState<{ id: number; texto: string } | null>(null);
   const [verResolvidos, setVerResolvidos] = useState(true);
-  useEffect(() => { setTexto(""); }, [compondo]);
   const lista = dados.comentarios.filter((c) => verResolvidos || !c.resolvido);
   const resolvidos = dados.comentarios.filter((c) => c.resolvido).length;
   const caixa = useRef<HTMLDivElement>(null);
@@ -104,12 +108,6 @@ export function MargemComentarios({ dados, compondo, aoCancelar, mexer, foco, ao
     if (foco == null) return;
     caixa.current?.querySelector(`[data-comentario="${foco}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [foco]);
-
-  const salvar = async () => {
-    if (!compondo || !texto.trim()) return;
-    const r = await mexer("criar", { ...compondo, comentario: texto });
-    if (r) aoCancelar();
-  };
 
   return (
     <aside className="cm-margem" ref={caixa}>
@@ -129,28 +127,13 @@ export function MargemComentarios({ dados, compondo, aoCancelar, mexer, foco, ao
         )}
       </div>
 
-      {compondo && (
-        <div className="cm-cartao cm-novo">
-          <blockquote className="cm-trecho">{compondo.trecho}</blockquote>
-          <textarea autoFocus className="campo" rows={3} placeholder="Seu comentário (Ctrl+Enter salva)" value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); salvar(); }
-              if (e.key === "Escape") { e.preventDefault(); aoCancelar(); }
-            }} />
-          <div className="cm-acoes">
-            <button className="btn" onClick={aoCancelar}>Cancelar</button>
-            <button className="btn primario" disabled={!texto.trim()} onClick={salvar}>Comentar</button>
-          </div>
-        </div>
-      )}
-
-      {!compondo && dados.comentarios.length === 0 && (
-        <div className="cm-vazio">Selecione um trecho do texto e clique em <b>💬 Comentar</b>. Depois diga ao agente que comentou: ele lê, ajusta e responde aqui.</div>
+      {dados.comentarios.length === 0 && (
+        <div className="cm-vazio">Selecione um trecho do texto: aparece uma caixinha para escrever o comentário, e Enter salva. O trecho fica grifado (passe o mouse para ler). Depois diga ao agente que comentou: ele lê, ajusta e responde aqui.</div>
       )}
 
       {lista.map((c) => (
-        <div key={c.id} data-comentario={c.id} className={`cm-cartao${c.resolvido ? " resolvido" : ""}${foco === c.id ? " foco" : ""}`} onClick={() => aoIr(c.id)}>
+        <div key={c.id} data-comentario={c.id} title={foco === c.id ? undefined : c.comentario}
+          className={`cm-cartao${c.resolvido ? " resolvido" : ""}${foco === c.id ? " foco" : editando?.id === c.id ? "" : " recolhido"}`} onClick={() => aoIr(c.id)}>
           <blockquote className="cm-trecho">{c.trecho}</blockquote>
           {editando?.id === c.id ? (
             <>

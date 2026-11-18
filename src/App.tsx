@@ -808,6 +808,9 @@ export default function App() {
           aoFechar={() => setVerWs(false)}
           fecharWs={(k) => setWs((w) => (w ? W.fechar(w, k) : w))}
           renomear={(k, n) => setWs((w) => (w ? W.renomear(w, k, n) : w))}
+          arquivar={(k) => setWs((w) => (w ? W.arquivar(w, k) : w))}
+          desarquivar={(k) => setWs((w) => (w ? W.desarquivar(w, k) : w))}
+          esquecer={(k) => setWs((w) => (w ? W.esquecer(w, k) : w))}
         />
       )}
       <PilhaDeAvisos />

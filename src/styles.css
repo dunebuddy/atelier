@@ -139,6 +139,8 @@ kbd {
 
 ::selection { background: var(--acento-suave); }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
+/* onde a barra horizontal encontra a vertical: sem isto o navegador pinta um quadrado branco (entre os painéis) */
+::-webkit-scrollbar-corner, ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--borda-forte); border-radius: 10px; border: 3px solid transparent; background-clip: content-box; }
 ::-webkit-scrollbar-thumb:hover { background: var(--texto-3); background-clip: content-box; border: 3px solid transparent; }
 
@@ -352,7 +354,12 @@ body.redimensionando .sidebar { transition: none; }
 .ws-janela-icone { flex-shrink: 0; font-size: 11px; }
 .ws-janela-titulo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
 .ws-janela-ram { font-size: 10.5px; color: var(--texto-3); font-variant-numeric: tabular-nums; }
-.ws-cartao-pe { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--texto-3); }
+.ws-cartao-pe { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--texto-3);
+  margin: 0 -12px -12px; padding: 7px 12px; border-top: 1px solid var(--borda); border-radius: 0 0 13px 13px; }
+/* aberto: o rodapé inteiro verde (é status, não seleção); forte o bastante para aparecer também no cartão atual */
+.ws-cartao-pe.vivo { background: color-mix(in srgb, var(--t-green) 30%, var(--bg)); color: color-mix(in srgb, var(--t-green) 70%, var(--texto));
+  border-top-color: color-mix(in srgb, var(--t-green) 55%, var(--borda)); font-weight: 550; }
+.ws-cartao-pe.vivo .ws-uso { color: var(--texto); }
 .ws-uso { display: flex; align-items: center; gap: 3px; font-variant-numeric: tabular-nums; color: var(--texto-2); }
 
 /* Configurações → Atalhos */
@@ -1167,7 +1174,9 @@ button.mencao:hover { text-decoration: underline; text-underline-offset: 2px; }
 .tabela tbody tr:hover .botao-ws, .lc-linha:hover .botao-ws, .kb-cartao:hover .botao-ws, .ldt-evento:hover .botao-ws,
 .arv-no:hover .botao-ws, .br-item:hover .botao-ws, .br-item.foco .botao-ws, .rel-chip:hover .botao-ws { opacity: 1; }
 .arv-no .botao-ws { margin-left: auto; }
-.rel-chip .rel-ws { width: 16px; height: 16px; }
+/* nas ligações (Filhos, Pai...): centrado na linha e longe da borda direita */
+.rel-chip .rel-ws { width: 22px; height: 22px; line-height: 0; align-self: center; margin: 0 6px 0 2px; }
+.rel-chip .rel-ws + .rel-tirar { margin-left: -4px; }
 /* rótulo de menu que traz um nome (pasta do workspace): sem caixa alta, corta em … */
 .menu-rotulo-nome { text-transform: none; letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* arrastando uma visão na barra lateral: nada de selecionar texto, cursor de mover */
@@ -1225,6 +1234,9 @@ body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grab
 .pilha-toasts { display: flex; flex-direction: column; gap: 8px; }
 .cima-direita .pilha-toasts, .cima-esquerda .pilha-toasts { flex-direction: column-reverse; }
 .pilha-toasts.aberta { max-height: calc(100vh - 120px); overflow-y: auto; }
+/* a lista aberta rola, e quem rola corta: a sombra (36 px de esfumado) saía cortada reto e os cantos arredondados
+   ficavam com uma ponta escura. Aberta, sem sombra (a borda já separa do fundo) */
+.pilha-toasts.aberta > .toast { box-shadow: none; }
 .pilha-toasts.junta { display: grid; }
 .pilha-toasts.junta > .toast {
   grid-area: 1 / 1; align-self: end; transform-origin: top center; opacity: var(--o); z-index: 0;
@@ -1320,6 +1332,9 @@ body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grab
 .ws-renomear { flex: 1; min-width: 0; height: 24px; padding: 2px 8px; font-size: 13px; }
 .ws-lapis { opacity: 0; }
 .ws-linha:hover .ws-lapis, .ws-cartao:hover .ws-lapis, .ws-lapis:focus-visible { opacity: 1; }
+/* arquivar e apagar no cartão da visão geral: aparecem com o mouse em cima ou com o cartão selecionado */
+.ws-cartao .ws-some { opacity: 0; transition: opacity .12s; }
+.ws-cartao:hover .ws-some, .ws-cartao.sel .ws-some, .ws-cartao .ws-some:focus-within, .ws-cartao .ws-some:has(.ws-confirma) { opacity: 1; }
 
 /* explorador: a trilha rola (sem barra) e mostra sempre o fim; na árvore, o caminho da raiz ao lado */
 .ex-trilha.rolavel { overflow-x: auto; scrollbar-width: none; }
@@ -1528,6 +1543,11 @@ input::-ms-reveal, input::-ms-clear { display: none; }
 .cm-cartao:hover { border-color: var(--borda-forte); }
 .cm-cartao.foco { border-color: var(--acento); box-shadow: 0 0 0 1px var(--acento); }
 .cm-cartao.resolvido { opacity: .7; }
+/* recolhido: uma linha só com o comentário; o selecionado (clicado aqui ou no grifo) abre inteiro */
+.cm-cartao.recolhido { padding: 6px 10px; gap: 0; }
+.cm-cartao.recolhido .cm-trecho, .cm-cartao.recolhido .cm-meta, .cm-cartao.recolhido .cm-resposta { display: none; }
+.cm-cartao.recolhido .cm-texto { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cm-cartao.recolhido.resolvido .cm-texto::before { content: "✓ "; color: var(--t-green); }
 .cm-cartao.resolvido .cm-texto { text-decoration: line-through; text-decoration-color: var(--texto-3); }
 .cm-novo { cursor: default; border-color: var(--acento); }
 .cm-trecho { margin: 0; padding: 2px 8px; border-left: 3px solid rgba(250, 190, 60, .8); font-size: 12px; color: var(--texto-3); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; white-space: pre-wrap; }

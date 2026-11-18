@@ -1014,6 +1014,14 @@ async fn tela(State(b): State<Banco>, Json(d): Json<Value>) -> R {
                 if !p.is_absolute() || !p.is_file() {
                     return Err(Erro::Invalido(format!("arquivo não encontrado: {arq}")));
                 }
+                // a tela só mostra arquivo da bancada aberta: recusa aqui, com o motivo, em vez de "ok" e erro na tela
+                let raiz = crate::explorador::raiz(&b)?;
+                if crate::explorador::dentro(&raiz, p).is_err() {
+                    return Err(Erro::Invalido(format!(
+                        "fora da bancada: o atelier só abre arquivos de dentro da bancada aberta ({}). Copie o arquivo para a pasta de um documento (criar_pasta) e abra de lá: {arq}",
+                        raiz.display()
+                    )));
+                }
                 let raiz = p.parent().map(|x| x.to_string_lossy().to_string()).unwrap_or_default();
                 let nome = p.file_name().map(|x| x.to_string_lossy().to_string()).unwrap_or_default();
                 ev["rota"] = json!({ "v": "arquivos", "raiz": raiz, "arquivo": arq, "titulo": nome });

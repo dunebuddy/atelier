@@ -5,7 +5,9 @@
 .ck-h1 { flex: 1; min-width: 0; font-family: "Fraunces Variable", Georgia, serif; font-size: 24px; font-weight: 600; color: var(--texto); background: none; border: 0; border-radius: 6px; padding: 2px 4px; }
 .ck-h1:hover { background: var(--hover); }
 .ck-h1:focus { outline: none; background: var(--hover); }
-.ck-progresso { display: flex; align-items: center; gap: 10px; margin: 12px 0 6px; font-size: 13px; color: var(--texto-2); }
+/* a barra "X de Y passos" fica presa no topo ao rolar (só ela) */
+.ck-progresso { display: flex; align-items: center; gap: 10px; margin: 4px -22px 2px; padding: 8px 22px; font-size: 13px; color: var(--texto-2);
+  position: sticky; top: 0; z-index: 5; background: var(--bg); }
 .ck-barra { flex: 1; height: 7px; border-radius: 99px; background: var(--borda); overflow: hidden; }
 .ck-barra > div { height: 100%; background: var(--acento); transition: width .25s; }
 .ck-avisos { margin: 8px 0; display: block; font-size: 13px; }
@@ -84,12 +86,15 @@ button.ck-grupo-nome:hover { background: var(--hover); color: var(--texto-2); }
 .ck-topo { cursor: pointer; border-radius: 9px; padding-bottom: 2px; }
 .ck-passo.aberto .ck-topo { border-radius: 9px 9px 0 0; padding-bottom: 6px; }
 .ck-topo:hover { background: var(--hover); }
-.ck-cab { display: flex; align-items: center; gap: 8px; padding: 6px 8px 4px 6px; flex-wrap: wrap; }
+.ck-cab { display: flex; align-items: center; gap: 8px; padding: 6px 8px 4px 6px; }
+.ck-cab-acoes { flex-shrink: 0; }
 .ck-alca { color: var(--texto-3); cursor: grab; display: inline-flex; opacity: .35; }
 .ck-passo:hover .ck-alca { opacity: 1; }
 .ck-num { font-size: 12px; color: var(--texto-3); min-width: 18px; text-align: right; font-variant-numeric: tabular-nums; }
 .ck-titulo { font-weight: 550; min-width: 0; }
-.ck-cab-tags { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; flex: 1; min-width: 0; }
+/* fechado: segunda linha, alinhada com o título (alça + número), para o cartão não mudar de forma com as tags */
+.ck-cab-tags { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 0 8px 4px 54px; }
+.ck-cab .ck-titulo { flex: 1; }
 .ck-passo.aberto .ck-titulo { flex: 1; }
 .ck-estado { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; color: var(--t-green); background: var(--c-green); padding: 1px 7px; border-radius: 99px; white-space: nowrap; }
 .ck-estado.pulado { color: var(--t-gray); background: var(--c-gray); }

@@ -22,10 +22,6 @@ Como usar:
 > 0.2.7). Pedido novo entra aqui.
 
 ### Bugs
-- **Toast com as pontas aparecendo** (17/11, visual, para a próxima versão): o cartão do aviso (ex.: "um agente
-  terminou") tem a borda arredondada, mas atrás dele aparece um fundo de cantos retos: nos quatro cantos dá para ver
-  as pontinhas fora da borda. Achar quem pinta o fundo quadrado (o contêiner do cartão, `.pilha-avisos .cartao-aviso`
-  com `overflow: hidden`, ou a janela do aviso, se for uma janela à parte) e deixar transparente / com o mesmo raio.
 ### Melhorias pedidas
 
 ### Ideias antigas (ninguém pediu agora)
@@ -60,6 +56,19 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.28** (2026-11-18) · Os pedidos do dia (o Paulo: "fecha a versão com tudo da lista"):
+  - **Terminal sem letra solta nem quebra no lugar errado:** o ConPTY conta ✅ ✨ ⚡ ❌ ⭐ (U+2000–U+2BFF) como 1 coluna e
+    o xterm contava 2; agora o xterm conta igual. Também `windowsPty` e resize só quando o tamanho muda.
+  - **Comentários:** selecionar abre a caixinha ali no texto (Enter salva); o grifo mostra o comentário com o mouse e
+    prende ao clicar; a lista da margem fica recolhida (uma linha cada) e só abre pelo botão.
+  - **Checklist:** barra "X de Y passos" presa no topo; passo fechado em duas linhas (título e botões, tags embaixo).
+  - **Expandido é um modo:** segue o foco (aba ou lado) até sair com duplo clique ou o botão.
+  - **Workspaces (visão geral):** abre com o atual selecionado (o mouse parado não rouba); rodapé verde nos abertos;
+    arquivar, desarquivar e apagar no cartão fechado.
+  - **Defeitos visuais:** quadrado branco entre os painéis (canto das barras de rolagem); pontas escuras nos toasts
+    em lista (sombra cortada); botão de workspace nas ligações colado na borda.
+  - **MCP `tela` abrir `arquivo` fora da bancada** agora recusa na hora, com o motivo (antes respondia ok e a tela dava
+    erro).
 - **0.2.27** (2026-11-17) · A caixa de entrada inteira (o Paulo: "pega tudo que está faltando"):
   - **Comentários em arquivos:** em markdown, texto e HTML abertos no atelier, selecionar um trecho → "💬 Comentar"; o
     trecho fica grifado e o comentário vai para a margem (editar, resolver, reabrir, apagar, limpar os resolvidos;

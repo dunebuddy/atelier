@@ -401,12 +401,15 @@ const ICONE_MODO: Record<string, React.ReactNode> = {
  * Visão geral (como o overview do Niri ou do Hyprland): um cartão por workspace, com o item dele, memória e CPU dos
  * terminais e agentes, e um esboço das janelas abertas. Setas escolhem, Enter vai, Esc fecha; digitar filtra.
  */
-export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renomear }: {
+export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renomear, arquivar, desarquivar, esquecer }: {
   ws: Workspaces;
   aoEscolher: (chave: string) => void;
   aoFechar: () => void;
   fecharWs: (chave: string) => void;
   renomear: (chave: string, nome: string) => void;
+  arquivar: (chave: string) => void;
+  desarquivar: (chave: string) => void;
+  esquecer: (chave: string) => void;
 }) {
   const [editando, setEditando] = useState<string | null>(null);
   const [m, setM] = useState<Medida | null>(null);
@@ -427,6 +430,16 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
   const nav = verArquivados ? [...ordem, ...arquivados] : ordem;
   const [sel, setSel] = useState(() => Math.max(0, ordem.indexOf(ws.ativo)));
   const grade = useRef<HTMLDivElement>(null);
+  // a tela nasce com o atual selecionado, mesmo com o mouse parado em cima de outro cartão: o mouse só passa a
+  // escolher depois de andar de verdade (uns pixels), para dar para começar pelo teclado
+  const mouse = useRef<{ livre: boolean; x?: number; y?: number }>({ livre: false });
+  const mexeu = (e: React.MouseEvent) => {
+    const r = mouse.current;
+    if (r.livre) return true;
+    if (r.x == null) { r.x = e.clientX; r.y = e.clientY; return false; }
+    r.livre = Math.abs(e.clientX - r.x) + Math.abs(e.clientY - (r.y ?? 0)) > 6;
+    return r.livre;
+  };
 
   useEffect(() => {
     let vivo = true;
@@ -445,6 +458,8 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
   };
   const tecla = (e: React.KeyboardEvent) => {
     if (editando) return;
+    // Enter num botão (o "Sim" do apagar) é do botão, não abre o workspace
+    if ((e.key === "Enter" || e.key === " ") && (e.target as HTMLElement).closest("button")) return;
     const n = nav.length;
     if (e.key === "Escape") { e.preventDefault(); aoFechar(); }
     if (!n) return;
@@ -456,7 +471,7 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
   };
 
   return (
-    <div className="ws-geral" onMouseDown={(e) => e.target === e.currentTarget && aoFechar()} onKeyDown={tecla}>
+    <div className="ws-geral" onMouseDown={(e) => e.target === e.currentTarget && aoFechar()} onMouseMove={mexeu} onKeyDown={tecla}>
       <div className="ws-geral-topo">
         <LayoutDashboard size={18} />
         <strong>Workspaces</strong>
@@ -497,7 +512,7 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
             <div
               key={k}
               className={`ws-cartao${i === sel ? " sel" : ""}${k === ws.ativo ? " atual" : ""}${aberto ? "" : " guardado"}${info.arquivado ? " arquivado" : ""}`}
-              onMouseEnter={() => setSel(i)}
+              onMouseMove={(ev) => { if (mexeu(ev) && sel !== i) setSel(i); }}
               onClick={() => editando !== k && aoEscolher(k)}
             >
               <div className="ws-cartao-cabeca">
@@ -511,6 +526,15 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
                     <Power size={12} />
                   </button>
                 )}
+                {/* desligado (e não o da bancada): arquivar (ou desarquivar) e apagar, como na lista da barra de título */}
+                {!aberto && k !== GERAL && (info.arquivado ? (
+                  <button className="btn-icone mini ws-some" title="Desarquivar (volta para a lista, sem abrir)"
+                    onClick={(ev) => { ev.stopPropagation(); desarquivar(k); }}><ArchiveRestore size={12} /></button>
+                ) : (
+                  <button className="btn-icone mini ws-some" title="Arquivar (sai da lista; as janelas ficam guardadas)"
+                    onClick={(ev) => { ev.stopPropagation(); arquivar(k); }}><Archive size={12} /></button>
+                ))}
+                {!aberto && k !== GERAL && <span className="ws-some"><ApagarWs aoApagar={() => esquecer(k)} /></span>}
               </div>
               {/* esboço das metades e das janelas */}
               <div className="ws-esboco">
@@ -533,8 +557,7 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
                   </div>
                 ))}
               </div>
-              <div className="ws-cartao-pe">
-                <span className={`ws-ponto${aberto ? " vivo" : ""}`} />
+              <div className={`ws-cartao-pe${aberto ? " vivo" : ""}`}>
                 <span>{aberto ? (k === ws.ativo ? "atual" : "aberto") : info.arquivado ? `arquivado em ${new Date(info.arquivado).toLocaleDateString("pt-BR")}` : "guardado"}</span>
                 <span>· {janelas} {janelas === 1 ? "janela" : "janelas"}</span>
                 {ss.length > 0 && <span>· {ss.length} {ss.length === 1 ? "terminal" : "terminais"}</span>}

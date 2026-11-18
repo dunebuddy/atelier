@@ -36,7 +36,7 @@ fn sem_prefixo(p: PathBuf) -> PathBuf {
     }
 }
 
-fn raiz(b: &Banco) -> Result<PathBuf, Erro> {
+pub fn raiz(b: &Banco) -> Result<PathBuf, Erro> {
     b.bancada_ativa().map(|x| PathBuf::from(x.caminho)).ok_or(Erro::Invalido("nenhuma bancada aberta".into()))
 }
 

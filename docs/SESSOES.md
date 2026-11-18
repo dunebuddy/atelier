@@ -671,3 +671,33 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   MCP `como_funciona` (manual); CLAUDE.md das pastas atualizado.
 - Testado no navegador de teste: comentário criado pela API aparece na margem e grifado; script na página HTML
   (seleção → mensagem, grifo). Selecionar com o mouse dentro da moldura não deu para simular aqui: conferir no app.
+
+## 2026-11-18 — 0.2.28: terminal, comentários, checklist, expandido e Workspaces
+- Terminal comendo palavra / quebrando no lugar errado (regressão, com print do Paulo): medido no terminal do teste
+  (`[Console]::CursorLeft` depois de escrever cada caractere) que o ConPTY conta U+2000–U+2BFF sempre como 1 coluna
+  (✅ ✨ ⚡ ❌ ⭐), e só emojis astrais (🤖 📁) como 2. `usarLargurasDoConpty` em `TerminalXterm.tsx` registra a versão
+  "conpty" (Unicode 11 com essa faixa em 1; o provedor do 11 vem de ativar o addon num objeto falso, porque
+  `term.unicode` é um objeto novo a cada acesso). Conferido: linha com ✅ fecha na coluna 120 de 120. Também
+  `windowsPty` e resize só quando muda (120 ms).
+- Quadrado branco entre os painéis: `::-webkit-scrollbar-corner` transparente.
+- Workspaces: `mexeu` (o mouse só seleciona depois de andar 6 px desde a abertura). Sinal de aberto: protótipo em
+  `privado/prototipos/workspaces-aberto.html`; o Paulo escolheu o C: `.ws-cartao-pe.vivo` (rodapé verde, 30%).
+- Expandido como modo: `seguirFoco` em `painel.ts` (ativar, focar, abrirNova, fechar, dividir passam o expandido para
+  a janela com foco); `alternarExpandida` ligado sempre desliga. Testado com um script Bun nas funções do painel.
+- Comentários: `.cm-cartao.recolhido` (uma linha) e `irPara` alterna o aberto.
+- Checklist: `.ck-progresso` com `position: sticky` no topo (só a barra).
+- Comentários (o Paulo gostou do que tinha; pediu para mexer pouco): `comentar.js` agora abre a caixinha no próprio
+  texto ao selecionar (trecho em azul enquanto escreve; Enter salva, Shift+Enter quebra, Esc cancela), o grifo mostra
+  o comentário ao passar o mouse e prende ao clicar, e o "ir" da lista marca o grifo (`ativo`) e abre o cartão. A
+  margem não abre mais sozinha (só pelo botão); o compor na margem saiu. Testado no navegador de teste.
+- Checklist: `.ck-cab-tags` saiu do `.ck-cab` e virou uma linha embaixo (só com etiqueta: `temEtiqueta`); o título
+  ocupa o resto da primeira linha. O Paulo achou o cartão dos Workspaces grande no meu teste: era o workspace de teste
+  com 10 janelas; o cartão não mudou além do rodapé.
+- Visão geral: `arquivar`, `desarquivar` e `esquecer` passados pelo App; botões `.ws-some` no cabeçalho do cartão
+  fechado; o Enter da tela não age quando o foco está num botão (o "Sim" do apagar). Testado no teste.
+- Toast com pontas escuras: a sombra cortada pela lista aberta (`overflow-y: auto`); `.pilha-toasts.aberta > .toast`
+  sem sombra.
+- `tela` abrir `arquivo`: confere com `explorador::dentro` na bancada (`explorador::raiz` virou pub) e recusa com o
+  motivo. Fechada a **0.2.28** a pedido do Paulo (tag e push sem perguntar; depois desligar a máquina).
+- A conferir no app instalado: o terminal com agentes (✅ na linha), o expandido seguindo o foco, a caixinha de
+  comentar com o mouse de verdade.

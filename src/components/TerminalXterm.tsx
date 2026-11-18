@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Terminal as XTerm } from "@xterm/xterm";
+import { Terminal as XTerm, type IUnicodeVersionProvider } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import "@xterm/xterm/css/xterm.css";
@@ -25,6 +25,31 @@ function cor(nome: string) {
   return getComputedStyle(document.documentElement).getPropertyValue(`--${nome}`).trim() || undefined;
 }
 
+/** Larguras como o ConPTY do Windows conta. Medido no próprio ConPTY (Windows 11, 2026-11-18): tudo de U+2000 a
+ *  U+2BFF (✅ ✨ ⚡ ❌ ⭐ ⏺ setas, símbolos) ocupa 1 coluna, e só os emojis de fora do plano básico (🤖 📁) ocupam 2.
+ *  O Unicode 11 conta ✅ e cia. como 2: o xterm ficava uma coluna adiantado em toda linha com um deles, e como o
+ *  ConPTY redesenha pelo que ele acha, aparecia letra solta na primeira coluna e "›" no fim da linha de cima até
+ *  redimensionar. Fora do Windows fica o Unicode 11 puro. */
+function usarLargurasDoConpty(term: XTerm) {
+  // o addon só faz unicode.register(provedor do Unicode 11): ativado num objeto nosso, o provedor fica de base
+  let u11: IUnicodeVersionProvider | undefined;
+  new Unicode11Addon().activate({ unicode: { register: (p: IUnicodeVersionProvider) => { u11 = p; } } } as unknown as XTerm);
+  term.loadAddon(new Unicode11Addon());
+  if (!u11 || !navigator.userAgent.includes("Windows")) { term.unicode.activeVersion = "11"; return; }
+  const base = u11;
+  const estreito = (cp: number) => cp >= 0x2000 && cp <= 0x2bff;
+  term.unicode.register({
+    version: "conpty",
+    wcwidth: (cp) => (estreito(cp) && base.wcwidth(cp) === 2 ? 1 : base.wcwidth(cp)),
+    charProperties: (cp, antes) => {
+      const v = base.charProperties(cp, antes);
+      // bits 1-2 são a largura (createPropertyValue do xterm): 2 vira 1
+      return estreito(cp) && ((v >> 1) & 3) === 2 ? (v & ~6) | (1 << 1) : v;
+    },
+  });
+  term.unicode.activeVersion = "conpty";
+}
+
 export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; aoSair: () => void }) {
   const caixa = useRef<HTMLDivElement>(null);
   const ajustar = useRef<() => void>(() => {});
@@ -42,6 +67,9 @@ export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; ao
       fontSize: 13,
       cursorBlink: true,
       allowProposedApi: true,
+      // do outro lado está o ConPTY do Windows: sem isto, ao ganhar linhas o xterm puxa o histórico para a tela e o
+      // ConPTY acha que elas estão vazias; o redesenho seguinte do agente sai com palavra comida e quebra fora do lugar
+      ...(navigator.userAgent.includes("Windows") ? { windowsPty: { backend: "conpty" as const, buildNumber: 22000 } } : {}),
       theme: {
         background: cor("bg-fundo"),
         foreground: cor("texto"),
@@ -51,10 +79,8 @@ export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; ao
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
-    // larguras do Unicode 11: os agentes (Claude Code, Codex) contam ⏺ ✻ ✅ e emojis como 2 colunas; com a tabela
-    // antiga o xterm contava 1, o cursor ficava fora do lugar e o texto "grudava na borda" até redesenhar tudo
-    term.loadAddon(new Unicode11Addon());
-    term.unicode.activeVersion = "11";
+    // larguras: Unicode 11 (emojis como 2 colunas), com o ajuste do ConPTY (ver usarLargurasDoConpty)
+    usarLargurasDoConpty(term);
     term.open(caixa.current!);
     try { fit.fit(); } catch { /* ainda sem tamanho */ }
     // a fonte pode chegar depois do open: mede de novo a célula e redesenha
@@ -94,12 +120,27 @@ export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; ao
       return true;
     });
 
+    // o tamanho só vai ao processo quando muda de verdade, e uma vez só depois que o arrastar/animar assenta: cada
+    // resize faz o agente redesenhar a tela inteira, e uma rajada deles embaralhava o texto (palavra comida, linha
+    // quebrada no canto errado)
+    let enviado = "";
+    let espera = 0;
+    const mandarTamanho = () => {
+      clearTimeout(espera);
+      espera = window.setTimeout(() => {
+        const t = `${term.cols}x${term.rows}`;
+        if (morto || t === enviado || ws.readyState !== WebSocket.OPEN) return;
+        enviado = t;
+        ws.send(JSON.stringify({ t: "r", c: term.cols, l: term.rows }));
+      }, 120);
+    };
     ajustar.current = () => {
       if (morto || !caixa.current?.offsetHeight) return;
       try {
+        const antes = `${term.cols}x${term.rows}`;
         fit.fit();
-        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: "r", c: term.cols, l: term.rows }));
-        term.refresh(0, term.rows - 1);
+        if (`${term.cols}x${term.rows}` !== antes) term.refresh(0, term.rows - 1);
+        mandarTamanho();
       } catch { /* ignore */ }
     };
     const obs = new ResizeObserver(() => ajustar.current());
@@ -108,6 +149,7 @@ export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; ao
 
     return () => {
       morto = true;
+      clearTimeout(espera);
       obs.disconnect();
       dados.dispose();
       ws.close();

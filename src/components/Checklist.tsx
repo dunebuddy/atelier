@@ -756,6 +756,7 @@ function CartaoPasso({ ctx, p, proximo, aberto, alternar, editando, setEditando,
       <button className="btn primario" onClick={() => marcar(p)}><Check size={13} /> Pronto</button>
     </>
   );
+  const temEtiqueta = (p.tags?.length ?? 0) > 0 || !!p.opcional || falta.length > 0 || links.length > 0 || !!e.documento;
   const etiquetas = (comX: boolean) => (
     <>
       {(p.tags ?? []).map((t) => (
@@ -797,13 +798,6 @@ function CartaoPasso({ ctx, p, proximo, aberto, alternar, editando, setEditando,
           ) : (
             <span className="ck-titulo">{preencher(p.titulo, ctx.doc.valores ?? {})}</span>
           )}
-          {!aberto && (
-            <span className="ck-cab-tags">
-              {etiquetas(false)}
-              {links.length > 0 && <span className="ck-tag cor-gray" title="Links"><Link2 size={11} /> {links.length}</span>}
-              {e.documento && <span className="ck-tag doc" title="Documento criado a partir deste passo"><FileText size={11} /> #{e.documento}</span>}
-            </span>
-          )}
           {ok && (
             <span className={`ck-estado${e.pulado ? " pulado" : ""}`}>
               {e.pulado ? <SkipForward size={12} /> : <Check size={12} />} {e.pulado ? "ignorado" : "feito"} {dataCurta(e.feito!)}
@@ -821,6 +815,14 @@ function CartaoPasso({ ctx, p, proximo, aberto, alternar, editando, setEditando,
             {!aberto && encerrar}
           </span>
         </div>
+        {/* fechado: as tags numa segunda linha, embaixo do título (o título e os botões ficam sempre na primeira) */}
+        {!aberto && temEtiqueta && (
+          <div className="ck-cab-tags">
+            {etiquetas(false)}
+            {links.length > 0 && <span className="ck-tag cor-gray" title="Links"><Link2 size={11} /> {links.length}</span>}
+            {e.documento && <span className="ck-tag doc" title="Documento criado a partir deste passo"><FileText size={11} /> #{e.documento}</span>}
+          </div>
+        )}
         {editando && <LinhaSecao ctx={ctx} p={p} />}
         {aberto && (
           <div className="ck-faixa" onClick={parar}>

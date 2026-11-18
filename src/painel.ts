@@ -42,7 +42,8 @@ export interface EstadoPainel {
   divisao: number;
   /** Modo Zen: a janela ativa do painel com foco ocupa o painel inteiro (as outras ficam escondidas, sem desmontar) */
   maximizada?: boolean;
-  /** expandida (duplo clique, Ctrl+Alt+Shift+J): a janela ocupa 85% do painel e o resto fica à vista, espremido */
+  /** expandida (duplo clique, Ctrl+Alt+Shift+J): a janela ocupa 85% do painel e o resto fica à vista, espremido.
+   *  É um modo: enquanto ligado, segue o foco (a janela com foco é a expandida); sai com duplo clique ou o botão. */
   expandida?: string | null;
 }
 
@@ -56,6 +57,13 @@ export const duasVisiveis = (e: EstadoPainel) => e.metades.length > 1 && !e.meta
 function mostrar(e: EstadoPainel): EstadoPainel {
   if (e.foco !== 1 || !e.metades[1]?.escondida) return e;
   return { ...e, metades: e.metades.map((m, i) => (i === 1 ? { ...m, escondida: false } : m)) };
+}
+
+/** Com o expandido ligado, ele passa para a janela com foco (trocar de aba ou de lado não desliga o modo). */
+function seguirFoco(e: EstadoPainel): EstadoPainel {
+  if (!e.expandida) return e;
+  const id = janelaAtiva(e)?.id ?? null;
+  return id === e.expandida ? e : { ...e, expandida: id };
 }
 
 export const LARGURAS = [1, 2, 3, 4];
@@ -114,16 +122,15 @@ export function janelaAtiva(e: EstadoPainel): Janela | null {
 /** Abre numa janela nova, logo depois da ativa da metade (`mi`, padrão: a do foco). */
 export function abrirNova(e: EstadoPainel, r: Rota, mi = e.foco): EstadoPainel {
   const j = novaJanela(r);
-  return mostrar({
+  // expandido ligado: a nova (com o foco) é que fica grande
+  return seguirFoco(mostrar({
     ...trocarMetade(e, mi, (m) => {
       const i = m.janelas.findIndex((x) => x.id === m.ativa);
       const janelas = [...m.janelas.slice(0, i + 1), j, ...m.janelas.slice(i + 1)];
       return { ...m, janelas, ativa: j.id };
     }),
     foco: mi,
-    // a nova tem de aparecer: o expandir de outra janela desfaz
-    expandida: null,
-  });
+  }));
 }
 
 /** Abre na outra metade (Ctrl+Alt+clique): a oposta a `mi`; sem a direita, ela nasce; escondida, volta. */
@@ -214,23 +221,21 @@ export function irParaPasso(e: EstadoPainel, id: string, pos: number): EstadoPai
 }
 
 export function ativar(e: EstadoPainel, mi: number, id: string): EstadoPainel {
-  // dar foco a outra janela (clicar na parte espremida) desfaz o expandir, como no VS Code
-  const expandida = e.expandida && e.expandida !== id ? null : e.expandida;
-  return mostrar({ ...trocarMetade(e, mi, (m) => ({ ...m, ativa: id })), foco: mi, expandida });
+  // com o expandido ligado, a janela que ganha o foco é que fica grande (o modo não desliga)
+  return seguirFoco(mostrar({ ...trocarMetade(e, mi, (m) => ({ ...m, ativa: id })), foco: mi }));
 }
 
 /** Muda o foco de metade (a direita escondida volta). */
 export function focar(e: EstadoPainel, mi: number): EstadoPainel {
   if (mi >= e.metades.length) return e;
-  const ativa = e.metades[mi].ativa;
-  const expandida = e.expandida && e.expandida !== ativa ? null : e.expandida;
-  return mostrar({ ...e, foco: mi, expandida });
+  return seguirFoco(mostrar({ ...e, foco: mi }));
 }
 
-/** Expandir (duplo clique, Ctrl+Alt+Shift+J): a janela com foco fica com 85% do painel; de novo, volta. */
+/** Expandir (duplo clique, Ctrl+Alt+Shift+J): liga o modo expandido na janela com foco; ligado, desliga. */
 export function alternarExpandida(e: EstadoPainel, id = janelaAtiva(e)?.id): EstadoPainel {
+  if (e.expandida) return { ...e, expandida: null };
   if (!id) return e;
-  return { ...e, expandida: e.expandida === id ? null : id };
+  return { ...e, expandida: id };
 }
 
 /** Fecha a janela. A metade fica aberta mesmo vazia (só o "juntar" tira uma metade). */
@@ -238,7 +243,7 @@ export function fechar(e: EstadoPainel, id: string): EstadoPainel {
   const achada = acharJanela(e, id);
   if (!achada) return e;
   const { mi } = achada;
-  return trocarMetade(e.expandida === id ? { ...e, expandida: null } : e, mi, (m) => {
+  const depois = trocarMetade(e, mi, (m) => {
     const i = m.janelas.findIndex((j) => j.id === id);
     const janelas = m.janelas.filter((j) => j.id !== id);
     // a que vinha empilhada embaixo da fechada não sobe para a coluna de outra
@@ -246,6 +251,8 @@ export function fechar(e: EstadoPainel, id: string): EstadoPainel {
     const ativa = m.ativa === id ? janelas[Math.min(i, janelas.length - 1)]?.id ?? null : m.ativa;
     return { ...m, janelas, ativa };
   });
+  // fechar a expandida passa o expandido para a que fica com o foco
+  return seguirFoco(depois);
 }
 
 /** Ctrl+\: divide o painel em dois (a metade nova nasce vazia). Com duas, **esconde** a direita (as janelas dela
@@ -254,8 +261,7 @@ export function dividir(e: EstadoPainel): EstadoPainel {
   if (e.metades.length > 1) {
     const esconder = !e.metades[1].escondida;
     const metades = e.metades.map((m, i) => (i === 1 ? { ...m, escondida: esconder } : m));
-    const expandida = esconder && e.metades[1].janelas.some((j) => j.id === e.expandida) ? null : e.expandida;
-    return { ...e, metades, foco: esconder ? 0 : 1, expandida };
+    return seguirFoco({ ...e, metades, foco: esconder ? 0 : 1 });
   }
   return { ...e, metades: [...e.metades, { janelas: [], ativa: null, modo: e.metades[0].modo, proporcao: 0.6 }], foco: 1 };
 }
@@ -267,7 +273,7 @@ export function juntar(e: EstadoPainel): EstadoPainel {
   const ja = new Set(a.janelas.map((j) => chaveRota(rotaDe(j))));
   const vem = b.janelas.filter((j) => !ja.has(chaveRota(rotaDe(j))));
   const ativa = vem.some((j) => j.id === b.ativa) ? b.ativa : a.ativa ?? vem[0]?.id ?? null;
-  return { ...e, metades: [{ ...a, janelas: [...a.janelas, ...vem.map((j) => ({ ...j, empilhada: false }))], ativa }], foco: 0, expandida: null };
+  return { ...e, metades: [{ ...a, janelas: [...a.janelas, ...vem.map((j) => ({ ...j, empilhada: false }))], ativa }], foco: 0, expandida: e.expandida ? ativa : null };
 }
 
 /** Muda a janela de lugar: para outra metade (no fim, ou antes de `antesDe`) ou dentro da mesma. */

@@ -12,7 +12,7 @@ import { dataHora } from "../visao";
 import { MenuPasta } from "./MenuPasta";
 import { DocumentoWord, Planilha } from "./Documentos";
 import { repasseDaMoldura, scriptDaMoldura } from "../moldura";
-import { BotaoComentarios, enviarGrifos, MargemComentarios, Selecao, useComentarios } from "./Comentarios";
+import { BotaoComentarios, enviarGrifos, MargemComentarios, useComentarios } from "./Comentarios";
 import { verImagem } from "./VerImagem";
 import { ChecklistTela } from "./Checklist";
 import { ehChecklist } from "../checklist";
@@ -326,29 +326,35 @@ function Previa({ caminho, aoVoltar, aoVerChecklist }: { caminho: string; aoVolt
   const comentavel = !!info && !editando && texto != null && !comoTabela && ["markdown", "texto", "html"].includes(info.especie);
   const { dados: coments, mexer } = useComentarios(caminho, comentavel);
   const [margem, setMargem] = useState<boolean | null>(null);
-  const [compondo, setCompondo] = useState<Selecao | null>(null);
   const [focoC, setFocoC] = useState<number | null>(null);
   const moldura = useRef<HTMLIFrameElement | null>(null);
-  const verMargem = comentavel && (margem ?? (coments.abertos > 0 || compondo != null));
+  const verMargem = comentavel && (margem ?? false);
   const grifar = useCallback(() => enviarGrifos(moldura.current, coments.comentarios), [coments]);
   useEffect(() => { grifar(); }, [grifar]);
   useEffect(() => {
     const f = (ev: MessageEvent) => {
       if (!moldura.current || ev.source !== moldura.current.contentWindow) return;
-      const d = ev.data as { atelier?: string; trecho?: string; antes?: string; depois?: string; id?: number } | null;
+      const d = ev.data as { atelier?: string; trecho?: string; antes?: string; depois?: string; comentario?: string; id?: number } | null;
       if (!d || typeof d !== "object") return;
-      if (d.atelier === "comentar" && typeof d.trecho === "string") {
-        setCompondo({ trecho: d.trecho, antes: d.antes ?? "", depois: d.depois ?? "" });
-        setMargem(true);
+      if (d.atelier === "comentar" && typeof d.trecho === "string" && d.comentario?.trim()) {
+        // escrito na caixinha dentro do texto: já salva (a lista nova volta para a moldura e vira grifo)
+        mexer("criar", { trecho: d.trecho, antes: d.antes ?? "", depois: d.depois ?? "", comentario: d.comentario }).then((r) => {
+          if (r?.id != null) setFocoC(r.id);
+        });
       } else if (d.atelier === "comentario-clicado" && typeof d.id === "number") {
+        // o comentário aparece no próprio grifo; a lista do lado só abre pelo botão
         setFocoC(d.id);
-        setMargem(true);
       } else if (d.atelier === "comentar-pronto") grifar();
     };
     window.addEventListener("message", f);
     return () => window.removeEventListener("message", f);
-  }, [grifar]);
-  const irPara = (id: number) => { setFocoC(id); moldura.current?.contentWindow?.postMessage({ atelier: "ir", id }, "*"); };
+  }, [grifar, mexer]);
+  // na lista, clicar no aberto recolhe de novo; nos outros, abre e leva ao trecho
+  const irPara = (id: number) => {
+    if (focoC === id) { setFocoC(null); return; }
+    setFocoC(id);
+    moldura.current?.contentWindow?.postMessage({ atelier: "ir", id }, "*");
+  };
 
   if (!info) return <div className="vazio-grande">Abrindo…</div>;
   // CSV/TSV abre como tabela; "Editar" volta para o texto. Texto abre para ler (e comentar); "Editar" edita.
@@ -449,7 +455,7 @@ function Previa({ caminho, aoVoltar, aoVerChecklist }: { caminho: string; aoVolt
         )}
       </div>
       {verMargem && (
-        <MargemComentarios dados={coments} compondo={compondo} aoCancelar={() => setCompondo(null)} mexer={mexer} foco={focoC} aoIr={irPara} />
+        <MargemComentarios dados={coments} mexer={mexer} foco={focoC} aoIr={irPara} />
       )}
       </div>
     </div>

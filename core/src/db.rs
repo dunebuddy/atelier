@@ -770,7 +770,7 @@ pub fn abrir_em_memoria() -> Connection {
     c
 }
 
-fn migrar(conn: &Connection) -> Res<()> {
+pub(crate) fn migrar(conn: &Connection) -> Res<()> {
     let versao: usize = conn.query_row("PRAGMA user_version", [], |r| r.get::<_, i64>(0))? as usize;
     for (i, sql) in MIGRACOES.iter().enumerate().skip(versao) {
         let tx = conn.unchecked_transaction()?;
@@ -1468,11 +1468,12 @@ fn sql_filtro(f: &Filtro, sql: &mut String, args: &mut Vec<Box<dyn rusqlite::ToS
     if let Some(q) = f.texto.as_ref().filter(|s| !s.trim().is_empty()) {
         // pedaço no meio da palavra (LIKE), código, ou palavras em qualquer lugar do item e das notas, sem
         // diferenciar acento (FTS5: "pendencia" acha "pendência")
-        sql.push_str(" AND (itens.titulo LIKE ? OR itens.corpo LIKE ? OR itens.codigo = ?");
+        // o código também por pedaço: os 3 últimos dígitos já acham o documento (com ou sem o #)
+        sql.push_str(" AND (itens.titulo LIKE ? OR itens.corpo LIKE ? OR itens.codigo LIKE ?");
         let like = format!("%{}%", q.trim());
         args.push(Box::new(like.clone()));
         args.push(Box::new(like));
-        args.push(Box::new(q.trim().trim_start_matches('#').to_lowercase()));
+        args.push(Box::new(format!("%{}%", q.trim().trim_start_matches('#').to_lowercase())));
         // cada palavra tem de estar em algum lugar do item (título, texto ou alguma nota)
         let termos = termos_fts(q);
         if !termos.is_empty() {
@@ -2309,8 +2310,13 @@ mod testes {
             assert_eq!(id_por_codigo(&c, &format!("#{}", it.codigo.to_uppercase())).unwrap(), id);
         }
         let um = ler_item(&c, 1).unwrap().codigo;
-        let r = listar_itens(&c, &Filtro { texto: Some(um), ..Default::default() }).unwrap();
+        let r = listar_itens(&c, &Filtro { texto: Some(um.clone()), ..Default::default() }).unwrap();
         assert_eq!(r.len(), 1);
+        // pedaço do código (os 3 últimos dígitos, com ou sem #) também acha
+        for q in [um[4..].to_string(), format!("#{}", &um[4..].to_uppercase())] {
+            let r = listar_itens(&c, &Filtro { texto: Some(q.clone()), ..Default::default() }).unwrap();
+            assert!(r.iter().any(|i| i.id == 1), "{q}");
+        }
     }
 
     #[test]

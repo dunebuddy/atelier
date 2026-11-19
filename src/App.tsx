@@ -23,6 +23,7 @@ import { cliqueNoOutro, Contexto, PainelTrabalho } from "./components/Painel";
 import * as P from "./painel";
 import { EstadoPainel, janelaAtiva, rotaDe } from "./painel";
 import { avisar, falhou, guardar, ler, Rota, Tema } from "./ui";
+import { AposentarWorkspace } from "./components/Aposentar";
 import type { Lugar } from "./components/JanelaSolta";
 
 type Devolvida = { rota: Rota; de?: Lugar | null };
@@ -297,6 +298,27 @@ export default function App() {
   };
   // toda troca pergunta antes, seja o Paulo clicando, seja o agente pedindo
   const [pedidoTroca, setPedidoTroca] = useState<{ caminho: string; nome: string; doAgente: boolean } | null>(null);
+  // cold storage: arquivar à mão o workspace de um documento aposenta a pasta dele (ver Aposentar.tsx); o arquivar
+  // sozinho dos parados só tira da lista (não tem ninguém para responder a checagem dos arquivos grandes)
+  const [aposentando, setAposentando] = useState<string | null>(null);
+  const arquivarWs = (k: string) => {
+    if (!ws || !W.desligado(ws, k) || W.itemDa(k) == null) { setWs((w) => (w ? W.arquivar(w, k) : w)); return; }
+    setAposentando(k);
+  };
+  // reabrir (ou desarquivar) um workspace arquivado descompacta a pasta de volta, venha de onde vier o pedido
+  const arquivadosAntes = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!ws) return;
+    const agora = new Set(Object.keys(ws.info).filter((k) => ws.info[k]?.arquivado));
+    for (const k of arquivadosAntes.current) {
+      const id = W.itemDa(k);
+      if (agora.has(k) || id == null || !ws.estados[k]) continue;
+      api.restaurarPasta(id)
+        .then((r) => r.restaurada && avisar(`Pasta de “${ws.info[k]?.titulo ?? k}” de volta do cold storage (${r.arquivos} arquivos).`))
+        .catch(falhou);
+    }
+    arquivadosAntes.current = agora;
+  }, [ws?.info]); // eslint-disable-line react-hooks/exhaustive-deps
   const trocarBancada = (caminho: string) => {
     const b = bancadas?.bancadas.find((x) => mesmaBancada(x.caminho, caminho));
     setPedidoTroca({ caminho, nome: b?.nome ?? caminho, doAgente: false });
@@ -732,7 +754,7 @@ export default function App() {
             fechar={(k) => setWs((w) => (w ? W.fechar(w, k) : w))}
             esquecer={(k) => setWs((w) => (w ? W.esquecer(w, k) : w))}
             renomear={(k, n) => setWs((w) => (w ? W.renomear(w, k, n) : w))}
-            arquivar={(k) => setWs((w) => (w ? W.arquivar(w, k) : w))}
+            arquivar={arquivarWs}
             desarquivar={(k) => setWs((w) => (w ? W.desarquivar(w, k) : w))}
           />
         }
@@ -808,7 +830,7 @@ export default function App() {
           aoFechar={() => setVerWs(false)}
           fecharWs={(k) => setWs((w) => (w ? W.fechar(w, k) : w))}
           renomear={(k, n) => setWs((w) => (w ? W.renomear(w, k, n) : w))}
-          arquivar={(k) => setWs((w) => (w ? W.arquivar(w, k) : w))}
+          arquivar={arquivarWs}
           desarquivar={(k) => setWs((w) => (w ? W.desarquivar(w, k) : w))}
           esquecer={(k) => setWs((w) => (w ? W.esquecer(w, k) : w))}
         />
@@ -817,6 +839,14 @@ export default function App() {
       <SeloDoisTempos />
       <PedidoDoAgente />
       {esquema && <JanelaSegredo esquema={esquema} wsItem={ws ? W.itemDa(ws.ativo) : null} />}
+      {aposentando && (
+        <AposentarWorkspace
+          id={W.itemDa(aposentando)!}
+          titulo={ws?.info[aposentando]?.titulo ?? aposentando}
+          aoArquivar={() => { const k = aposentando; setWs((w) => (w ? W.arquivar(w, k) : w)); }}
+          aoFechar={() => setAposentando(null)}
+        />
+      )}
       {pedidoTroca && (
         <div className="modal-fundo" onMouseDown={(e) => e.target === e.currentTarget && setPedidoTroca(null)}>
           <div className="modal confirmar-bancada">

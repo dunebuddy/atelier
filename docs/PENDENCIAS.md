@@ -22,6 +22,9 @@ Como usar:
 > 0.2.7). Pedido novo entra aqui.
 
 ### Bugs
+- **Busca por propriedades que identificam** (2026-11-19, do mesmo pedido da busca: "pelo ID, pelo título... essas
+  coisas que identificam bem o documento"): hoje o texto casa com código, título e conteúdo; valores de propriedade
+  (sigla, ID externo) ainda não. A conferir com o Paulo se precisa.
 ### Melhorias pedidas
 
 ### Ideias antigas (ninguém pediu agora)
@@ -32,6 +35,9 @@ Como usar:
 - Atalhos em dois tempos configuráveis (hoje a segunda tecla é fixa; a lista está em Atalhos, Ctrl+/).
 
 ### A conferir no uso
+- **0.2.29 no app instalado:** o Claude Code de verdade no terminal (emoji, resize) e o `OpenConsole.exe` ao lado do
+  `atelier.exe` depois da atualização; colar imagem (Ctrl+V com print na área de transferência); arquivar um workspace
+  de verdade (caixa dos arquivos grandes, Lixeira, zip em `aposentados/`) e reabrir.
 - **0.2.22 no app de verdade** (o teste sem janela não tem Tauri nem o Credential Manager): o cofre criando a chave
   no Credential Manager (aparece como `atelier-cofre` em Credenciais do Windows), o pedido do agente pelo MCP real
   (`segredo` ler), a janelinha destacada com "sempre por cima", o Ctrl+K no WebView2, e um link de arquivo
@@ -56,8 +62,52 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.29** (2026-11-19) · Os pedidos do dia (o Paulo: "pega tudo que a gente conversou hoje e fecha uma versão"):
+  - **Terminal sem letra trocada nem linha sobreposta com emoji** (print do Paulo: script Python com 🔧 📊 ⚙️ ✅;
+    "Versãd coraeta", "Dadoi carregad"; "testa vários casos, pesquisa, e quando disser 'achei, nunca mais vai
+    acontecer', a gente ajusta").
+    - **Causa:** o ConPTY **do Windows** não repassa a saída do programa: redesenha a tela com movimentos de cursor
+      pela conta de largura dele, em que cada codepoint ocupa a própria coluna, até os invisíveis (⚙️ = 2, ✅️ = 3,
+      👨‍💻 = 5, 🇧🇷 = 4; medido com `[Console]::CursorLeft` em ~20 mil caracteres). Conta diferente da do xterm: letra
+      no lugar errado.
+    - **Por que a 0.2.28 errou:** o script de 18/11 não ligava `[Console]::OutputEncoding` em UTF-8, o .NET trocava
+      cada emoji por "?" antes de escrever, e a "medição" era do "?". A 0.2.28 piorou o que queria corrigir.
+    - **Solução (o que o VS Code e o wezterm fazem):** o instalador do Windows leva o ConPTY novo da Microsoft
+      (`src-tauri/conpty/`: `conpty.dll` + `OpenConsole.exe` 1.25.261109001 do NuGet oficial, MIT, assinados) ao lado
+      do `atelier.exe` (`tauri.windows.conf.json`; o build já os põe em `target/debug/`). O `portable-pty` carrega essa
+      dll antes da do sistema, e ela **repassa a saída sem redesenhar**. O xterm conta por grapheme (`src/larguras.ts`,
+      a conta do Claude Code). O núcleo diz qual ConPTY está em uso (`/api/terminal/conpty`: novo, sistema ou nenhum);
+      sem os arquivos, a tela usa a tabela medida do ConPTY do sistema. **Linux:** sem ConPTY (a saída passa direto),
+      conta por grapheme, os arquivos não vão no pacote.
+    - **Bateria** (`scripts/terminal/`: `cena.py` sorteia logs com emoji, barra com `\r`, quebra de linha e cor, e
+      devolve a saída crua; `comparador.js` compara o que o xterm mostra; `tabela.ps1` mede o ConPTY):
+
+      | ConPTY | Unicode 11 (até 0.2.27) | tabela da 0.2.28 | "cada codepoint" | graphemes (agora) |
+      |---|---|---|---|---|
+      | do Windows, saída comum | 31/357 linhas erradas | 43/357 | 1/325 | — |
+      | novo, saída comum | 0/357 | — | 0/331 | **0/618** |
+      | novo, app de tela (estilo Claude Code) | 12/22 | — | 7/22 | **0/123** |
+
+      Também conferido no terminal da tela de teste (Python com emoji, sem letra solta).
+    - **A conferir no app instalado:** o Claude Code de verdade, resize, e um terminal aberto antes da atualização (fica
+      no ConPTY em que nasceu até fechar).
+  - **Colar imagem no Claude Code:** com só imagem na área de transferência, o Ctrl+V do terminal manda a tecla com que
+    o Claude Code lê a imagem (Alt+V no Windows, Ctrl+V nos outros). Antes nada chegava ao programa.
+  - **Busca pelo pedaço do código:** os 3 últimos dígitos (com ou sem `#`) já acham o documento, na busca das visões e
+    no `buscar` do MCP (`codigo LIKE`, teste no core). Título e texto já casavam por pedaço.
+  - **Ctrl+Enter no terminal quebra a linha** (o Paulo: "não funciona lá, mesmo tendo configurado"; escolheu "quebra a
+    linha"): manda ESC + Enter, como o Shift+Enter. O xterm mandava igual ao Enter.
+  - **Cold storage dos workspaces** (o Paulo: "quando eu arquivasse o workspace, ele compactasse o conteúdo... e a
+    pasta saia da pasta de trabalhos"; decisões dele: `<bancada>/aposentados/`, Lixeira, o automático só tira da lista,
+    reabrir descompacta). Arquivar à mão o workspace de um documento mostra quanto a pasta ocupa e os arquivos acima de
+    5 MB ("quer manter?": os marcados vão para a Lixeira); confirmado, a pasta vira
+    `<bancada>/aposentados/<código>-<título>.zip` (com as subpastas, mesmo vazias) e sai de `itens/`, com nota na linha
+    do tempo. Pasta em uso (terminal ou arquivo aberto) não muda nada e avisa. Reabrir ou desarquivar descompacta de
+    volta. `buscar_aposentados` (MCP) e `/api/aposentados/busca` procuram no nome e dentro dos arquivos de texto do
+    zip, sem descompactar. `core/src/aposentar.rs` (testes: aposentar, procurar, restaurar, pasta recriada vazia),
+    `src/components/Aposentar.tsx`. O banco não muda.
 - **0.2.28** (2026-11-18) · Os pedidos do dia (o Paulo: "fecha a versão com tudo da lista"):
-  - **Terminal sem letra solta nem quebra no lugar errado:** o ConPTY conta ✅ ✨ ⚡ ❌ ⭐ (U+2000–U+2BFF) como 1 coluna e
+  - **Terminal sem letra solta nem quebra no lugar errado** (errado, medição sem UTF-8: desfeito na 0.2.29): o ConPTY conta ✅ ✨ ⚡ ❌ ⭐ (U+2000–U+2BFF) como 1 coluna e
     o xterm contava 2; agora o xterm conta igual. Também `windowsPty` e resize só quando o tamanho muda.
   - **Comentários:** selecionar abre a caixinha ali no texto (Enter salva); o grifo mostra o comentário com o mouse e
     prende ao clicar; a lista da margem fica recolhida (uma linha cada) e só abre pelo botão.

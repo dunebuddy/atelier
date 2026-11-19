@@ -1,6 +1,6 @@
 [package]
 name = "atelier-core"
-version = "0.2.28"
+version = "0.2.29"
 edition = "2024"
 
 [dependencies]
@@ -22,6 +22,9 @@ chrono = { version = "0.4", default-features = false, features = ["clock"] }
 rust_xlsxwriter = "0.79"
 sysinfo = { version = "0.40.1", default-features = false, features = ["system"] }
 getrandom = "0.2"
+# cold storage dos workspaces: a pasta aposentada vira zip; os arquivos grandes que o Paulo dispensa vão para a Lixeira
+zip = { version = "2", default-features = false, features = ["deflate"] }
+trash = "5"
 
 [target.'cfg(windows)'.dependencies]
 # terminal que mata a árvore inteira (Job Object) e iniciar com o sistema (chave Run); a mesma versão do Tauri

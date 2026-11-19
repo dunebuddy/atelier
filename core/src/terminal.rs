@@ -41,6 +41,24 @@ pub async fn programas() -> Json<Value> {
     Json(r)
 }
 
+/// Qual ConPTY os terminais usam, para a tela contar a largura dos caracteres igual a ele:
+/// - "novo": `conpty.dll` + `OpenConsole.exe` ao lado do exe (o instalador do Windows leva os dois; ver
+///   `src-tauri/conpty/LEIAME.md`). O `portable-pty` carrega essa dll antes da do sistema; ela repassa a saída do
+///   programa sem redesenhar e conta por grapheme.
+/// - "sistema": o ConPTY do Windows, que redesenha a tela contando cada codepoint numa coluna.
+/// - "nenhum": fora do Windows (PTY de verdade, a saída passa direto).
+pub fn conpty() -> &'static str {
+    if !cfg!(windows) {
+        return "nenhum";
+    }
+    let pasta = std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.to_path_buf()));
+    // só a dll não basta: sem o OpenConsole.exe ao lado ela cai no conhost do sistema
+    match pasta {
+        Some(p) if p.join("conpty.dll").is_file() && p.join("OpenConsole.exe").is_file() => "novo",
+        _ => "sistema",
+    }
+}
+
 fn shell() -> (String, bool) {
     if cfg!(windows) {
         let pwsh = crate::integracoes::no_path("pwsh");

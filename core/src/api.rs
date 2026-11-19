@@ -196,6 +196,9 @@ pub fn rotas(banco: Banco) -> Router {
         .route("/api/itens/{id}", get(ler_item).patch(atualizar_item).delete(apagar_item))
         .route("/api/itens/{id}/notas", post(anotar))
         .route("/api/itens/{id}/pasta", post(criar_pasta))
+        .route("/api/itens/{id}/aposentar", get(analisar_aposentar).post(aposentar))
+        .route("/api/itens/{id}/restaurar-pasta", post(restaurar_pasta))
+        .route("/api/aposentados/busca", get(buscar_aposentados))
         .route("/api/itens/{id}/arquivos", get(arquivos_do_item).post(trazer_arquivos))
         .route("/api/abrir-arquivo", post(abrir_arquivo))
         .route("/api/explorar", get(crate::explorador::explorar))
@@ -208,6 +211,7 @@ pub fn rotas(banco: Banco) -> Router {
         .route("/api/relatorios", post(salvar_relatorio))
         .route("/api/terminal", get(crate::terminal::terminal))
         .route("/api/terminal/programas", get(crate::terminal::programas))
+        .route("/api/terminal/conpty", get(|| async { Json(serde_json::json!({ "conpty": crate::terminal::conpty() })) }))
         .route("/api/notas/{id}", patch(editar_nota).delete(apagar_nota))
         .route("/api/notas/{id}/restaurar", post(restaurar_nota))
         .route("/api/notas/{id}/versoes", get(versoes_nota))
@@ -794,6 +798,39 @@ async fn criar_pasta(State(b): State<Banco>, Path(id): Path<i64>) -> R {
     let banc = b.bancada_ativa().ok_or(Erro::Invalido("nenhuma bancada aberta".into()))?;
     let caminho = com(&b, |c| crate::pastas::criar(c, std::path::Path::new(&banc.caminho), &banc.nome, id, "Paulo"))?;
     Ok(Json(json!({ "pasta": caminho })))
+}
+
+/// Cold storage (ver `aposentar`): o que a tela mostra antes de arquivar o workspace (tamanho, arquivos grandes).
+async fn analisar_aposentar(State(b): State<Banco>, Path(id): Path<i64>) -> R {
+    let banc = b.bancada_ativa().ok_or(Erro::Invalido("nenhuma bancada aberta".into()))?;
+    let r = com(&b, |c| crate::aposentar::analisar(c, std::path::Path::new(&banc.caminho), id))?;
+    Ok(Json(r))
+}
+
+/// Compacta a pasta do documento em `<bancada>/aposentados/`; `remover` vai para a Lixeira.
+async fn aposentar(State(b): State<Banco>, Path(id): Path<i64>, Json(d): Json<Value>) -> R {
+    let banc = b.bancada_ativa().ok_or(Erro::Invalido("nenhuma bancada aberta".into()))?;
+    let remover: Vec<String> = d.get("remover").and_then(|v| v.as_array()).map(|l| l.iter().filter_map(|x| x.as_str().map(String::from)).collect()).unwrap_or_default();
+    let r = com(&b, |c| crate::aposentar::aposentar(c, std::path::Path::new(&banc.caminho), id, &remover, "Paulo"))?;
+    Ok(Json(r))
+}
+
+/// Descompacta a pasta de volta (ao reabrir o workspace).
+async fn restaurar_pasta(State(b): State<Banco>, Path(id): Path<i64>) -> R {
+    let banc = b.bancada_ativa().ok_or(Erro::Invalido("nenhuma bancada aberta".into()))?;
+    let r = com(&b, |c| crate::aposentar::restaurar(c, std::path::Path::new(&banc.caminho), id, "Paulo"))?;
+    Ok(Json(r))
+}
+
+/// Procura texto no conteúdo aposentado (nome e dentro dos arquivos de texto), sem descompactar.
+async fn buscar_aposentados(State(b): State<Banco>, Query(q): Query<std::collections::HashMap<String, String>>) -> R {
+    let banc = b.bancada_ativa().ok_or(Erro::Invalido("nenhuma bancada aberta".into()))?;
+    let texto = q.get("q").cloned().unwrap_or_default();
+    let limite = q.get("limite").and_then(|l| l.parse().ok()).unwrap_or(100);
+    let r = tokio::task::spawn_blocking(move || crate::aposentar::buscar(std::path::Path::new(&banc.caminho), &texto, limite))
+        .await
+        .map_err(|e| Erro::Invalido(e.to_string()))??;
+    Ok(Json(r))
 }
 
 /// Abre a pasta no gerenciador de arquivos (Explorer no Windows, xdg-open no Linux); cria se não existir.

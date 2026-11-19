@@ -403,6 +403,14 @@ fn ferramentas() -> Value {
             "inputSchema": { "type": "object", "properties": { "id": ID } }
         },
         {
+            "name": "buscar_aposentados",
+            "description": "Procura um texto no conteúdo APOSENTADO (cold storage): quando o usuário arquiva um workspace, a pasta do documento vira um zip em <bancada>/aposentados/<código>-<título>.zip e sai de itens/. Procura no nome dos arquivos e dentro dos arquivos de texto (até 5 MB), sem descompactar; devolve zip, código do documento, arquivo, linha e trecho. Para trabalhar de novo na pasta, o usuário reabre o workspace (descompacta de volta).",
+            "inputSchema": { "type": "object", "properties": {
+                "texto": { "type": "string", "description": "o que procurar (sem diferenciar maiúsculas)" },
+                "limite": { "type": "integer", "description": "máximo de achados (padrão 100)" }
+            }, "required": ["texto"] }
+        },
+        {
             "name": "segredos",
             "description": "Cofre de segredos da bancada (criptografado): lista os segredos SEM o valor (id, nome, descrição, chave, documento). Filtros: documento (código: só os dele; com descendentes: true, também os dos filhos, netos...) e busca (no nome, descrição ou chave). Para usar o valor, `segredo` ação ler.",
             "inputSchema": { "type": "object", "properties": {
@@ -1524,6 +1532,11 @@ fn chamar(nome: &str, a: &Value, autor: &str) -> Result<Value, String> {
                 outra => Err(format!("ação desconhecida: {outra:?} (formato, ler, marcar ou valor)")),
             }
         }
+        "buscar_aposentados" => {
+            let texto = s(a, "texto").unwrap_or("");
+            let limite = a.get("limite").and_then(|v| v.as_u64()).unwrap_or(100) as usize;
+            atelier_core::aposentar::buscar(std::path::Path::new(&banc.caminho), texto, limite).map_err(e)
+        }
         "espaco_em_disco" => {
             use std::path::PathBuf;
             let legivel = |n: u64| if n >= 1 << 30 { format!("{:.1} GB", n as f64 / (1u64 << 30) as f64) } else { format!("{:.0} MB", n as f64 / (1u64 << 20) as f64) };
@@ -1616,7 +1629,7 @@ sem repetir na conversa. `segredos` lista sem os valores. Ver e copiar segredo o
         ("relacoes", "Ligações entre documentos (pai, bloqueio...) são propriedades da espécie relacao, criadas pelo usuário. \
 Use `esquema` para ver quais existem e `relacionar` para ligar. Antes de criar documento, `buscar` para ver se já existe."),
         ("workspace", "Cada documento tem um workspace (um painel só dele) e a bancada tem o seu. `tela` acao \"workspace\" com \
-codigo abre o do documento. O terminal de um agente vive no workspace onde foi aberto, e o que o agente pede à tela vale ali."),
+codigo abre o do documento. O terminal de um agente vive no workspace onde foi aberto, e o que o agente pede à tela vale ali. Quando o usuário arquiva o workspace, a pasta do documento é aposentada (cold storage): vira um zip em <bancada>/aposentados/<código>-<título>.zip e sai de itens/. Para procurar algo antigo: `buscar_aposentados`. Reabrir o workspace descompacta a pasta de volta."),
     ];
     match assunto.map(|a| a.trim().to_lowercase()) {
         Some(a) if !a.is_empty() => match ASSUNTOS.iter().find(|(n, _)| *n == a || n.starts_with(a.as_str())) {

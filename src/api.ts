@@ -294,6 +294,12 @@ export const api = {
   lista: (codigo: string, config: Record<string, unknown>) => req<Item[]>("POST", "/lista", { codigo, config }),
   abrirPasta: (caminho: string, com = "arquivos") => req<{ ok: boolean; pasta?: boolean }>("POST", "/abrir-pasta", { caminho, com }),
   criarPasta: (id: number) => req<{ pasta: string }>("POST", `/itens/${id}/pasta`),
+  /** Cold storage: o que a pasta do documento tem antes de aposentar (tamanho, arquivos grandes). */
+  analisarAposentar: (id: number) => req<AnaliseAposentar>("GET", `/itens/${id}/aposentar`),
+  /** Compacta a pasta em <bancada>/aposentados/ e tira de itens/; `remover` vai para a Lixeira. */
+  aposentar: (id: number, remover: string[]) => req<ResultadoAposentar>("POST", `/itens/${id}/aposentar`, { remover }),
+  /** Descompacta a pasta aposentada de volta (ao reabrir o workspace). */
+  restaurarPasta: (id: number) => req<{ restaurada: boolean; arquivos?: number }>("POST", `/itens/${id}/restaurar-pasta`),
   arquivos: (id: number) => req<Arquivo[]>("GET", `/itens/${id}/arquivos`),
   trazerArquivos: (id: number, caminhos: string[], destino = "insumos") =>
     req<{ copiados: string[] }>("POST", `/itens/${id}/arquivos`, { caminhos, destino }),
@@ -631,4 +637,27 @@ export interface Segredo {
   documento: string | null;
   criado_em: string;
   atualizado_em: string;
+}
+
+export interface AnaliseAposentar {
+  pasta: string | null;
+  existe?: boolean;
+  aposentada?: boolean;
+  zip?: string;
+  bytes?: number;
+  arquivos?: number;
+  grandes?: { caminho: string; bytes: number }[];
+  limite?: number;
+}
+
+export interface ResultadoAposentar {
+  aposentada: boolean;
+  motivo?: string;
+  zip?: string;
+  arquivos?: number;
+  bytes?: number;
+  bytes_zip?: number;
+  lixeira?: number;
+  bytes_lixeira?: number;
+  aviso?: string | null;
 }

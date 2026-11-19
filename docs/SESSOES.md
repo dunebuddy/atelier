@@ -701,3 +701,19 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   motivo. Fechada a **0.2.28** a pedido do Paulo (tag e push sem perguntar; depois desligar a máquina).
 - A conferir no app instalado: o terminal com agentes (✅ na linha), o expandido seguindo o foco, a caixinha de
   comentar com o mouse de verdade.
+
+## 2026-11-19 — 0.2.29: terminal com o ConPTY novo, colar imagem, Ctrl+Enter, busca pelo código e cold storage
+- O Paulo mostrou o terminal ainda embaralhando com emoji. A medição de 18/11 estava errada (sem
+  `[Console]::OutputEncoding` UTF-8 o .NET troca emoji por "?"), e a 0.2.28 piorou. Medido de novo, pesquisado (VS
+  Code, wezterm, microsoft/terminal) e montada uma bateria (`scripts/terminal/`). Solução, já no código: ConPTY novo
+  da Microsoft (`src-tauri/conpty/`, NuGet 1.25.261109001, baixado com ok do Paulo) ao lado do exe pelo
+  `tauri.windows.conf.json`, `/api/terminal/conpty` e `src/larguras.ts` (graphemes; tabela do ConPTY do sistema se os
+  arquivos faltarem). `bun run teste` copia os dois arquivos para o servidor de teste. 0 linhas erradas na bateria.
+- Colar imagem: `paste` do terminal manda Alt+V (Windows) / Ctrl+V quando só há imagem. Busca: código por pedaço.
+- Testado: 46 testes do core, tsc, `cargo build -p atelier` (os arquivos vão para `target/debug/`), terminal da tela
+  de teste. **Não visto:** instalador NSIS de verdade, Claude Code real no app, colar imagem com imagem de verdade.
+- Ctrl+Enter quebra a linha (escolha do Paulo). Cold storage: arquivar à mão o workspace de um documento compacta a
+  pasta em `<bancada>/aposentados/` (caixa com os arquivos > 5 MB: os marcados vão para a Lixeira), reabrir
+  descompacta, `buscar_aposentados` no MCP. Testado na tela de teste (arquivar, zip, busca, reabrir) e no core.
+- Fechada a **0.2.29** a pedido do Paulo ("fecha a versão, manda pro CI... confere que o CI está rodando e desliga o
+  computador, não me pergunta"). Ficou na caixa de entrada: busca por valores de propriedade.

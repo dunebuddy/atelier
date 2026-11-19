@@ -3,6 +3,7 @@
 //   bun run teste            dados em <temp>/atelier-teste
 //   bun run teste <pasta>    dados na pasta dada (ATELIER_HOME)
 import { spawn } from "node:child_process";
+import { copyFileSync, mkdirSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -19,6 +20,14 @@ const env = {
   ATELIER_VITE_PORTA: String(TELA),
   VITE_ATELIER_API: `http://127.0.0.1:${API}/api`,
 };
+// no Windows, o ConPTY novo ao lado do servidor de teste, como o instalador faz com o app (src-tauri/conpty/LEIAME.md)
+if (process.platform === "win32") {
+  const destino = path.join("target", "debug", "examples");
+  mkdirSync(destino, { recursive: true });
+  for (const f of ["conpty.dll", "OpenConsole.exe"]) {
+    try { copyFileSync(path.join("src-tauri", "conpty", f), path.join(destino, f)); } catch (e) { console.warn(`não copiei ${f}: ${e.message}`); }
+  }
+}
 const filhos = [
   spawn("cargo", ["run", "-q", "-p", "atelier-core", "--example", "servidor"], { env, stdio: "inherit", shell: true }),
   spawn("bun", ["x", "vite"], { env, stdio: "inherit", shell: true }),

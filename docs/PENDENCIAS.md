@@ -13,7 +13,9 @@ Como usar:
 
 ## Próxima versão
 
-(vazio — escolher da caixa de entrada)
+- **Ctrl+V na caixinha de comentar** (2026-11-20, o Paulo: usa o Rend, que cola o ditado com Ctrl+V). Feito no
+  código: o repasse de teclas da moldura (`src/moldura.ts`) bloqueava todo Ctrl+tecla; agora Ctrl+V/X/Z/Y passam
+  quando o foco está num campo de texto.
 
 ## Caixa de entrada
 

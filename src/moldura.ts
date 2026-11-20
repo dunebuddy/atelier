@@ -15,6 +15,7 @@ export function repasseDaMoldura(): string {
 addEventListener("keydown",function(e){var f=/^F\\d+$/.test(e.key);
 if(!(e.ctrlKey||e.altKey||e.metaKey||f||e.key==="Escape"))return;
 if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&/^[ac]$/i.test(e.key))return;
+var t=e.target;if(t&&(t.tagName==="TEXTAREA"||t.tagName==="INPUT"||t.isContentEditable)&&(e.ctrlKey||e.metaKey)&&!e.altKey&&/^[vxzy]$/i.test(e.key))return;
 if(f||e.ctrlKey||e.metaKey)e.preventDefault();
 p.postMessage({atelier:"tecla",key:e.key,code:e.code,ctrlKey:e.ctrlKey,altKey:e.altKey,shiftKey:e.shiftKey,metaKey:e.metaKey},"*")},true);
 addEventListener("mousedown",function(){p.postMessage({atelier:"clique"},"*")},true);

@@ -717,3 +717,9 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   descompacta, `buscar_aposentados` no MCP. Testado na tela de teste (arquivar, zip, busca, reabrir) e no core.
 - Fechada a **0.2.29** a pedido do Paulo ("fecha a versão, manda pro CI... confere que o CI está rodando e desliga o
   computador, não me pergunta"). Ficou na caixa de entrada: busca por valores de propriedade.
+
+## 2026-11-20 — Ctrl+V na caixinha de comentar
+- O Paulo não conseguia colar (Ctrl+V, e o Rend cola o ditado assim) na caixinha de comentar. Causa: o repasse de
+  teclas da moldura (`repasseDaMoldura`, `src/moldura.ts`) dava `preventDefault` em todo Ctrl+tecla menos A/C.
+  Agora Ctrl+V/X/Z/Y seguem para o campo quando o foco está num textarea/input/contenteditable (não repassa ao app).
+  Testado: tsc e simulação do script (textarea passa, fora do campo segue repassando). **Não visto** no app instalado.

@@ -723,3 +723,4 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   teclas da moldura (`repasseDaMoldura`, `src/moldura.ts`) dava `preventDefault` em todo Ctrl+tecla menos A/C.
   Agora Ctrl+V/X/Z/Y seguem para o campo quando o foco está num textarea/input/contenteditable (não repassa ao app).
   Testado: tsc e simulação do script (textarea passa, fora do campo segue repassando). **Não visto** no app instalado.
+- Fechada a **0.2.30** só com essa correção (escolha do Paulo); a busca por valores de propriedade segue na caixa.

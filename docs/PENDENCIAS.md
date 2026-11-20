@@ -13,9 +13,7 @@ Como usar:
 
 ## Próxima versão
 
-- **Ctrl+V na caixinha de comentar** (2026-11-20, o Paulo: usa o Rend, que cola o ditado com Ctrl+V). Feito no
-  código: o repasse de teclas da moldura (`src/moldura.ts`) bloqueava todo Ctrl+tecla; agora Ctrl+V/X/Z/Y passam
-  quando o foco está num campo de texto.
+(vazio — escolher da caixa de entrada)
 
 ## Caixa de entrada
 
@@ -64,6 +62,10 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.30** (2026-11-20) · Só a correção (escolha do Paulo; a busca por valores de propriedade ficou):
+  - **Ctrl+V na caixinha de comentar** (2026-11-20, o Paulo: usa o Rend, que cola o ditado com Ctrl+V). Feito no
+    código: o repasse de teclas da moldura (`src/moldura.ts`) bloqueava todo Ctrl+tecla; agora Ctrl+V/X/Z/Y passam
+    quando o foco está num campo de texto.
 - **0.2.29** (2026-11-19) · Os pedidos do dia (o Paulo: "pega tudo que a gente conversou hoje e fecha uma versão"):
   - **Terminal sem letra trocada nem linha sobreposta com emoji** (print do Paulo: script Python com 🔧 📊 ⚙️ ✅;
     "Versãd coraeta", "Dadoi carregad"; "testa vários casos, pesquisa, e quando disser 'achei, nunca mais vai

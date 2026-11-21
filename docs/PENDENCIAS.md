@@ -22,16 +22,9 @@ Como usar:
 > 0.2.7). Pedido novo entra aqui.
 
 ### Bugs
-- **Busca por propriedades que identificam** (2026-11-19, do mesmo pedido da busca: "pelo ID, pelo título... essas
-  coisas que identificam bem o documento"): hoje o texto casa com código, título e conteúdo; valores de propriedade
-  (sigla, ID externo) ainda não. A conferir com o Paulo se precisa.
 ### Melhorias pedidas
 ### Ideias antigas (ninguém pediu agora)
 - Migrar o posto `daily-work` para dentro do atelier (é trabalho no outro repositório, não aqui).
-- Cofre: exportar a chave com uma senha (para levar a bancada com o cofre para outro computador).
-- Cofre: "Guardar no cofre" num trecho selecionado no editor do documento (hoje: a parte Segredos da página, a tela
-  Cofre, o cadeado do checklist e o agente com `segredo` guardar).
-- Atalhos em dois tempos configuráveis (hoje a segunda tecla é fixa; a lista está em Atalhos, Ctrl+/).
 
 ### A conferir no uso
 - **0.2.29 no app instalado:** o Claude Code de verdade no terminal (emoji, resize) e o `OpenConsole.exe` ao lado do
@@ -61,7 +54,44 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
-- **Fora de versão** (2026-11-21) · Script de instalação no Linux (o Paulo, instalando no Fedora: "massa era
+- **0.2.31** (2026-11-21) · O que estava na caixa de entrada (o Paulo: "vamos incluir também esses que
+  ficaram de fora... para não ficar nenhuma pendência"):
+  - **Busca pelos valores das propriedades:** o texto da busca também casa com os valores de texto das propriedades
+    (sigla, ID externo, URL, itens de lista), pelo `json_tree` de `itens.props`; as chaves e números soltos não.
+  - **Documento da bancada:** bancada nova nasce com um documento do tipo Bancada, com o nome dela e a pasta no
+    padrão (insumos, artefatos, CLAUDE.md), para começar a trabalhar sem inventar um projeto. Não vira pai de nada;
+    as bancadas que já existiam ficam como estão (escolha do Paulo).
+  - **Atelier em branco sem aceleração de vídeo:** não acontece. Na VM, o atelier desenha sem nenhuma variável; o
+    que ficou em branco foi o GNOME Web no GNOME, e depois o KDE apagando o monitor. Nada mudado.
+- **0.2.31** (2026-11-21) · Acento se acumulando no terminal no Linux (o Paulo, Fedora 44 KDE num notebook:
+  "ã" saía 1, 2, 3 vezes; no Claude Code, vãos em branco). Causa, reproduzida na VM (Fedora 45 + Plasma 6.8.3 +
+  `plasma-keyboard` ligado em `kwinrc [Wayland] InputMethod`): o WebKitGTK antigo do AppImage manda
+  `compositionend` sem `compositionstart`, e o xterm reenviava tudo o que estava na caixinha escondida. Correção em
+  `TerminalXterm.tsx`: segura o `compositionend` sem início antes do xterm. Provada na VM com
+  `scripts/terminal/acentos.html` (caixinha "com a correção") aberto dentro do atelier 0.2.30. **Falta ver** no
+  terminal do atelier com um AppImage novo (CI) e no Fedora do Paulo.
+- **0.2.31** (2026-11-21) · Programas abertos pelo atelier no Linux herdavam o ambiente do AppImage (o Paulo,
+  no Fedora: `grep: /tmp/.mount_atelie.../libpcre2-8.so.0: no version information`, `flatpak: symbol lookup
+  error`). `sistema::ajustes_de_ambiente` tira o que aponta para a imagem (LD_LIBRARY_PATH, PATH, XDG_DATA_DIRS,
+  GTK_*, GIO_*, PYTHON*, APPDIR...) no terminal, nos agentes, no xdg-open, no "abrir com" e nos apps. Teste no core.
+  Medido na VM: o atelier 0.2.30 mostrava 8,9 GB numa VM de 4 GB (a contagem por thread, já corrigida).
+  `install.sh` testado num Fedora de verdade (VM): baixa, menu, sem aviso de libfuse2.
+- **0.2.31** (2026-11-21) · Memória e CPU erradas no Linux (print do Paulo no Fedora: "32.8 GB (100% da
+  máquina) · CPU 3634%"). O sysinfo lista cada thread como processo filho, com a memória e a CPU do processo todo, e
+  a soma contava o app uma vez por thread. `core/src/sistema.rs`: lista sem as threads (`without_tasks`) e pula
+  `thread_kind()`. **Não visto no Linux** (o WSL não tem Rust).
+- **0.2.31** (2026-11-21) · Cofre, as duas ideias antigas (o Paulo: "vamos fazer esses dois do cofre"):
+  - **Levar o cofre para outro computador:** Cofre → "Outro computador": "Levar daqui" exporta a chave num arquivo
+    `.chave-atelier` trancado com senha (mín. 8; o próprio SQLite3 Multiple Ciphers, PBKDF2 256 mil rodadas);
+    "Trazer de lá" importa (recusa senha errada e chave que não abre o cofre da bancada).
+  - **Guardar no cofre pelo texto:** botão direito com texto selecionado (Shift+botão direito: o menu do sistema) →
+    Guardar no cofre (também Copiar e Recortar); o trecho vira o valor, e no texto fica o link `🔒 <nome>` para
+    `atelier://cofre/<id>` (Ctrl+clique abre o segredo no Cofre). Também na barra do editor (checklist).
+- **0.2.31** (2026-11-21) · Atalhos em dois tempos configuráveis (o Paulo: "vamos fazer o lance dos
+  atalhos"): em Configurações → Atalhos, cada atalho tem a coluna do Ctrl K; clique e aperte a segunda tecla (sozinha
+  ou com Shift), Backspace tira, avisa se outra já usa. Qualquer atalho pode ganhar uma. Guardado em
+  `preferencias.atalhos` como `dois:<id>` (`-` = tirou a de fábrica).
+- **0.2.31** (2026-11-21) · Script de instalação no Linux (o Paulo, instalando no Fedora: "massa era
   a gente ter um daqueles sh"; "vai gerar versão não"): `install.sh` na raiz, `curl -fsSL <raw>/install.sh | sh`.
   AppImage da última release em `~/.local/share/atelier/atelier.AppImage`, `atelier` em `~/.local/bin`, `.desktop`
   com ícone e `x-scheme-handler/atelier` (no lugar do Gear Lever), aviso de libfuse2, `--desinstalar`. A conferir:

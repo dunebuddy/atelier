@@ -545,6 +545,11 @@ export default function App() {
           abrirAoLado({ v: "arquivos", raiz: it.pasta, arquivo: `${it.pasta}${sep}${caminho.split("/").join(sep)}` });
         }).catch(falhou);
       }
+      else if (tipo === "cofre") {
+        const id = Number(valor);
+        if (Number.isInteger(id) && id > 0) abrirAoLado({ v: "cofre", segredo: id });
+        else avisar(`Link de segredo inválido: ${url}`);
+      }
       else if (tipo === "visao") {
         api.visoes().then((vs) => {
           const v = vs.find((x) => x.nome.toLowerCase() === valor.toLowerCase());

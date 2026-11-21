@@ -368,6 +368,7 @@ body.redimensionando .sidebar { transition: none; }
 .atalho-botao:hover { border-color: var(--borda-forte); }
 .atalho-botao.gravando { border-color: var(--acento); color: var(--acento); }
 .atalho-botao.mudado kbd { border-color: var(--acento); }
+.atalho-botao.dois { min-width: 84px; }
 
 /* cartão de aviso (versão nova, atualizado): título em cima, mensagem, botões embaixo. O modelo dos avisos do app. */
 .cartao-aviso {
@@ -1458,6 +1459,12 @@ body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grab
 .cofre-topo h1 { display: flex; align-items: center; gap: 10px; margin: 0 0 4px; }
 .cofre-topo .dica-inline { display: block; margin-bottom: 14px; }
 .cofre-barra { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.cofre-levar { display: flex; flex-direction: column; gap: 8px; max-width: 520px; padding: 12px; margin-bottom: 14px; border: 1px solid var(--borda-forte); border-radius: 10px; }
+.cofre-levar-abas { display: flex; gap: 6px; align-items: center; }
+.cofre-levar .dica { margin: 0; }
+.cofre-levar .btn.primario { align-self: flex-start; }
+.cofre-levar-arquivo { display: flex; gap: 6px; }
+.cofre-levar-arquivo .campo { flex: 1; }
 .cofre-busca { flex: 1; display: flex; align-items: center; gap: 6px; color: var(--texto-3); }
 .cofre-busca .campo { flex: 1; }
 .cofre-lista { display: flex; flex-direction: column; gap: 6px; }

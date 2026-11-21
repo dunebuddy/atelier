@@ -1469,8 +1469,15 @@ fn sql_filtro(f: &Filtro, sql: &mut String, args: &mut Vec<Box<dyn rusqlite::ToS
         // pedaço no meio da palavra (LIKE), código, ou palavras em qualquer lugar do item e das notas, sem
         // diferenciar acento (FTS5: "pendencia" acha "pendência")
         // o código também por pedaço: os 3 últimos dígitos já acham o documento (com ou sem o #)
-        sql.push_str(" AND (itens.titulo LIKE ? OR itens.corpo LIKE ? OR itens.codigo LIKE ?");
+        // os valores de texto das propriedades também (sigla, ID externo, URL...): só os textos do JSON, não as
+        // chaves (os números das propriedades) nem números e datas soltos
+        sql.push_str(
+            " AND (itens.titulo LIKE ? OR itens.corpo LIKE ? \
+             OR EXISTS (SELECT 1 FROM json_tree(itens.props) j WHERE j.type = 'text' AND j.value LIKE ?) \
+             OR itens.codigo LIKE ?",
+        );
         let like = format!("%{}%", q.trim());
+        args.push(Box::new(like.clone()));
         args.push(Box::new(like.clone()));
         args.push(Box::new(like));
         args.push(Box::new(format!("%{}%", q.trim().trim_start_matches('#').to_lowercase())));
@@ -2639,6 +2646,17 @@ mod testes {
         assert!(achar("encerrado").is_empty(), "nota na lixeira não conta");
         atualizar_item(&c, a, &json!({"corpo": "cláusula de reajuste"})).unwrap();
         assert_eq!(achar("clausula"), ["Revisar contrato"]);
+    }
+
+    #[test]
+    fn busca_acha_pelo_valor_de_texto_das_propriedades() {
+        let c = banco();
+        criar_item(&c, &json!({"titulo": "Conta da AWS", "props": {"7": "ACC-998877", "8": ["prod", "rede"]}, "modelo_id": null})).unwrap();
+        criar_item(&c, &json!({"titulo": "Outra", "props": {"7": "XYZ"}, "modelo_id": null})).unwrap();
+        let achar = |q: &str| listar_itens(&c, &Filtro { texto: Some(q.into()), ..Default::default() }).unwrap().into_iter().map(|i| i.titulo).collect::<Vec<_>>();
+        assert_eq!(achar("acc-9988"), ["Conta da AWS"], "pedaço do valor, sem diferenciar maiúscula");
+        assert_eq!(achar("xyz"), ["Outra"]);
+        assert_eq!(achar("rede"), ["Conta da AWS"], "um dos valores de uma lista");
     }
 
     #[test]

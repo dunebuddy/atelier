@@ -14,15 +14,18 @@ import { CaixaPrompt, cancelarPrompt, ContextoPrompt, PromptPendente } from "./P
 import { blocosDeTabela, BlocoCodigo, Imagem, TarefasCompactas } from "./EditorBlocos";
 import { verImagem } from "./VerImagem";
 import {
-  Bold, Code, Heading2, Heading3, Italic, Link2, List, ListChecks, ListOrdered, Paperclip, Quote, SquareCode, Strikethrough, Table as IconeTabela,
+  Bold, Code, Copy, Heading2, Heading3, Italic, Link2, List, ListChecks, ListOrdered, Lock, Paperclip, Quote, Scissors, SquareCode, Strikethrough, Table as IconeTabela,
 } from "lucide-react";
 import { api, Entrada } from "../api";
 import { abrirSite } from "./Site";
+import { Popover } from "./Popover";
 
 /** Site (http/https) abre numa aba do atelier (lá tem o botão para o navegador do sistema); o resto (mailto...) vai
  *  para o sistema. */
 export function abrirLink(url: string) {
   if (/^https?:\/\//i.test(url)) { abrirSite(url); return; }
+  // atelier://doc/..., atelier://cofre/...: dentro do próprio atelier
+  if (/^atelier:\/\//i.test(url)) { import("../links").then(({ seguirLink }) => seguirLink(url)); return; }
   // arquivo local (imagem colada etc.): abre no programa padrão
   if (url.startsWith("file:///")) {
     import("../api").then(({ api }) => api.abrirArquivo(decodeURI(url.slice(8)).replace(/\//g, navigator.userAgent.includes("Windows") ? "\\" : "/")));
@@ -185,6 +188,8 @@ export function Editor({
   const promptRef = useRef(prompt);
   promptRef.current = prompt;
   const [pedindo, setPedindo] = useState<{ pos: number; top: number; left: number } | null>(null);
+  // botão direito com texto selecionado: o nosso menu (Guardar no cofre); sem seleção fica o do sistema
+  const [menuSel, setMenuSel] = useState<{ x: number; y: number } | null>(null);
   const filtrados = (f: string) => {
     const t = sem_acento(f);
     return [...(promptRef.current ? [PROMPT] : []), ...COMANDOS].filter((c) => c.id.startsWith(t) || (c.apelidos ?? []).some((a) => a.startsWith(t)) || sem_acento(c.nome).includes(t));
@@ -212,7 +217,7 @@ export function Editor({
       TaskItem.configure({ nested: true }),
       // clique simples continua editando; Ctrl+clique (ou Cmd) abre o link
       Mencao.configure({ aoAbrir: (c) => aoMencaoRef.current?.(c) }),
-      Link.configure({ openOnClick: false, autolink: true, HTMLAttributes: { title: "Ctrl+clique para abrir" } }),
+      Link.configure({ openOnClick: false, autolink: true, protocols: ["atelier"], HTMLAttributes: { title: "Ctrl+clique para abrir" } }),
       Placeholder.configure({ placeholder: placeholder ?? "Escreva aqui… (markdown funciona: ## título, - lista, [ ] tarefa)" }),
       Markdown.configure({ html: false, linkify: true, transformPastedText: true, breaks: false }),
       PromptPendente.configure({ aoCancelar: (id) => editorRef.current && cancelarPrompt(editorRef.current, id) }),
@@ -474,7 +479,14 @@ export function Editor({
           aoEscolherRef.current?.().then((cs) => { const ed = editorRef.current; if (ed) cs.forEach((c) => inserirArquivo(ed, "file", c)); }).catch(() => {});
         } : undefined} />
       )}
-      <EditorContent editor={editor} className="editor" />
+      <EditorContent editor={editor} className="editor" onContextMenu={(e: React.MouseEvent) => {
+        if (!editor || editor.state.selection.empty || e.shiftKey) return;
+        e.preventDefault();
+        setMenuSel({ x: e.clientX, y: e.clientY });
+      }} />
+      {menuSel && editor && (
+        <MenuDaSelecao editor={editor} x={menuSel.x} y={menuSel.y} documento={codigo} aoFechar={() => setMenuSel(null)} />
+      )}
       {pedindo && editor && prompt && (
         <CaixaPrompt editor={editor} pos={pedindo.pos} top={pedindo.top} left={pedindo.left} ctx={prompt} aoFechar={() => setPedindo(null)} />
       )}
@@ -511,6 +523,45 @@ export function Editor({
   );
 }
 
+/** O menu do botão direito com texto selecionado. (Shift+botão direito: o menu do sistema.) */
+function MenuDaSelecao({ editor, x, y, documento, aoFechar }: { editor: Ed; x: number; y: number; documento?: string; aoFechar: () => void }) {
+  // o Popover só pede a posição e o "contains" da âncora: um ponto onde o mouse estava
+  const ancora = { getBoundingClientRect: () => DOMRect.fromRect({ x, y, width: 0, height: 0 }), contains: () => false } as unknown as HTMLElement;
+  const copiar = (recortar: boolean) => {
+    const { from, to } = editor.state.selection;
+    navigator.clipboard.writeText(editor.state.doc.textBetween(from, to, "\n")).catch(() => {});
+    if (recortar) editor.chain().focus().deleteSelection().run();
+    aoFechar();
+  };
+  return (
+    <Popover ancora={ancora} aoFechar={aoFechar} largura={210}>
+      <button className="menu-item" onClick={() => { aoFechar(); guardarNoCofre(editor, documento); }}><Lock size={14} /> Guardar no cofre</button>
+      <button className="menu-item" onClick={() => copiar(false)}><Copy size={14} /> Copiar</button>
+      <button className="menu-item" onClick={() => copiar(true)}><Scissors size={14} /> Recortar</button>
+    </Popover>
+  );
+}
+
+/** Leva o trecho selecionado para o cofre: abre a janelinha de segredo com ele no valor e, criado o segredo, troca o
+ *  trecho por um link 🔒 com o nome (o valor sai do texto). */
+export function guardarNoCofre(editor: Ed, documento?: string) {
+  const { from, to } = editor.state.selection;
+  const valor = editor.state.doc.textBetween(from, to, "\n").trim();
+  if (!valor) return;
+  import("./Cofre").then(({ novoSegredo }) => novoSegredo({
+    documento,
+    valorInicial: valor,
+    aoCriar: (id, nome) => {
+      // o texto pode ter mudado enquanto a janelinha estava aberta: só troca se o trecho ainda está lá
+      const t = editor.state.doc.textBetween(from, Math.min(to, editor.state.doc.content.size), "\n").trim();
+      if (t !== valor) return;
+      editor.chain().focus().insertContentAt({ from, to }, [
+        { type: "text", text: `🔒 ${nome}`, marks: [{ type: "link", attrs: { href: `atelier://cofre/${id}` } }] },
+      ]).run();
+    },
+  }));
+}
+
 /** Barra de botões do editor (opcional): formatação, listas, blocos, link e arquivo. */
 function BarraEditor({ editor, aoArquivo }: { editor: Ed; aoArquivo?: () => void }) {
   const [link, setLink] = useState<string | null>(null);
@@ -545,6 +596,7 @@ function BarraEditor({ editor, aoArquivo }: { editor: Ed; aoArquivo?: () => void
       <span className="barra-ed-sep" />
       {b("Link (selecione o texto antes)", editor.isActive("link"), () => setLink(link == null ? (editor.getAttributes("link").href ?? "") : null), <Link2 {...P} />)}
       {aoArquivo && b("Arquivo do computador (vai para insumos/)", false, aoArquivo, <Paperclip {...P} />)}
+      {b("Guardar no cofre (selecione a senha ou o token antes): o trecho sai do texto e fica um link 🔒", false, () => guardarNoCofre(editor), <Lock {...P} />)}
       {link != null && (
         <input className="campo barra-ed-link" autoFocus placeholder="https://… (Enter aplica, vazio tira o link)" value={link}
           onChange={(e) => setLink(e.target.value)}

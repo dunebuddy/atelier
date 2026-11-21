@@ -80,6 +80,7 @@ pub fn abrir(id: &str, pasta: &Path) -> Result<bool, String> {
         }
     };
     c.current_dir(pasta);
+    crate::sistema::ambiente_limpo(&mut c);
     c.spawn().map_err(|e| e.to_string())?;
     Ok(id != "deepseek")
 }

@@ -118,9 +118,92 @@ fn chave(bancada: &str) -> Res<Vec<u8>> {
 
 // ---------- o banco ----------
 
+/// Grava a chave do cofre desta bancada no mesmo lugar de onde `chave()` lê (a importação).
+fn guardar_chave(bancada: &str, k: &[u8]) -> Res<()> {
+    if cfg!(test) {
+        return Ok(());
+    }
+    let no_arquivo = |k: &[u8]| -> Res<()> {
+        let p = arquivo_da_chave(bancada);
+        if let Some(d) = p.parent() {
+            std::fs::create_dir_all(d).map_err(erro)?;
+        }
+        std::fs::write(&p, k).map_err(erro)
+    };
+    if std::env::var("ATELIER_COFRE_CHAVE").is_ok_and(|v| v == "arquivo") {
+        return no_arquivo(k);
+    }
+    let (conta, k2) = (conta(bancada), k.to_vec());
+    let r = std::thread::spawn(move || {
+        keyring::Entry::new(SERVICO, &conta).and_then(|e| e.set_secret(&k2)).map_err(|e| e.to_string())
+    })
+    .join()
+    .map_err(|_| "o cofre do sistema travou".to_string())
+    .and_then(|r| r);
+    match r {
+        Ok(()) => Ok(()),
+        Err(e) if cfg!(windows) => Err(erro(format!("o Credential Manager do Windows falhou: {e}"))),
+        Err(_) => no_arquivo(k),
+    }
+}
+
+// ---------- levar a chave para outro computador ----------
+//
+// O arquivo exportado é ele mesmo um SQLite do SQLite3 Multiple Ciphers, criptografado com a SENHA (a biblioteca
+// deriva a chave da senha com PBKDF2-SHA256, `kdf_iter` rodadas): dentro, só a chave do cofre em hex. Sem a senha,
+// o arquivo não diz nada; com o arquivo e a senha, o cofre da bancada abre em qualquer máquina.
+
+const RODADAS_DA_SENHA: u32 = 256_000;
+
+fn abrir_com_senha(arquivo: &Path, senha: &str) -> Res<Connection> {
+    let conn = Connection::open(arquivo)?;
+    conn.execute_batch(&format!(
+        "PRAGMA cipher = 'chacha20'; PRAGMA kdf_iter = {RODADAS_DA_SENHA}; PRAGMA key = '{}';",
+        senha.replace('\'', "''")
+    ))?;
+    Ok(conn)
+}
+
+/// Grava a chave do cofre desta bancada em `destino`, protegida por `senha`.
+pub fn exportar_chave(bancada: &str, senha: &str, destino: &Path) -> Res<()> {
+    if senha.chars().count() < 8 {
+        return Err(erro("a senha precisa de pelo menos 8 caracteres"));
+    }
+    abrir(bancada)?; // confere que a chave desta máquina abre o cofre antes de levar ela embora
+    let k = chave(bancada)?;
+    let _ = std::fs::remove_file(destino);
+    let conn = abrir_com_senha(destino, senha)?;
+    conn.execute_batch("CREATE TABLE chave (hex TEXT NOT NULL, exportada_em TEXT NOT NULL);")?;
+    conn.execute("INSERT INTO chave VALUES (?, ?)", params![hex(&k), crate::db::agora()])?;
+    Ok(())
+}
+
+/// Lê a chave exportada (com a senha) e passa a usar ela no cofre desta bancada. Recusa se ela não abre o cofre que
+/// já está aqui: assim uma chave errada nunca toma o lugar da certa.
+pub fn importar_chave(bancada: &str, senha: &str, origem: &Path) -> Res<()> {
+    let h: String = abrir_com_senha(origem, senha)?
+        .query_row("SELECT hex FROM chave", [], |r| r.get(0))
+        .map_err(|_| erro("senha errada, ou o arquivo não é uma chave do cofre do atelier"))?;
+    let k: Vec<u8> = (0..h.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(h.get(i..i + 2).unwrap_or("zz"), 16))
+        .collect::<Result<_, _>>()
+        .map_err(|_| erro("a chave do arquivo está estragada"))?;
+    if k.len() != 32 {
+        return Err(erro("a chave do arquivo está estragada"));
+    }
+    if Path::new(bancada).join(ARQUIVO).exists() {
+        abrir_com(bancada, &k).map_err(|_| erro("essa chave não abre o cofre desta bancada (é a chave de outra bancada?)"))?;
+    }
+    guardar_chave(bancada, &k)
+}
+
 /// Abre (e cria, na primeira vez) o cofre da bancada.
 pub fn abrir(bancada: &str) -> Res<Connection> {
-    let k = chave(bancada)?;
+    abrir_com(bancada, &chave(bancada)?)
+}
+
+fn abrir_com(bancada: &str, k: &[u8]) -> Res<Connection> {
     let conn = Connection::open(Path::new(bancada).join(ARQUIVO))?;
     // a cifra antes da chave, e a chave antes de qualquer leitura
     conn.execute_batch(&format!("PRAGMA cipher = 'chacha20'; PRAGMA kdf_iter = 1; PRAGMA hexkey = '{}';", hex(&k)))?;
@@ -284,6 +367,31 @@ mod testes {
 
         apagar(&b, id).unwrap();
         assert!(valor(&b, id).is_err());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn chave_exportada_so_abre_com_a_senha() {
+        let dir = std::env::temp_dir().join(format!("atelier-cofre-chave-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let b = dir.to_string_lossy().to_string();
+        criar(&b, "Token", "", "", "abc", None).unwrap();
+        let arq = dir.join("cofre.chave-atelier");
+
+        assert!(exportar_chave(&b, "curta", &arq).is_err(), "senha curta");
+        exportar_chave(&b, "uma senha boa", &arq).unwrap();
+        let bytes = std::fs::read(&arq).unwrap();
+        assert!(!String::from_utf8_lossy(&bytes).contains(&hex(&[7; 32])), "a chave não fica legível no arquivo");
+
+        assert!(importar_chave(&b, "senha errada!", &arq).is_err());
+        importar_chave(&b, "uma senha boa", &arq).unwrap();
+
+        // uma chave que não abre o cofre que já existe é recusada
+        let outro = dir.join("outra.chave-atelier");
+        let c = abrir_com_senha(&outro, "uma senha boa").unwrap();
+        c.execute_batch(&format!("CREATE TABLE chave (hex TEXT, exportada_em TEXT); INSERT INTO chave VALUES ('{}', '');", hex(&[9; 32]))).unwrap();
+        drop(c);
+        assert!(importar_chave(&b, "uma senha boa", &outro).is_err());
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

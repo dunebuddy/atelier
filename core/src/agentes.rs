@@ -160,6 +160,7 @@ pub fn testar(id: &str) -> Value {
     let Some(c) = cli(id) else { return json!({ "ok": false, "erro": "agente desconhecido" }) };
     let Some(exe) = executavel(c) else { return json!({ "ok": false, "erro": "não encontrado no PATH" }) };
     let mut cmd = std::process::Command::new(&exe);
+    crate::sistema::ambiente_limpo(&mut cmd);
     cmd.arg("--version").stdin(std::process::Stdio::null()).stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped());
     sem_janela(&mut cmd);
     let mut filho = match cmd.spawn() {
@@ -222,6 +223,7 @@ pub async fn executar(exe: PathBuf, modelo: &str, prompt: &str, cwd: Option<Path
     }
     let (args, pela_entrada) = argumentos(modelo, prompt);
     let mut cmd = tokio::process::Command::new(&exe);
+    crate::sistema::ambiente_limpo_tokio(&mut cmd);
     cmd.args(&args)
         .stdin(if pela_entrada { std::process::Stdio::piped() } else { std::process::Stdio::null() })
         .stdout(std::process::Stdio::piped())

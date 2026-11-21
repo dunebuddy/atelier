@@ -415,6 +415,7 @@ fn rodar_cli(args: &[&str]) -> Res<()> {
         std::process::Command::new("claude")
     };
     c.args(args);
+    crate::sistema::ambiente_limpo(&mut c);
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;

@@ -54,11 +54,16 @@ pub fn medir() -> Value {
     let Some(sys) = sistema() else { return json!({ "erro": "medição indisponível neste sistema" }) };
     let mut sys = sys.lock().unwrap_or_else(|e| e.into_inner());
     sys.refresh_memory();
-    // primeiro só a lista (nome e pai, baratos); memória e CPU só dos processos do app, não da máquina inteira
-    sys.refresh_processes_specifics(ProcessesToUpdate::All, true, ProcessRefreshKind::nothing());
+    // primeiro só a lista (nome e pai, baratos); memória e CPU só dos processos do app, não da máquina inteira.
+    // Sem as threads: no Linux o sysinfo lista cada thread como um processo filho, com a memória e a CPU do processo
+    // inteiro, e a soma contava o app uma vez por thread (32 GB e 3600% de CPU)
+    sys.refresh_processes_specifics(ProcessesToUpdate::All, true, ProcessRefreshKind::nothing().without_tasks());
     let nucleos = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1) as f32;
     let mut filhos: HashMap<Pid, Vec<Pid>> = HashMap::new();
     for (pid, p) in sys.processes() {
+        if p.thread_kind().is_some() {
+            continue;
+        }
         if let Some(pai) = p.parent() {
             filhos.entry(pai).or_default().push(*pid);
         }
@@ -71,7 +76,7 @@ pub fn medir() -> Value {
     }
     nossos.sort();
     nossos.dedup();
-    sys.refresh_processes_specifics(ProcessesToUpdate::Some(&nossos), false, ProcessRefreshKind::nothing().with_memory().with_cpu());
+    sys.refresh_processes_specifics(ProcessesToUpdate::Some(&nossos), false, ProcessRefreshKind::nothing().without_tasks().with_memory().with_cpu());
     let soma = |pids: &[Pid]| -> (u64, f32) {
         pids.iter().filter_map(|p| sys.process(*p)).fold((0, 0.0), |(m, c), p| (m + memoria(p), c + p.cpu_usage()))
     };
@@ -111,8 +116,87 @@ pub fn medir() -> Value {
     })
 }
 
+// ---------- o ambiente dos programas que o atelier abre ----------
+//
+// Rodando de um AppImage, o AppRun põe no ambiente do atelier umas 20 variáveis apontando para dentro da imagem
+// montada (`/tmp/.mount_xxx`): LD_LIBRARY_PATH, PATH, XDG_DATA_DIRS, GTK_*, GIO_MODULE_DIR, PYTHON*... O atelier (e o
+// WebKit) precisam delas; o bash do terminal, o xdg-open e os agentes não: com as bibliotecas da imagem, os programas
+// do sistema quebram ("grep: libpcre2-8.so.0: no version information", "flatpak: symbol lookup error"). Então quem
+// abre um programa aplica estes ajustes: tira o que aponta para a imagem e mantém o resto.
+
+/// Variáveis a mudar (Some) ou tirar (None) no ambiente de um programa aberto pelo atelier. Vazio fora de um AppImage.
+pub fn ajustes_de_ambiente() -> Vec<(String, Option<String>)> {
+    match std::env::var("APPDIR") {
+        Ok(d) if cfg!(target_os = "linux") && d.len() > 1 => ajustes(&d, std::env::vars()),
+        _ => vec![],
+    }
+}
+
+fn ajustes(appdir: &str, vars: impl Iterator<Item = (String, String)>) -> Vec<(String, Option<String>)> {
+    // as que o AppRun cria do nada (o GTK_THEME vem do plugin do GTK do linuxdeploy)
+    const DA_IMAGEM: [&str; 6] = ["APPDIR", "APPIMAGE", "ARGV0", "OWD", "PYTHONDONTWRITEBYTECODE", "GTK_THEME"];
+    let raiz = appdir.trim_end_matches('/');
+    vars.filter_map(|(k, v)| {
+        if DA_IMAGEM.contains(&k.as_str()) {
+            return Some((k, None));
+        }
+        if !v.contains(raiz) {
+            return None;
+        }
+        let resto: Vec<&str> = v.split(':').filter(|p| !p.is_empty() && !p.starts_with(raiz)).collect();
+        Some((k, if resto.is_empty() { None } else { Some(resto.join(":")) }))
+    })
+    .collect()
+}
+
+/// `ajustes_de_ambiente` aplicado num `std::process::Command`.
+pub fn ambiente_limpo(c: &mut std::process::Command) -> &mut std::process::Command {
+    for (k, v) in ajustes_de_ambiente() {
+        match v {
+            Some(v) => c.env(k, v),
+            None => c.env_remove(k),
+        };
+    }
+    c
+}
+
+/// `ajustes_de_ambiente` aplicado num `tokio::process::Command`.
+pub fn ambiente_limpo_tokio(c: &mut tokio::process::Command) -> &mut tokio::process::Command {
+    for (k, v) in ajustes_de_ambiente() {
+        match v {
+            Some(v) => c.env(k, v),
+            None => c.env_remove(k),
+        };
+    }
+    c
+}
+
 #[cfg(test)]
 mod testes {
+    #[test]
+    fn tira_do_ambiente_o_que_aponta_para_o_appimage() {
+        let d = "/tmp/.mount_atelieX";
+        let vars = [
+            ("LD_LIBRARY_PATH", "/tmp/.mount_atelieX/usr/lib/:/tmp/.mount_atelieX/usr/lib32/"),
+            ("PATH", "/tmp/.mount_atelieX/usr/bin/:/home/p/.cargo/bin:/usr/bin"),
+            ("XDG_DATA_DIRS", "/tmp/.mount_atelieX/usr/share/:/usr/share:"),
+            ("GTK_IM_MODULE_FILE", "/tmp/.mount_atelieX//usr/lib/gtk-3.0/3.0.0/immodules.cache"),
+            ("APPIMAGE", "/home/p/atelier.AppImage"),
+            ("GTK_THEME", "Adwaita:light"),
+            ("HOME", "/home/p"),
+            ("LANG", "pt_BR.UTF-8"),
+        ]
+        .map(|(k, v)| (k.to_string(), v.to_string()));
+        let a: std::collections::HashMap<_, _> = super::ajustes(d, vars.into_iter()).into_iter().collect();
+        assert_eq!(a["LD_LIBRARY_PATH"], None);
+        assert_eq!(a["PATH"].as_deref(), Some("/home/p/.cargo/bin:/usr/bin"));
+        assert_eq!(a["XDG_DATA_DIRS"].as_deref(), Some("/usr/share"));
+        assert_eq!(a["GTK_IM_MODULE_FILE"], None);
+        assert_eq!(a["APPIMAGE"], None);
+        assert_eq!(a["GTK_THEME"], None);
+        assert!(!a.contains_key("HOME") && !a.contains_key("LANG"), "o resto fica como está");
+    }
+
     #[test]
     fn mede_o_proprio_processo() {
         let m = super::medir();

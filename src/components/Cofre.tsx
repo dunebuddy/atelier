@@ -157,7 +157,9 @@ function LinhaSegredo({ s, aoMudar, foco }: { s: Segredo; aoMudar: () => void; f
   );
 }
 
-interface PedidoForm { inicial?: Segredo; documento?: string; aoCriar?: (id: number, nome: string) => void }
+interface PedidoForm { inicial?: Segredo; documento?: string; aoCriar?: (id: number, nome: string) => void;
+  /** o valor já preenchido (o trecho selecionado no texto que vai para o cofre) */
+  valorInicial?: string }
 
 /** Abre a janelinha de segredo: novo (já ligado a `documento`, se vier) ou editando `inicial`. */
 export function novoSegredo(p: PedidoForm = {}) {
@@ -188,13 +190,13 @@ export function JanelaSegredo({ esquema, wsItem }: { esquema: Esquema; wsItem: n
 }
 
 /** Criar (sem `inicial`) ou editar um segredo. Editando, o valor guardado já vem preenchido; só vai se mudar. */
-function FormSegredo({ inicial, documento, esquema, wsItem, aoFechar, aoCriar }: PedidoForm & {
+function FormSegredo({ inicial, documento, esquema, wsItem, aoFechar, aoCriar, valorInicial }: PedidoForm & {
   esquema: Esquema; wsItem: number | null; aoFechar: () => void;
 }) {
   const [nome, setNome] = useState(inicial?.nome ?? "");
   const [descricao, setDescricao] = useState(inicial?.descricao ?? "");
   const [chave, setChave] = useState(inicial?.chave ?? "");
-  const [valor, setValor] = useState("");
+  const [valor, setValor] = useState(valorInicial ?? "");
   const [doc, setDoc] = useState(inicial?.documento ?? documento ?? "");
   const [ver, setVer] = useState(false);
   const [aba, setAba] = useState<"texto" | "kv">("texto");
@@ -323,6 +325,7 @@ function FormSegredo({ inicial, documento, esquema, wsItem, aoFechar, aoCriar }:
 export function TelaCofre({ foco }: { foco?: number }) {
   const [lista, setLista] = useState<Segredo[] | null>(null);
   const [q, setQ] = useState("");
+  const [chave, setChave] = useState(false);
   const carregar = useCallback(() => { api.cofre().then(setLista).catch((e) => { setLista([]); falhou(e); }); }, []);
   useCofre(carregar);
   const b = q.trim().toLowerCase().replace(/^#/, "");
@@ -331,17 +334,96 @@ export function TelaCofre({ foco }: { foco?: number }) {
     <div className="pagina cofre">
       <div className="cofre-topo">
         <h1 className="serif"><Lock size={22} /> Cofre</h1>
-        <span className="dica-inline">Os segredos desta bancada, criptografados (a chave fica no cofre do Windows, presa ao seu usuário). O agente só lê um valor com você permitindo.</span>
+        <span className="dica-inline">Os segredos desta bancada, criptografados (a chave fica no cofre do sistema, presa ao seu usuário; para outro computador, “Outro computador”). O agente só lê um valor com você permitindo.</span>
       </div>
       <div className="cofre-barra">
         <span className="cofre-busca"><Search size={14} /><input className="campo" placeholder="Buscar no nome, descrição, chave ou documento…" value={q} onChange={(e) => setQ(e.target.value)} /></span>
+        <button className="btn" onClick={() => setChave((v) => !v)} title="Exportar a chave com uma senha, ou usar aqui a chave que veio de outro computador">
+          <KeyRound size={14} /> Outro computador
+        </button>
         <button className="btn primario" onClick={() => novoSegredo()}><Plus size={14} /> Novo segredo</button>
       </div>
+      {chave && <ChaveDoCofre aoMudar={carregar} aoFechar={() => setChave(false)} />}
       {lista == null && <div className="vazio-grande">Abrindo o cofre…</div>}
       {lista?.length === 0 && <div className="vazio-grande">Nenhum segredo ainda. Senha, secret ou token que você receber vem para cá, não para o texto.</div>}
       <div className="cofre-lista">
         {vis.map((s) => <LinhaSegredo key={s.id} s={s} aoMudar={carregar} foco={s.id === foco} />)}
       </div>
+    </div>
+  );
+}
+
+/** Levar o cofre para outro computador: a chave fica no cofre do sistema desta máquina, então a pasta da bancada
+ *  copiada chega com o cofre trancado. Aqui a chave sai num arquivo com senha e entra do outro lado. */
+function ChaveDoCofre({ aoMudar, aoFechar }: { aoMudar: () => void; aoFechar: () => void }) {
+  const [modo, setModo] = useState<"exportar" | "importar">("exportar");
+  const [senha, setSenha] = useState("");
+  const [confirma, setConfirma] = useState("");
+  const [arquivo, setArquivo] = useState("");
+  const [ocupado, setOcupado] = useState(false);
+  const exportar = async () => {
+    if (senha.length < 8) return avisar("A senha precisa de pelo menos 8 caracteres.");
+    if (senha !== confirma) return avisar("As duas senhas não batem.");
+    let destino: string | null = null;
+    try {
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      destino = await save({ title: "Onde guardar a chave do cofre", defaultPath: "cofre.chave-atelier", filters: [{ name: "Chave do cofre", extensions: ["chave-atelier"] }] });
+      if (destino === null) return;
+    } catch { destino = null; /* navegador de teste: vai para Downloads */ }
+    setOcupado(true);
+    try {
+      const r = await api.cofreExportarChave(senha, destino);
+      avisar(`Chave exportada: ${r.caminho}. Leve o arquivo e a senha (separados) para o outro computador.`);
+      aoFechar();
+    } catch (e) { falhou(e); } finally { setOcupado(false); }
+  };
+  const escolher = async () => {
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const r = await open({ title: "A chave do cofre exportada", filters: [{ name: "Chave do cofre", extensions: ["chave-atelier"] }] });
+      if (typeof r === "string") setArquivo(r);
+    } catch { /* navegador de teste: digita o caminho */ }
+  };
+  const importar = async () => {
+    if (!arquivo.trim() || !senha) return avisar("Escolha o arquivo e digite a senha.");
+    setOcupado(true);
+    try {
+      await api.cofreImportarChave(senha, arquivo.trim());
+      avisar("Pronto: o cofre desta bancada abre com a chave importada.");
+      aoMudar();
+      aoFechar();
+    } catch (e) { falhou(e); } finally { setOcupado(false); }
+  };
+  return (
+    <div className="cofre-levar">
+      <div className="cofre-levar-abas">
+        <button className={`btn${modo === "exportar" ? " primario" : ""}`} onClick={() => setModo("exportar")}>Levar daqui</button>
+        <button className={`btn${modo === "importar" ? " primario" : ""}`} onClick={() => setModo("importar")}>Trazer de lá</button>
+        <span style={{ flex: 1 }} />
+        <button className="btn-icone" onClick={aoFechar} title="Fechar"><X size={15} /></button>
+      </div>
+      {modo === "exportar" ? (
+        <>
+          <p className="dica">A chave que abre este cofre fica presa a esta máquina. Ela sai num arquivo trancado com a senha
+            que você escolher. No outro computador, abra a mesma bancada (a pasta copiada) e use “Trazer de lá”.</p>
+          <input className="campo" type="password" placeholder="Senha (pelo menos 8 caracteres)" value={senha} onChange={(e) => setSenha(e.target.value)} autoFocus />
+          <input className="campo" type="password" placeholder="A senha de novo" value={confirma} onChange={(e) => setConfirma(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && exportar()} />
+          <button className="btn primario" disabled={ocupado} onClick={exportar}><KeyRound size={14} /> Exportar a chave</button>
+        </>
+      ) : (
+        <>
+          <p className="dica">Use aqui a chave exportada no outro computador: escolha o arquivo e digite a senha dele. Se ela não
+            abrir o cofre desta bancada, nada muda.</p>
+          <span className="cofre-levar-arquivo">
+            <input className="campo" placeholder="Arquivo .chave-atelier" value={arquivo} onChange={(e) => setArquivo(e.target.value)} />
+            <button className="btn" onClick={escolher}>Escolher…</button>
+          </span>
+          <input className="campo" type="password" placeholder="Senha" value={senha} onChange={(e) => setSenha(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && importar()} />
+          <button className="btn primario" disabled={ocupado} onClick={importar}><Lock size={14} /> Usar esta chave</button>
+        </>
+      )}
     </div>
   );
 }
@@ -425,7 +507,7 @@ export function PedidoDoAgente() {
         <div className="cofre-pedido-cab"><Bot size={18} /> <strong>{p.agente}</strong> quer usar um segredo</div>
         <div className="cofre-pedido-segredo">
           <KeyRound size={15} /> <strong>{p.segredo.nome}</strong>
-          {p.segredo.chave && <code className="cofre-chave">{p.segredo.chave}</code>}
+          {p.segredo.chave && <code className="cofre-levar">{p.segredo.chave}</code>}
           {p.segredo.documento && <span className="dica-inline">#{p.segredo.documento}</span>}
         </div>
         {p.segredo.descricao && <div className="cofre-desc">{p.segredo.descricao}</div>}

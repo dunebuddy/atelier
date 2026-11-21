@@ -120,6 +120,13 @@ async fn sessao(socket: WebSocket, num: Option<u64>, banc: Option<String>, agent
         _ => sh,
     };
     let mut cmd = CommandBuilder::new(&sh);
+    // rodando de um AppImage: o shell não herda as bibliotecas e caminhos da imagem (ver sistema::ajustes_de_ambiente)
+    for (k, v) in crate::sistema::ajustes_de_ambiente() {
+        match v {
+            Some(v) => cmd.env(k, v),
+            None => cmd.env_remove(k),
+        }
+    }
     let nome_sh = std::path::Path::new(&sh).file_stem().map(|s| s.to_string_lossy().to_lowercase()).unwrap_or_default();
     if let Some(a) = &agente {
         let a = a.to_string_lossy().replace('\'', "''");

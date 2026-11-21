@@ -1,6 +1,6 @@
 // O selo do Ctrl+K: aparece enquanto o atelier espera a segunda tecla, com o que dá para apertar.
 import { useEffect, useState } from "react";
-import { comDoisTempos, instalarDoisTempos, PREFIXO } from "../atalhos";
+import { comDoisTempos, instalarDoisTempos, PREFIXO, segunda } from "../atalhos";
 
 let instalado = false;
 
@@ -18,7 +18,7 @@ export function SeloDoisTempos() {
       <div className="sdt-topo"><kbd>{PREFIXO.replace("+", " ")}</kbd> esperando a segunda tecla… <span className="sdt-dica">Esc cancela</span></div>
       <div className="sdt-lista">
         {comDoisTempos().map((a) => (
-          <span key={a.id} className="sdt-item"><kbd>{a.dois}</kbd> {a.nome}</span>
+          <span key={a.id} className="sdt-item"><kbd>{segunda(a.id)}</kbd> {a.nome}</span>
         ))}
       </div>
     </div>

@@ -9,7 +9,7 @@ use axum::{
     routing::{get, patch, post},
     Json, Router,
 };
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 use serde_json::{json, Value};
 use std::sync::{Arc, Mutex};
 use tower_http::cors::CorsLayer;
@@ -244,6 +244,8 @@ pub fn rotas(banco: Banco) -> Router {
         .route("/api/cofre", get(cofre_listar).post(cofre_criar))
         .route("/api/cofre/pedir", post(cofre_pedir))
         .route("/api/cofre/resposta", post(cofre_resposta))
+        .route("/api/cofre/chave/exportar", post(cofre_exportar_chave))
+        .route("/api/cofre/chave/importar", post(cofre_importar_chave))
         .route("/api/cofre/{id}", get(cofre_ler).patch(cofre_mudar).delete(cofre_apagar))
         .route("/api/cofre/{id}/valor", get(cofre_valor))
         .route("/api/log", post(gravar_log))
@@ -787,7 +789,7 @@ async fn abrir_arquivo(Json(d): Json<Value>) -> R {
     let r = if cfg!(windows) {
         std::process::Command::new("explorer").arg(p).spawn()
     } else {
-        std::process::Command::new(if cfg!(target_os = "macos") { "open" } else { "xdg-open" }).arg(p).spawn()
+        crate::sistema::ambiente_limpo(&mut std::process::Command::new(if cfg!(target_os = "macos") { "open" } else { "xdg-open" })).arg(p).spawn()
     };
     r.map_err(|e| Erro::Invalido(format!("não consegui abrir: {e}")))?;
     Ok(Json(json!({ "ok": true })))
@@ -902,6 +904,7 @@ fn abrir_com(com: &str, p: &std::path::Path) -> std::io::Result<()> {
         }
     };
     c.current_dir(p);
+    crate::sistema::ambiente_limpo(&mut c);
     #[cfg(windows)]
     if com == "vscode" {
         use std::os::windows::process::CommandExt;
@@ -1300,6 +1303,34 @@ async fn cofre_criar(State(b): State<Banco>, Json(d): Json<Value>) -> R {
     Ok(Json(json!({ "ok": true, "id": id })))
 }
 
+/// Exporta a chave do cofre num arquivo protegido por senha (para abrir esta bancada noutro computador). Só pela tela.
+async fn cofre_exportar_chave(State(b): State<Banco>, headers: axum::http::HeaderMap, Json(d): Json<Value>) -> R {
+    so_da_tela(&headers)?;
+    let banc = pasta_da_bancada(&b)?;
+    let senha = d.get("senha").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let destino = match d.get("destino").and_then(|v| v.as_str()).filter(|s| !s.is_empty()) {
+        Some(p) => std::path::PathBuf::from(p),
+        None => {
+            let nome = b.bancada_ativa().map(|x| x.nome).unwrap_or_else(|| "bancada".into());
+            dirs::download_dir().unwrap_or_else(crate::bancada::pasta_atelier).join(format!("cofre-{nome}.chave-atelier"))
+        }
+    };
+    let d2 = destino.clone();
+    tokio::task::spawn_blocking(move || crate::cofre::exportar_chave(&banc, &senha, &d2)).await.map_err(falhou_tarefa)??;
+    Ok(Json(json!({ "caminho": destino.to_string_lossy() })))
+}
+
+/// Passa a usar, no cofre desta bancada, a chave de um arquivo exportado (com a senha dele). Só pela tela.
+async fn cofre_importar_chave(State(b): State<Banco>, headers: axum::http::HeaderMap, Json(d): Json<Value>) -> R {
+    so_da_tela(&headers)?;
+    let banc = pasta_da_bancada(&b)?;
+    let senha = d.get("senha").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let origem = std::path::PathBuf::from(d.get("origem").and_then(|v| v.as_str()).unwrap_or(""));
+    tokio::task::spawn_blocking(move || crate::cofre::importar_chave(&banc, &senha, &origem)).await.map_err(falhou_tarefa)??;
+    avisar_cofre(&b);
+    Ok(Json(json!({ "ok": true })))
+}
+
 async fn cofre_ler(State(b): State<Banco>, Path(id): Path<i64>) -> R {
     let banc = pasta_da_bancada(&b)?;
     let s = tokio::task::spawn_blocking(move || crate::cofre::ler(&banc, id)).await.map_err(falhou_tarefa)??;
@@ -1601,8 +1632,12 @@ async fn criar_bancada(State(b): State<Banco>, Json(d): Json<Value>) -> R {
     let nova = {
         let mut cfg = cfg_de(&b);
         let nova = cfg.acrescentar(nome, &caminho)?;
+        let banco_novo = !bancada::banco_da(&nova.caminho).exists();
         // garante o banco criado e migrado já agora (nasce limpo: só a visão Todos os itens)
-        db::abrir(&bancada::banco_da(&nova.caminho))?;
+        let conn = db::abrir(&bancada::banco_da(&nova.caminho))?;
+        if banco_novo {
+            documento_da_bancada(&conn, &nova)?;
+        }
         bancada::salvar(&cfg)?;
         nova
     };
@@ -1610,6 +1645,20 @@ async fn criar_bancada(State(b): State<Banco>, Json(d): Json<Value>) -> R {
         ativar(&b, &nova.caminho)?;
     }
     Ok(Json(json!(nova)))
+}
+
+/// A bancada nova nasce com um documento do tipo Bancada, com o nome dela e a pasta no padrão (insumos, artefatos,
+/// CLAUDE.md): um lugar para começar a trabalhar sem ter de inventar um "projeto" antes. Não é pai de nada à força;
+/// usa quem quiser. As bancadas que já existiam não ganham (pedido do Paulo, 2026-11-21).
+fn documento_da_bancada(conn: &Connection, b: &Bancada) -> db::Res<i64> {
+    let tipo: Option<i64> = conn.query_row("SELECT id FROM tipos WHERE nome = 'Bancada'", [], |r| r.get(0)).optional()?;
+    let tipo = match tipo {
+        Some(t) => t,
+        None => db::criar_tipo(conn, &json!({ "nome": "Bancada", "icone": "🗂️" }))?,
+    };
+    let id = db::criar_item(conn, &json!({ "titulo": b.nome, "tipo_id": tipo }))?;
+    crate::pastas::criar(conn, std::path::Path::new(&b.caminho), &b.nome, id, "atelier")?;
+    Ok(id)
 }
 
 fn ativar(b: &Banco, caminho: &str) -> db::Res<Bancada> {
@@ -1646,4 +1695,25 @@ async fn remover_bancada(State(b): State<Banco>, Json(d): Json<Value>) -> R {
     cfg.remover(&caminho_de(&d)?)?;
     bancada::salvar(&cfg)?;
     Ok(Json(json!({ "ok": true })))
+}
+
+#[cfg(test)]
+mod testes_bancada_nova {
+    #[test]
+    fn bancada_nova_nasce_com_o_documento_dela() {
+        let dir = std::env::temp_dir().join(format!("atelier-bancada-nova-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let b = crate::bancada::Bancada { nome: "ponty".into(), caminho: dir.to_string_lossy().to_string() };
+        let conn = crate::db::abrir(&crate::bancada::banco_da(&b.caminho)).unwrap();
+        let id = super::documento_da_bancada(&conn, &b).unwrap();
+        let it = crate::db::ler_item(&conn, id).unwrap();
+        assert_eq!(it.titulo, "ponty");
+        let tipo: String = conn.query_row("SELECT nome FROM tipos WHERE id = ?", [it.tipo_id.unwrap()], |r| r.get(0)).unwrap();
+        assert_eq!(tipo, "Bancada");
+        let pasta = std::path::PathBuf::from(it.pasta.expect("nasce com pasta"));
+        assert!(pasta.join("insumos").is_dir() && pasta.join("CLAUDE.md").is_file());
+        drop(conn);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

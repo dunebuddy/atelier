@@ -168,14 +168,27 @@ export function partes(combo: string): string[] {
 export const PREFIXO = "Ctrl+K";
 const ESPERA = 2000;
 
+// a segunda tecla que o Paulo mudou fica junto dos atalhos, como "dois:<id>"; "-" = tirou a versão em dois tempos
+export const chaveDois = (id: string) => `dois:${id}`;
+
+/** A segunda tecla do atalho `id` ("" = não tem versão em dois tempos). */
+export function segunda(id: string): string {
+  const m = mudados[chaveDois(id)];
+  if (m === "-") return "";
+  return m || ATALHOS.find((a) => a.id === id)?.dois || "";
+}
+
+/** Qual atalho usa esta segunda tecla (para avisar de conflito). */
+export const quemUsaSegunda = (seg: string, fora?: string) => ATALHOS.find((a) => a.id !== fora && segunda(a.id) === seg);
+
 /** "Ctrl+K J" para mostrar. */
 export const doisTempos = (id: string) => {
-  const d = ATALHOS.find((a) => a.id === id)?.dois;
+  const d = segunda(id);
   return d ? `${PREFIXO} ${d}` : "";
 };
 
 /** A segunda tecla como no `dois` ("J", "Shift+←", "\\", "Enter"). */
-function segundaDe(e: KeyboardEvent): string | null {
+export function segundaDe(e: KeyboardEvent): string | null {
   const t = teclaDe(e);
   if (!t) return null;
   return e.shiftKey && !/^[A-Z]$/.test(t) ? `Shift+${t}` : t;
@@ -194,7 +207,7 @@ export function instalarDoisTempos() {
       e.preventDefault();
       e.stopImmediatePropagation();
       const seg = segundaDe(e);
-      const a = !e.ctrlKey && !e.altKey && seg ? ATALHOS.find((x) => x.dois === seg) : undefined;
+      const a = !e.ctrlKey && !e.altKey && seg ? ATALHOS.find((x) => segunda(x.id) === seg) : undefined;
       sair();
       if (a) window.setTimeout(() => dispararAtalho(a.id), 0);
       return;
@@ -209,4 +222,4 @@ export function instalarDoisTempos() {
 }
 
 /** Os atalhos que têm a versão em dois tempos (para o selo mostrar o que dá para apertar). */
-export const comDoisTempos = () => ATALHOS.filter((a) => a.dois);
+export const comDoisTempos = () => ATALHOS.filter((a) => segunda(a.id));

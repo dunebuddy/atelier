@@ -3,6 +3,7 @@
 //   atelier://doc/<código>/<caminho>       um arquivo dentro da pasta do documento
 //   atelier://visao/<nome>                 uma visão da bancada aberta
 //   atelier://bancada/<nome>               uma bancada (abre a janela dela)
+//   atelier://cofre/<id>                   um segredo do cofre da bancada aberta (o valor nunca vai no link)
 // `?bancada=<nome>` no fim é opcional: desempata e diz onde procurar primeiro.
 import { avisar, falhou } from "./ui";
 
@@ -11,6 +12,7 @@ export const RE_CODIGO_SOLTO = /^#?([0-9a-f]{7})$/i;
 
 export const linkDoc = (codigo: string) => `atelier://doc/${codigo.toLowerCase()}`;
 export const linkVisao = (nome: string) => `atelier://visao/${encodeURIComponent(nome)}`;
+export const linkSegredo = (id: number) => `atelier://cofre/${id}`;
 
 /** O link de um arquivo que mora na pasta de um documento (`.../itens/<código>-<título>/...`), ou null. */
 export function linkDoArquivo(caminho: string): string | null {

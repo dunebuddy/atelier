@@ -96,6 +96,19 @@ export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; ao
     };
     const caixaAtual = caixa.current!;
     caixaAtual.addEventListener("paste", colar, true);
+    // acento no Linux com o WebKitGTK antigo do AppImage e o teclado do KWin (plasma-keyboard, KDE no Wayland): o
+    // acento chega como compositionend SEM compositionstart antes. A tecla (keyCode 229) já manda a letra certa, mas
+    // o xterm, no compositionend, manda de novo tudo o que está na caixinha escondida desde um início que não houve:
+    // "ã", "ãã", "ããã"... (e o Claude Code redesenha isso com vãos). Segura esse compositionend antes do xterm.
+    // Composição de verdade (IBus, Windows, japonês) tem o compositionstart e segue igual.
+    let compondo = false;
+    const inicioComposicao = () => { compondo = true; };
+    const fimComposicao = (e: CompositionEvent) => {
+      if (!compondo) e.stopImmediatePropagation();
+      compondo = false;
+    };
+    caixaAtual.addEventListener("compositionstart", inicioComposicao, true);
+    caixaAtual.addEventListener("compositionend", fimComposicao, true);
     term.onBell(() => { marcarAgente(aba.id, "esperando"); if (sessaoEmFoco() === aba.id) atender([aba.id]); });
     term.onData(() => { if (estadoDaSessao(aba.id) === "esperando") marcarAgente(aba.id, "trabalhando"); });
     term.attachCustomKeyEventHandler((e) => {
@@ -142,6 +155,8 @@ export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; ao
       clearTimeout(espera);
       obs.disconnect();
       caixaAtual.removeEventListener("paste", colar, true);
+      caixaAtual.removeEventListener("compositionstart", inicioComposicao, true);
+      caixaAtual.removeEventListener("compositionend", fimComposicao, true);
       dados.dispose();
       ws.close();
       // dá um quadro para o xterm terminar o que estava desenhando antes de sumir

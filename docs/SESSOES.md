@@ -734,3 +734,51 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   menu num Linux com interface, nem a atualização automática no caminho novo.
 - Cuidado ao testar no WSL: `wsl -- sh -c '...'` passa pelo shell padrão da distro, que expande `$HOME` antes. Um
   `rm -rf $HOME` de teste apagou a home do Ubuntu-24.04 (estava vazia, segundo o Paulo). Usar caminho literal.
+
+## 2026-11-21 — Atalhos em dois tempos configuráveis
+- `src/atalhos.ts`: `segunda(id)` lê `preferencias.atalhos["dois:<id>"]` (vazio = de fábrica, `-` = sem) e o Ctrl+K,
+  o selo (`DoisTempos.tsx`) e a lista (`Atalhos.tsx`) usam ela. `ConfigAtalhos.tsx`: botão do Ctrl K em cada linha,
+  grava a tecla, Backspace tira, conflito avisa, "Voltar todos ao padrão" limpa os dois. Sem mudança no Rust (o
+  mapa já aceita qualquer chave).
+- Testado no `bun run teste`: mudar Maximizar para M, recusa de Z (é do Zen), dar N ao Novo documento e Ctrl K N
+  abrindo o menu Criar. tsc ok. **Não visto** no app instalado.
+
+## 2026-11-21 — Cofre: levar a chave e guardar pelo texto; acento no Linux
+- `core/src/cofre.rs`: `exportar_chave`/`importar_chave` (arquivo = SQLite criptografado com a senha, `PRAGMA key`,
+  `kdf_iter` 256000; dentro, a chave em hex), `guardar_chave` (keyring, ou o arquivo como em `chave()`), `abrir_com`.
+  API `/api/cofre/chave/exportar|importar`, só pela tela. Tela: `ChaveDoCofre` em `Cofre.tsx` (classe `cofre-levar`;
+  `cofre-chave` já era a etiqueta da chave do segredo). Teste novo no core.
+- Editor: `MenuDaSelecao` (botão direito com seleção) e `guardarNoCofre`; `novoSegredo({ valorInicial, aoCriar })`;
+  Link do tiptap com `protocols: ["atelier"]`; `abrirLink` segue `atelier://` por dentro; `atelier://cofre/<id>` em
+  `links.ts` e no `seguir` do App.
+- Testado no `bun run teste`: exportar, senha errada, senha curta, importar; selecionar, Guardar no cofre, o link
+  depois de recarregar, Ctrl+clique abrindo o Cofre. **Não visto:** o diálogo de salvar/abrir do Tauri, o keyring
+  de verdade e a importação numa máquina sem a chave (o Fedora).
+- Acento no terminal do Linux (print do Paulo): não reproduz no Windows. `scripts/terminal/acentos.html` registra os
+  eventos; esperando o Paulo rodar no Fedora.
+- Ideia nova na caixa: documento padrão da bancada.
+- Medição de memória/CPU no Linux somava cada thread como processo (sysinfo: `ProcessRefreshKind::nothing()` vem
+  com `tasks: true`). Agora `without_tasks()` e pula `thread_kind()`. Teste do core ok no Windows; Linux não visto.
+
+## 2026-11-21 — VMs de teste do Linux (Hyper-V)
+- O Paulo: nada de WSL, VMzinhas com Fedora, Ubuntu e Arch, uma ligada por vez. `scripts/vm/` (LEIAME, `seed.ps1`:
+  ISO cloud-init pelo IMAPI2 do Windows; `criar.ps1`: VHDX dinâmico 25 GB, até 4 GB de RAM, Default Switch;
+  `preparar-fedora.sh`: GNOME mínimo com IBus e chaveiro, deps do Tauri, Rust, Bun). Tudo em `C:\VMs\` fora do git.
+- Fedora Cloud 45 Azure baixada e conferida (SHA256 do CHECKSUM oficial), descompactada em `imagem.vhd`; seed pronto.
+- **Parada:** o Paulo entrou no grupo Administradores do Hyper-V e vai reiniciar. Próximo: `criar.ps1`, SSH,
+  `preparar-fedora.sh`, compilar o atelier e testar acento (`scripts/terminal/acentos.html`) e memória.
+- VM do Fedora no ar (`atelier-fedora`, IP pelo MAC/ARP; a imagem do Azure ignora o NoCloud, usar a Generic qcow2 com
+  `qcow2-para-vhd.py`; `tela.ps1` fotografa o console, `digitar.ps1` digita tecla por tecla, sem Shift). GNOME com
+  ABNT2 e sem bloqueio de tela (`/etc/dconf/db/local.d`). WebKitGTK precisa de `WEBKIT_DISABLE_DMABUF_RENDERER=1`
+  lá (sem GPU).
+- Acento: o Fedora do Paulo é KDE sem IBus; na VM (GNOME/IBus e GTK simple) não reproduz. KDE sendo instalado na VM.
+- Ambiente do AppImage vazando para o terminal e outros programas: corrigido (`sistema::ajustes_de_ambiente`).
+- Acento no KDE: reproduzido na VM ligando o `plasma-keyboard` (o notebook do Paulo tem; sem ele não reproduz).
+  O WebKitGTK do AppImage (Ubuntu 22.04) manda `compositionend` sem `compositionstart`; o xterm 5.5 reenvia a
+  caixinha inteira. Correção em `TerminalXterm.tsx` (segura esse compositionend na captura). O GNOME Web do Fedora
+  (WebKit novo) não tem o bug. Página de diagnóstico abre no atelier se estiver dentro da bancada (API `/api/tela`).
+- KDE na VM: entrar pela sessão Plasma (AccountsService `Session=plasma`), bloqueio desligado em
+  `kscreenlockerrc`. O Paulo ofereceu a pasta compartilhada do Remmina para testar AppImage na máquina dele.
+- Caixa de entrada zerada para a 0.2.31: busca nos valores de texto das propriedades (`json_tree`), documento do tipo
+  Bancada na bancada nova (`api::documento_da_bancada`), e o "em branco sem GPU" não acontece no atelier (era o
+  monitor da VM apagando; `scripts/vm/abrir-atelier.ps1` acorda a tela antes da foto). 52 testes do core ok.

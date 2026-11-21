@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Acentos no terminal</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css">
+<script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js"></script>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; padding: 16px; background: #1e2127; color: #d7dae0; font: 14px system-ui, sans-serif; }
+  h1 { font-size: 18px; margin: 0 0 6px; }
+  p { margin: 0 0 12px; color: #9aa1ad; max-width: 70ch; }
+  .lado { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 800px) { .lado { grid-template-columns: 1fr; } }
+  textarea { width: 100%; box-sizing: border-box; height: 60px; background: #282c34; color: inherit; border: 1px solid #444; border-radius: 6px; padding: 8px; font: 15px monospace; }
+  #term { height: 120px; border: 1px solid #444; border-radius: 6px; padding: 4px; background: #000; }
+  pre { background: #15171c; border: 1px solid #333; border-radius: 6px; padding: 8px; height: 320px; overflow: auto; margin: 8px 0 0; font: 12px monospace; white-space: pre-wrap; }
+  button { margin-top: 10px; padding: 6px 12px; border-radius: 6px; border: 1px solid #555; background: #2d313a; color: inherit; cursor: pointer; }
+</style>
+</head>
+<body>
+<h1>Acentos no terminal</h1>
+<p>Digite <b>á</b>, <b>ã</b> e <b>ç</b> em cada caixa (do jeito de sempre, com a tecla de acento) e depois clique em
+  <b>Copiar tudo</b> e cole para o Claude. A esquerda é uma caixa de texto comum; a direita é o mesmo xterm do atelier.</p>
+<div class="lado">
+  <div><b>Caixa de texto</b><textarea id="caixa"></textarea><pre id="logCaixa"></pre></div>
+  <div><b>xterm 5.5.0</b><div id="term"></div><pre id="logTerm"></pre></div>
+</div>
+<button id="copiar">Copiar tudo</button> <button id="limpar">Limpar</button>
+<label style="margin-left:12px"><input type="checkbox" id="correcao" checked> com a correção do atelier (composição sem início)</label>
+<script>
+const t0 = performance.now();
+const ms = () => String(Math.round(performance.now() - t0)).padStart(6);
+const hex = (s) => [...s].map((c) => "U+" + c.codePointAt(0).toString(16).toUpperCase().padStart(4, "0")).join(" ");
+const mostra = (s) => s == null ? "null" : JSON.stringify(s) + (s ? " [" + hex(s) + "]" : "");
+function registrar(pre, alvo) {
+  const log = (l) => { pre.textContent += ms() + "  " + l + "\n"; pre.scrollTop = pre.scrollHeight; };
+  for (const tipo of ["keydown", "keyup"]) alvo.addEventListener(tipo, (e) => log(`${tipo} key=${mostra(e.key)} code=${e.code} keyCode=${e.keyCode} composing=${e.isComposing}`), true);
+  for (const tipo of ["compositionstart", "compositionupdate", "compositionend"]) alvo.addEventListener(tipo, (e) => log(`${tipo} data=${mostra(e.data)}`), true);
+  for (const tipo of ["beforeinput", "input"]) alvo.addEventListener(tipo, (e) => log(`${tipo} type=${e.inputType} data=${mostra(e.data)} composing=${e.isComposing}`), true);
+  return log;
+}
+registrar(document.getElementById("logCaixa"), document.getElementById("caixa"));
+const term = new Terminal({ fontSize: 14, cols: 60, rows: 6 });
+term.open(document.getElementById("term"));
+// a mesma correção do TerminalXterm.tsx: compositionend sem compositionstart antes (WebKitGTK antigo + teclado do
+// KWin) faria o xterm mandar de novo tudo o que já está na caixinha; segura antes do xterm
+let compondo = false;
+const caixaTerm = document.getElementById("term");
+caixaTerm.addEventListener("compositionstart", () => { compondo = true; }, true);
+caixaTerm.addEventListener("compositionend", (e) => {
+  const tinha = compondo; compondo = false;
+  if (!tinha && document.getElementById("correcao").checked) { e.stopImmediatePropagation(); logT("(correção: compositionend sem início, segurado)"); }
+}, true);
+const logT = registrar(document.getElementById("logTerm"), document.querySelector("#term .xterm-helper-textarea"));
+term.onData((d) => { logT(">>> onData (o que iria para o programa) " + mostra(d)); term.write(d.replace(/\r/g, "\r\n")); });
+term.focus();
+document.getElementById("copiar").onclick = () => {
+  const txt = `${navigator.userAgent}\n\n== caixa ==\n${document.getElementById("logCaixa").textContent}\n== xterm ==\n${document.getElementById("logTerm").textContent}`;
+  navigator.clipboard.writeText(txt).catch(() => {}).finally(() => { document.getElementById("copiar").textContent = "Copiado"; });
+};
+document.getElementById("limpar").onclick = () => { for (const id of ["logCaixa", "logTerm"]) document.getElementById(id).textContent = ""; term.clear(); };
+</script>
+</body>
+</html>

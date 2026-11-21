@@ -724,3 +724,13 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   Agora Ctrl+V/X/Z/Y seguem para o campo quando o foco está num textarea/input/contenteditable (não repassa ao app).
   Testado: tsc e simulação do script (textarea passa, fora do campo segue repassando). **Não visto** no app instalado.
 - Fechada a **0.2.30** só com essa correção (escolha do Paulo); a busca por valores de propriedade segue na caixa.
+
+## 2026-11-21 — Instalar no Linux por script
+- O Paulo foi instalar no Fedora. O CI já gera AppImage e .deb; sem .rpm (não vale: o AppImage se atualiza sozinho).
+- Novo `install.sh` (raiz; README tem a linha `curl … | sh`): baixa o AppImage da última release (versão lida do
+  `latest.json`), põe em `~/.local/share/atelier/`, link em `~/.local/bin/atelier`, `.desktop` com ícone e o
+  esquema `atelier://`, avisa se faltar libfuse2 e se houver cópia do Gear Lever; `--desinstalar`. Fora de versão.
+- Testado no WSL (dash): instalar, rodar de novo (pula o download), desinstalar. **Não visto:** abrir o app pelo
+  menu num Linux com interface, nem a atualização automática no caminho novo.
+- Cuidado ao testar no WSL: `wsl -- sh -c '...'` passa pelo shell padrão da distro, que expande `$HOME` antes. Um
+  `rm -rf $HOME` de teste apagou a home do Ubuntu-24.04 (estava vazia, segundo o Paulo). Usar caminho literal.

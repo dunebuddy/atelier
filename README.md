@@ -20,6 +20,14 @@ Os dados ficam na sua máquina (`~/atelier`); nada vai para a nuvem.
 Baixe o instalador da [última versão](https://github.com/dunebuddy/atelier/releases/latest): Windows
 (`atelier_*_x64-setup.exe`) ou Linux (`.AppImage` ou `.deb`). O app avisa quando sai versão nova.
 
+No Linux (qualquer distribuição, x86_64), sem root, com entrada no menu de aplicativos:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dunebuddy/atelier/master/install.sh | sh
+```
+
+Rodar de novo atualiza; `| sh -s -- --desinstalar` remove (os dados em `~/atelier` ficam).
+
 ## Desenvolver
 
 Precisa de Rust, Bun e Node.

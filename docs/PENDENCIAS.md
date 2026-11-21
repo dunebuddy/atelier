@@ -26,7 +26,6 @@ Como usar:
   coisas que identificam bem o documento"): hoje o texto casa com código, título e conteúdo; valores de propriedade
   (sigla, ID externo) ainda não. A conferir com o Paulo se precisa.
 ### Melhorias pedidas
-
 ### Ideias antigas (ninguém pediu agora)
 - Migrar o posto `daily-work` para dentro do atelier (é trabalho no outro repositório, não aqui).
 - Cofre: exportar a chave com uma senha (para levar a bancada com o cofre para outro computador).
@@ -62,6 +61,11 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **Fora de versão** (2026-11-21) · Script de instalação no Linux (o Paulo, instalando no Fedora: "massa era
+  a gente ter um daqueles sh"; "vai gerar versão não"): `install.sh` na raiz, `curl -fsSL <raw>/install.sh | sh`.
+  AppImage da última release em `~/.local/share/atelier/atelier.AppImage`, `atelier` em `~/.local/bin`, `.desktop`
+  com ícone e `x-scheme-handler/atelier` (no lugar do Gear Lever), aviso de libfuse2, `--desinstalar`. A conferir:
+  a atualização automática trocando o AppImage nesse caminho.
 - **0.2.30** (2026-11-20) · Só a correção (escolha do Paulo; a busca por valores de propriedade ficou):
   - **Ctrl+V na caixinha de comentar** (2026-11-20, o Paulo: usa o Rend, que cola o ditado com Ctrl+V). Feito no
     código: o repasse de teclas da moldura (`src/moldura.ts`) bloqueava todo Ctrl+tecla; agora Ctrl+V/X/Z/Y passam

@@ -55,6 +55,11 @@ caixaTerm.addEventListener("compositionend", (e) => {
 }, true);
 const logT = registrar(document.getElementById("logTerm"), document.querySelector("#term .xterm-helper-textarea"));
 term.onData((d) => { logT(">>> onData (o que iria para o programa) " + mostra(d)); term.write(d.replace(/\r/g, "\r\n")); });
+// a segunda parte da correção (0.2.32): a caixinha escondida fica vazia depois de cada envio
+term.onData(() => {
+  if (compondo || !document.getElementById("correcao").checked) return;
+  setTimeout(() => { if (!compondo && term.textarea) term.textarea.value = ""; }, 0);
+});
 term.focus();
 document.getElementById("copiar").onclick = () => {
   const txt = `${navigator.userAgent}\n\n== caixa ==\n${document.getElementById("logCaixa").textContent}\n== xterm ==\n${document.getElementById("logTerm").textContent}`;

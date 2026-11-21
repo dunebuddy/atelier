@@ -28,6 +28,9 @@ function cor(nome: string) {
 export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; aoSair: () => void }) {
   const caixa = useRef<HTMLDivElement>(null);
   const ajustar = useRef<() => void>(() => {});
+  // o teclado vem para cá quando o terminal nasce ou reaparece na janela ativa (senão fica no botão que o abriu e o
+  // que se digita se perde)
+  const focar = useRef<() => void>(() => {});
   // o xterm só nasce quando a aba aparece pela primeira vez (criado escondido, sem tamanho, ele quebra)
   const [pronto, setPronto] = useState(false);
   useEffect(() => {
@@ -58,6 +61,8 @@ export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; ao
     const larguras = usarLarguras(term);
     term.open(caixa.current!);
     try { fit.fit(); } catch { /* ainda sem tamanho */ }
+    focar.current = () => { if (!morto && caixa.current?.closest(".janela.ativa")) term.focus(); };
+    focar.current();
     // a fonte pode chegar depois do open: mede de novo a célula e redesenha
     document.fonts?.ready.then(() => {
       if (morto) return;
@@ -109,6 +114,14 @@ export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; ao
     };
     caixaAtual.addEventListener("compositionstart", inicioComposicao, true);
     caixaAtual.addEventListener("compositionend", fimComposicao, true);
+    // e a caixinha escondida do xterm fica vazia depois de cada envio: o teclado do KWin escreve nela (acentos e o
+    // espaço depois deles) e, depois de um espaço, mexe no texto em volta do cursor; o xterm então não acha o
+    // "antes" dentro do "depois" e reenviava a caixinha inteira (ããçáá... a cada "espaço + á"). Vazia, não há o que
+    // reenviar. Durante uma composição de verdade (IBus, japonês) não mexe.
+    term.onData(() => {
+      if (compondo) return;
+      window.setTimeout(() => { if (!compondo && term.textarea) term.textarea.value = ""; }, 0);
+    });
     term.onBell(() => { marcarAgente(aba.id, "esperando"); if (sessaoEmFoco() === aba.id) atender([aba.id]); });
     term.onData(() => { if (estadoDaSessao(aba.id) === "esperando") marcarAgente(aba.id, "trabalhando"); });
     term.attachCustomKeyEventHandler((e) => {
@@ -165,7 +178,7 @@ export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; ao
   }, [aba.id, pronto]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (visivel) queueMicrotask(() => ajustar.current());
+    if (visivel) queueMicrotask(() => { ajustar.current(); focar.current(); });
   }, [visivel]);
 
   // pôr o foco no terminal é ir até o agente: sai da fila da barra de status na hora, sem precisar clicar na pílula

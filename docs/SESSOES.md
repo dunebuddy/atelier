@@ -782,3 +782,10 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 - Caixa de entrada zerada para a 0.2.31: busca nos valores de texto das propriedades (`json_tree`), documento do tipo
   Bancada na bancada nova (`api::documento_da_bancada`), e o "em branco sem GPU" não acontece no atelier (era o
   monitor da VM apagando; `scripts/vm/abrir-atelier.ps1` acorda a tela antes da foto). 52 testes do core ok.
+- **0.2.31 publicada** (CI ok). O Paulo testou no Fedora dele (KDE, notebook): acento ok. VM `atelier-fedora`
+  desligada com o disco guardado (Fedora 45 com GNOME e KDE+plasma-keyboard, atelier pelo install.sh); religar com
+  `Start-VM atelier-fedora`. Ubuntu e Arch ainda não criados.
+- Salto do "á" no Claude Code, medido no Fedora do Paulo com o leitor de bytes: depois de um ESPAÇO, o próximo
+  acento faz o xterm reenviar a caixinha escondida inteira (só os acentos e espaços que passaram pelo teclado do
+  KWin). Correção 2 em `TerminalXterm.tsx`: limpar `term.textarea` depois de cada onData (fora de composição).
+  A VM não reproduz (o teclado virtual do Hyper-V não faz o mesmo que o teclado de verdade).

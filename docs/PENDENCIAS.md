@@ -22,6 +22,9 @@ Como usar:
 > 0.2.7). Pedido novo entra aqui.
 
 ### Bugs
+- **Claude Code: o "á" ainda dava salto no Fedora do Paulo** (2026-11-21, depois da 0.2.31). Medido na máquina
+  dele: só depois de um espaço, o acento seguinte faz o xterm reenviar a caixinha escondida inteira. Correção: a
+  caixinha fica vazia depois de cada envio (`TerminalXterm.tsx`). **Falta confirmar** na máquina dele.
 ### Melhorias pedidas
 ### Ideias antigas (ninguém pediu agora)
 - Migrar o posto `daily-work` para dentro do atelier (é trabalho no outro repositório, não aqui).
@@ -54,6 +57,9 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.32** (2026-11-21) · Terminal novo ganha o foco do teclado (o Paulo: "quando a gente abre, ele não
+  ganha o foco"): o xterm nasce um quadro depois e o foco ficava no botão; agora `TerminalXterm` foca ao nascer e ao
+  reaparecer, se estiver na janela ativa. Testado na tela de teste (abrir pelo botão e digitar sem clicar).
 - **0.2.31** (2026-11-21) · O que estava na caixa de entrada (o Paulo: "vamos incluir também esses que
   ficaram de fora... para não ficar nenhuma pendência"):
   - **Busca pelos valores das propriedades:** o texto da busca também casa com os valores de texto das propriedades

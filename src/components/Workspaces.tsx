@@ -1,11 +1,11 @@
 import { IndicadorDitado } from "./Ditado";
 import { useEffect, useRef, useState } from "react";
 import {
-  Archive, ArchiveRestore, ChevronDown, ChevronRight, Cpu, GalleryHorizontalEnd, HardDrive, LayoutDashboard, LayoutPanelLeft, MemoryStick, PanelTop, Pencil, Power, Trash2,
+  Archive, ArchiveRestore, ChevronDown, ChevronRight, Cpu, GalleryHorizontalEnd, HardDrive, LayoutDashboard, LayoutPanelLeft, MemoryStick, PanelTop, Pencil, Power, Search, Trash2,
 } from "lucide-react";
 import { rotaDe } from "../painel";
 import { api, BASE } from "../api";
-import { GERAL, InfoWorkspace, itemDa, sessoesDe, workspaceDaSessao, Workspaces } from "../workspaces";
+import { casaBusca, GERAL, InfoWorkspace, itemDa, porUso, sessoesDe, workspaceDaSessao, Workspaces } from "../workspaces";
 import { guardar, ler } from "../ui";
 import { Popover, usePopover } from "./Popover";
 import { Marca } from "./Marca";
@@ -138,14 +138,32 @@ export function SeletorWorkspace({ ws, trocar, fechar, esquecer, renomear, arqui
   const geral = { estado: estadoDe(todos.map((s) => s.sessao)), temAgente: todos.some((s) => !!s.programa) };
   // o da bancada sempre em primeiro (ligado ou não; ele nunca é apagado nem arquivado); depois os ativos (abertos),
   // os fechados e, à parte, no fim, os arquivados
+  // os ativos por nome; os fechados e os arquivados do usado por último para o mais antigo
   const porNome = (a: string, b: string) => (ws.info[a]?.titulo ?? "").localeCompare(ws.info[b]?.titulo ?? "");
+  // busca pelo nome: a lupa abre a caixinha, ou é só começar a digitar com a lista aberta
+  const [busca, setBusca] = useState<string | null>(null);
+  const aberta = !!pop.ancora;
+  useEffect(() => {
+    if (!aberta) { setBusca(null); return; }
+    if (busca != null) return;
+    const f = (e: KeyboardEvent) => {
+      const alvo = e.target as HTMLElement;
+      if (e.key.length !== 1 || e.ctrlKey || e.altKey || e.metaKey || alvo.closest("input, textarea, [contenteditable]")) return;
+      e.preventDefault();
+      setBusca(e.key);
+    };
+    document.addEventListener("keydown", f);
+    return () => document.removeEventListener("keydown", f);
+  }, [aberta, busca]);
+  const filtro = (k: string) => !busca || casaBusca(ws, k, busca);
   const todas = Object.keys(ws.estados).filter((k) => k !== GERAL);
-  const arquivados = todas.filter((k) => ws.info[k]?.arquivado).sort(porNome);
+  const arquivados = todas.filter((k) => ws.info[k]?.arquivado && filtro(k)).sort(porUso(ws));
   const chaves = [
     ...(ws.estados[GERAL] ? [GERAL] : []),
     ...todas.filter((k) => ws.abertos.includes(k) && !ws.info[k]?.arquivado).sort(porNome),
-    ...todas.filter((k) => !ws.abertos.includes(k) && !ws.info[k]?.arquivado).sort(porNome),
-  ];
+    ...todas.filter((k) => !ws.abertos.includes(k) && !ws.info[k]?.arquivado).sort(porUso(ws)),
+  ].filter(filtro);
+  const mostrarArquivados = verArquivados || (!!busca?.trim() && arquivados.length > 0);
   return (
     <>
       <button className="bt-btn seletor-ws" title="Workspace (Ctrl+Alt+PgUp / PgDn troca entre os abertos)" onClick={pop.abrir}>
@@ -157,7 +175,32 @@ export function SeletorWorkspace({ ws, trocar, fechar, esquecer, renomear, arqui
       </button>
       {pop.ancora && (
         <Popover ancora={pop.ancora} aoFechar={pop.fechar} largura={480}>
-          <div className="menu-rotulo">Workspaces</div>
+          {busca == null ? (
+            <div className="menu-rotulo ws-rotulo-busca">
+              Workspaces
+              <button className="btn-icone mini" title="Procurar pelo nome (ou comece a digitar)" onClick={() => setBusca("")}><Search size={12} /></button>
+            </div>
+          ) : (
+            <div className="ws-busca">
+              <Search size={13} />
+              <input
+                autoFocus
+                className="campo"
+                placeholder="Procurar workspace…"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                onKeyDown={(e) => {
+                  // Esc com texto limpa; vazio, fecha a caixinha (o Esc seguinte fecha a lista)
+                  if (e.key === "Escape") { e.stopPropagation(); e.preventDefault(); setBusca(busca ? "" : null); }
+                  if (e.key === "Enter") {
+                    const k = chaves[0] ?? arquivados[0];
+                    if (k) { trocar(k); pop.fechar(); }
+                  }
+                }}
+              />
+            </div>
+          )}
+          {chaves.length === 0 && arquivados.length === 0 && <div className="menu-item vazio">Nenhum workspace com esse nome.</div>}
           {chaves.map((k) => {
             const i = ws.info[k] ?? { titulo: k };
             const aberto = ws.abertos.includes(k);
@@ -189,9 +232,9 @@ export function SeletorWorkspace({ ws, trocar, fechar, esquecer, renomear, arqui
           {arquivados.length > 0 && (
             <>
               <button className="menu-item ws-arquivados" onClick={() => setVerArquivados((v) => !v)}>
-                {verArquivados ? <ChevronDown size={13} /> : <ChevronRight size={13} />} Arquivados ({arquivados.length})
+                {mostrarArquivados ? <ChevronDown size={13} /> : <ChevronRight size={13} />} Arquivados ({arquivados.length})
               </button>
-              {verArquivados && arquivados.map((k) => {
+              {mostrarArquivados && arquivados.map((k) => {
                 const i = ws.info[k] ?? { titulo: k };
                 return (
                   <div key={k} className="menu-item ws-linha arquivada" title="Clique para abrir (desarquiva)" onClick={() => { trocar(k); pop.fechar(); }}>
@@ -218,6 +261,8 @@ export function SeletorWorkspace({ ws, trocar, fechar, esquecer, renomear, arqui
 
 interface Medida {
   ram_maquina: number;
+  /** o que a máquina ainda tem disponível (o resto é do atelier e dos outros programas) */
+  ram_livre?: number;
   ram: number;
   cpu: number;
   nucleo: number;
@@ -336,6 +381,12 @@ export function BarraStatus({ ws, irAoAgente }: { ws: Workspaces; irAoAgente: (s
   if (!m) return <footer className="barra-status">{botaoWs}<FilaAgentes ws={ws} irAoAgente={irAoAgente} /></footer>;
 
   const pct = Math.min(100, (m.ram / m.ram_maquina) * 100);
+  // a máquina inteira: o nosso, o dos outros programas (Windows incluído) e o que sobra
+  const livre = Math.min(m.ram_maquina, m.ram_livre ?? m.ram_maquina - m.ram);
+  const outros = Math.max(0, m.ram_maquina - livre - m.ram);
+  const pctOutros = Math.min(100 - pct, (outros / m.ram_maquina) * 100);
+  const pctLivre = (livre / m.ram_maquina) * 100;
+  const apertado = pctLivre < 15;
   const porWs = ws.abertos.map((k) => {
     const ss = sessoesDe(ws.estados[k]).map((s) => ({ ...s, ...(m.sessoes[String(s.sessao)] ?? { ram: 0, cpu: 0 }) }));
     return { k, info: ws.info[k] ?? { titulo: k }, ram: ss.reduce((n, s) => n + s.ram, 0), cpu: ss.reduce((n, s) => n + s.cpu, 0), ss };
@@ -350,16 +401,27 @@ export function BarraStatus({ ws, irAoAgente }: { ws: Workspaces; irAoAgente: (s
       <span style={{ flex: 1, minWidth: 8 }} />
       <IndicadorDitado interfaceRam={m.interface} />
       <IndicadorDisco ativo={ws.ativo} />
-      <button className="bs-medida" onClick={pop.abrir} title={`Memória: ${mb(m.ram)} de ${mb(m.ram_maquina)} da máquina · CPU ${m.cpu.toFixed(0)}% (clique para ver por workspace)`}>
+      <button className="bs-medida" onClick={pop.abrir}
+        title={`Memória da máquina (${mb(m.ram_maquina)}):\n· atelier: ${mb(m.ram)}\n· outros programas e o sistema: ${mb(outros)}\n· livre: ${mb(livre)}\nCPU do atelier ${m.cpu.toFixed(0)}% (clique para ver por workspace)`}>
         <MemoryStick size={12} />
-        <span className="bs-barra"><span style={{ width: `${Math.max(2, pct)}%` }} className={pct > 25 ? "alto" : ""} /></span>
+        <span className={`bs-barra empilhada${apertado ? " apertada" : ""}`}>
+          <span style={{ width: `${Math.max(2, pct)}%` }} className={pct > 25 ? "alto" : ""} />
+          <span className="outros" style={{ width: `${pctOutros}%` }} />
+        </span>
         {mb(m.ram)}
+        <span className={`rotulo-fraco${apertado ? " bs-apertado" : ""}`}>· {mb(livre)} livre</span>
         <Cpu size={12} style={{ marginLeft: 8 }} />
         {m.cpu.toFixed(0)}%
       </button>
       {pop.ancora && (
         <Popover ancora={pop.ancora} aoFechar={pop.fechar} largura={340}>
-          <div className="menu-rotulo">Memória do atelier: {mb(m.ram)} ({pct.toFixed(1)}% da máquina) · CPU {m.cpu.toFixed(0)}%</div>
+          <div className="menu-rotulo">Memória da máquina: {mb(m.ram_maquina)}</div>
+          <div className="bs-grupo">
+            <div className="bs-linha forte"><span><span className="bs-cor nosso" />atelier</span><span>{mb(m.ram)} ({pct.toFixed(1)}%)</span></div>
+            <div className="bs-linha forte"><span><span className="bs-cor outros" />Outros programas e o sistema</span><span>{mb(outros)} ({pctOutros.toFixed(0)}%)</span></div>
+            <div className={`bs-linha forte${apertado ? " bs-apertado" : ""}`}><span><span className="bs-cor" />Livre</span><span>{mb(livre)} ({pctLivre.toFixed(0)}%)</span></div>
+          </div>
+          <div className="menu-rotulo">Memória do atelier: {mb(m.ram)} · CPU {m.cpu.toFixed(0)}%</div>
           {porWs.map((w) => (
             <div key={w.k} className="bs-grupo">
               <div className="bs-linha forte">
@@ -418,14 +480,14 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
   const ordem = [
     GERAL,
     ...ws.abertos.filter((k) => k !== GERAL),
-    ...Object.keys(ws.estados).filter((k) => k !== GERAL && !ws.abertos.includes(k)).sort((a, b) => (ws.info[a]?.titulo ?? "").localeCompare(ws.info[b]?.titulo ?? "")),
-  ].filter((k) => ws.estados[k] && !ws.info[k]?.arquivado && (ws.info[k]?.titulo ?? k).toLowerCase().includes(busca.trim().toLowerCase()));
+    ...Object.keys(ws.estados).filter((k) => k !== GERAL && !ws.abertos.includes(k)).sort(porUso(ws)),
+  ].filter((k) => ws.estados[k] && !ws.info[k]?.arquivado && casaBusca(ws, k, busca));
   // os arquivados, à parte: só com "Mostrar arquivados", embaixo, depois de um traço
   const [verArquivados, setVerArquivados] = useState(() => ler("workspaces.geral.arquivados", false));
   const todosArquivados = Object.keys(ws.estados).filter((k) => ws.info[k]?.arquivado);
   const arquivados = todosArquivados
-    .filter((k) => (ws.info[k]?.titulo ?? k).toLowerCase().includes(busca.trim().toLowerCase()))
-    .sort((a, b) => (ws.info[a]?.titulo ?? "").localeCompare(ws.info[b]?.titulo ?? ""));
+    .filter((k) => casaBusca(ws, k, busca))
+    .sort(porUso(ws));
   // o que as setas percorrem: os ativos e, se à vista, os arquivados
   const nav = verArquivados ? [...ordem, ...arquivados] : ordem;
   const [sel, setSel] = useState(() => Math.max(0, ordem.indexOf(ws.ativo)));
@@ -475,7 +537,7 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
       <div className="ws-geral-topo">
         <LayoutDashboard size={18} />
         <strong>Workspaces</strong>
-        <input autoFocus className="campo" placeholder="Filtrar pelo nome do documento…" value={busca} onChange={(e) => { setBusca(e.target.value); setSel(0); }} />
+        <input autoFocus className="campo" placeholder="Procurar workspace pelo nome…" value={busca} onChange={(e) => { setBusca(e.target.value); setSel(0); }} />
         {m && <span className="dica-inline">atelier: {mb(m.ram)} · CPU {m.cpu.toFixed(0)}%</span>}
         <span style={{ flex: 1 }} />
         {todosArquivados.length > 0 && (

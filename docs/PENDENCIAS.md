@@ -30,6 +30,8 @@ Como usar:
 - Migrar o posto `daily-work` para dentro do atelier (é trabalho no outro repositório, não aqui).
 
 ### A conferir no uso
+- **0.2.32 no Fedora do Paulo (KDE, notebook):** o "á" depois de espaço no Claude Code sem salto, e o terminal novo
+  pegando o foco sozinho. Se ainda saltar: o leitor de bytes (`python3 -c ...` em `docs/SESSOES.md`, 2026-11-21).
 - **0.2.29 no app instalado:** o Claude Code de verdade no terminal (emoji, resize) e o `OpenConsole.exe` ao lado do
   `atelier.exe` depois da atualização; colar imagem (Ctrl+V com print na área de transferência); arquivar um workspace
   de verdade (caixa dos arquivos grandes, Lixeira, zip em `aposentados/`) e reabrir.
@@ -57,6 +59,17 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.33** (2026-11-24) · Pedidos do dia:
+  - **Workspaces em ordem de uso:** no seletor lá em cima e na visão geral, depois do da bancada e dos ativos, os
+    fechados (e os arquivados) vêm do usado por último para o mais antigo, não mais em ordem alfabética. Conta como
+    uso abrir, desligar e ficar aberto (o app grava a hora ao guardar). O Paulo: "eu sempre trabalho nos mesmos e eu
+    tenho que sair procurando por ordem alfabética".
+  - **Busca nos workspaces:** no seletor, a lupa ao lado de "Workspaces" ou começar a digitar com a lista aberta abre
+    a caixinha; Enter vai no primeiro, Esc limpa e depois fecha. Arquivados que batem aparecem também. Na visão geral
+    a caixinha já existia. A busca ignora maiúsculas e acentos.
+  - **RAM da máquina na barrinha:** a barra mostra o atelier (cor de destaque), os outros programas e o sistema
+    (cinza) e o vazio é o livre, mais "X GB livre" ao lado. Com menos de 15% livre, o cinza e o número ficam laranja.
+    O tooltip e o detalhe (clique) trazem os três números. Testado na tela de teste: 13,5 GB de outros, 2,1 GB livre.
 - **0.2.32** (2026-11-21) · Terminal novo ganha o foco do teclado (o Paulo: "quando a gente abre, ele não
   ganha o foco"): o xterm nasce um quadro depois e o foco ficava no botão; agora `TerminalXterm` foca ao nascer e ao
   reaparecer, se estiver na janela ativa. Testado na tela de teste (abrir pelo botão e digitar sem clicar).

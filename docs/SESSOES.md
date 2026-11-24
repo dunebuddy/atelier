@@ -789,3 +789,15 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   acento faz o xterm reenviar a caixinha escondida inteira (só os acentos e espaços que passaram pelo teclado do
   KWin). Correção 2 em `TerminalXterm.tsx`: limpar `term.textarea` depois de cada onData (fora de composição).
   A VM não reproduz (o teclado virtual do Hyper-V não faz o mesmo que o teclado de verdade).
+- **0.2.32 publicada** (CI ok). Ponto de parada: o Paulo confirma no próximo uso, no Fedora dele, que o salto do
+  "á" sumiu. Leitor de bytes para medir na máquina dele:
+  `python3 -c 'import os,tty;tty.setraw(0);[os.write(1,(" ".join(f"{x:02x}" for x in b)+"  "+repr(b.decode("utf-8","replace"))+"\r\n").encode()) for b in iter(lambda:os.read(0,256),b"q")]'`
+  VM `atelier-fedora` ligada; desligar com `Stop-VM atelier-fedora`.
+
+## 2026-11-24 — 0.2.33: workspaces por uso, busca no seletor, RAM da máquina
+- Pedidos do Paulo, anotados e fechados no mesmo dia: workspaces fechados pela ordem do último uso (`porUso` em
+  `src/workspaces.ts`; `fechar` e `salvar` atualizam `usado`), busca no seletor (lupa ou digitar direto; `casaBusca`,
+  sem acento) e a barrinha de RAM com o resto da máquina (`ram_livre`, que o núcleo já mandava). Só tela, sem mexer
+  no núcleo. Testado em `bun run teste` no navegador interno.
+- Ponto de parada: 0.2.33 enviada ao CI e máquina desligada a pedido dele. Confirmar no uso: a ordem dos fechados e a
+  barrinha laranja quando a RAM aperta. Segue em aberto o salto do "á" no Fedora (confirmar a 0.2.32).

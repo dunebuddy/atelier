@@ -320,6 +320,19 @@ body.redimensionando .sidebar { transition: none; }
 .bs-barra { width: 64px; height: 6px; border-radius: 3px; background: var(--hover); overflow: hidden; display: inline-block; }
 .bs-barra > span { display: block; height: 100%; background: var(--acento); border-radius: 3px; }
 .bs-barra > span.alto { background: var(--t-red); }
+/* RAM: o nosso (acento), o dos outros programas (cinza) e o vazio é o livre; pouca sobra deixa os outros laranja */
+.bs-barra.empilhada { width: 84px; display: inline-flex; border: 1px solid var(--borda); }
+.bs-barra.empilhada > span { border-radius: 0; flex-shrink: 0; }
+.bs-barra.empilhada > span.outros { background: var(--texto-3); opacity: .55; }
+.bs-barra.empilhada.apertada > span.outros { background: var(--t-orange, #e8590c); opacity: .9; }
+.bs-apertado { color: var(--t-orange, #e8590c); font-weight: 600; }
+.bs-cor { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; border: 1px solid var(--borda); vertical-align: middle; }
+.bs-cor.nosso { background: var(--acento); border-color: var(--acento); }
+.bs-cor.outros { background: var(--texto-3); opacity: .7; }
+/* seletor de workspace: a lupa ao lado do rótulo e a caixinha de busca */
+.ws-rotulo-busca { display: flex; align-items: center; justify-content: space-between; }
+.ws-busca { display: flex; align-items: center; gap: 6px; padding: 4px 8px 6px; color: var(--texto-3); }
+.ws-busca .campo { flex: 1; height: 26px; }
 .bs-grupo { padding: 4px 8px; border-top: 1px solid var(--borda); }
 .bs-linha { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; padding: 1px 0; color: var(--texto-2); font-variant-numeric: tabular-nums; }
 .bs-linha.forte { color: var(--texto); font-weight: 600; }

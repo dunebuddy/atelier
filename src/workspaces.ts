@@ -77,7 +77,10 @@ export function salvar(bancada: string, w: Workspaces) {
   deItem.sort((a, b) => (w.info[b]?.usado ?? 0) - (w.info[a]?.usado ?? 0));
   const ficam = new Set([GERAL, ...w.abertos, ...arquivados, ...deItem.slice(0, GUARDAR_WORKSPACES)]);
   const estados = Object.fromEntries(Object.entries(w.estados).filter(([k]) => ficam.has(k)).map(([k, e]) => [k, podarJanelas(e)]));
-  const info = Object.fromEntries(Object.entries(w.info).filter(([k]) => ficam.has(k)));
+  // os abertos agora contam como usados agora (a lista dos fechados vem do último usado para o mais antigo)
+  const agora = Date.now();
+  const info = Object.fromEntries(Object.entries(w.info).filter(([k]) => ficam.has(k))
+    .map(([k, i]) => [k, w.abertos.includes(k) ? { ...i, usado: agora } : i]));
   guardar(chaveGuardada(bancada), { ativo: w.ativo, estados, info });
 }
 
@@ -127,7 +130,9 @@ export function fechar(w: Workspaces, chave: string): Workspaces {
   if (chave === GERAL && w.ativo === GERAL) return w;
   const abertos = w.abertos.filter((k) => k !== chave);
   const ativo = w.ativo === chave ? GERAL : w.ativo;
-  return { ...w, abertos: abertos.includes(ativo) ? abertos : [...abertos, ativo], ativo };
+  // usado até agora: desligado, ele entra no topo dos fechados
+  const info = w.info[chave] ? { ...w.info, [chave]: { ...w.info[chave], usado: Date.now() } } : w.info;
+  return { ...w, info, abertos: abertos.includes(ativo) ? abertos : [...abertos, ativo], ativo };
 }
 
 /** Desligado = fora da lista dos abertos (e, portanto, não é o atual). Só desligado se arquiva ou esquece. */
@@ -155,6 +160,14 @@ export function desarquivar(w: Workspaces, chave: string): Workspaces {
 }
 
 export const arquivado = (w: Workspaces, chave: string) => !!w.info[chave]?.arquivado;
+
+/** Ordem dos fechados: o usado por último primeiro. */
+export const porUso = (w: Workspaces) => (a: string, b: string) => (w.info[b]?.usado ?? 0) - (w.info[a]?.usado ?? 0);
+
+/** O nome bate com a busca (sem diferenciar maiúscula nem acento). */
+const semAcento = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+export const casaBusca = (w: Workspaces, chave: string, busca: string) =>
+  semAcento(w.info[chave]?.titulo ?? chave).includes(semAcento(busca.trim()));
 
 /** Arquivar sozinho os parados há `dias` (0 = nunca): só os fechados, nunca o da bancada nem o atual. */
 export function autoArquivar(w: Workspaces, dias: number): { w: Workspaces; arquivados: string[] } {

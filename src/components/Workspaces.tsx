@@ -1,7 +1,7 @@
 import { IndicadorDitado } from "./Ditado";
 import { useEffect, useRef, useState } from "react";
 import {
-  Archive, ArchiveRestore, ChevronDown, ChevronRight, Cpu, GalleryHorizontalEnd, HardDrive, LayoutDashboard, LayoutPanelLeft, MemoryStick, PanelTop, Pencil, Power, Search, Trash2,
+  Archive, ArchiveRestore, ChevronDown, ChevronRight, Cpu, GalleryHorizontalEnd, HardDrive, LayoutDashboard, LayoutPanelLeft, MemoryStick, PanelTop, Pencil, Power, Search, Trash2, X,
 } from "lucide-react";
 import { rotaDe } from "../painel";
 import { api, BASE } from "../api";
@@ -476,6 +476,13 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
   const [editando, setEditando] = useState<string | null>(null);
   const [m, setM] = useState<Medida | null>(null);
   const [busca, setBusca] = useState("");
+  // status dos agentes (a carinha ao lado do título): redesenha quando um hook avisa
+  const [, setNAg] = useState(0);
+  useEffect(() => {
+    const f = () => setNAg((n) => n + 1);
+    window.addEventListener("atelier:agentes", f);
+    return () => window.removeEventListener("atelier:agentes", f);
+  }, []);
   // o da bancada sempre em primeiro (ligado ou não), depois os abertos, depois os guardados; os arquivados não entram
   const ordem = [
     GERAL,
@@ -547,6 +554,7 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
           </button>
         )}
         <span className="dica-inline">← → ↑ ↓ escolhe · Enter vai · Esc fecha</span>
+        <button className="btn-icone" title="Fechar (Esc)" onClick={aoFechar}><X size={16} /></button>
       </div>
       <div className="ws-grade" ref={grade}>
         {ordem.map((k, i) => cartao(k, i))}
@@ -570,6 +578,8 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
           const ram = ss.reduce((n, s) => n + (m?.sessoes[String(s.sessao)]?.ram ?? 0), 0);
           const cpu = ss.reduce((n, s) => n + (m?.sessoes[String(s.sessao)]?.cpu ?? 0), 0);
           const janelas = e.metades.reduce((n, x) => n + x.janelas.length, 0);
+          // o mesmo sinal da lista da barra de título: trabalhando, esperando você, terminou, parado
+          const agente = { estado: estadoDe(ss.map((s) => s.sessao)), temAgente: ss.some((s) => !!s.programa) };
           return (
             <div
               key={k}
@@ -579,6 +589,7 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
             >
               <div className="ws-cartao-cabeca">
                 <span className="ws-cartao-icone">{k === GERAL ? <Marca tamanho={18} /> : info.icone ?? "📄"}</span>
+                {aberto && (agente.temAgente || agente.estado) && <CarinhaAgente {...agente} />}
                 <NomeWs info={info} editando={editando === k} aoGravar={(n) => renomear(k, n)} aoSair={() => setEditando(null)} classe="ws-cartao-titulo" />
                 {k === ws.ativo && <span className="ws-selo-atual">atual</span>}
                 <button className="btn-icone mini ws-lapis" title="Renomear" onClick={(ev) => { ev.stopPropagation(); setEditando(k); }}><Pencil size={12} /></button>
@@ -603,7 +614,7 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
                 {e.metades.map((mt, mi) => (
                   <div key={mi} className="ws-metade">
                     <div className="ws-modo">{ICONE_MODO[mt.modo]}</div>
-                    {mt.janelas.slice(0, 6).map((j) => {
+                    {mt.janelas.map((j) => {
                       const r = rotaDe(j);
                       const s = r.v === "terminal" ? m?.sessoes[String(r.sessao)] : undefined;
                       return (
@@ -614,7 +625,6 @@ export function VisaoGeralWorkspaces({ ws, aoEscolher, aoFechar, fecharWs, renom
                         </div>
                       );
                     })}
-                    {mt.janelas.length > 6 && <div className="ws-janela mais">+{mt.janelas.length - 6}</div>}
                     {mt.janelas.length === 0 && <div className="ws-janela vazia">vazio</div>}
                   </div>
                 ))}

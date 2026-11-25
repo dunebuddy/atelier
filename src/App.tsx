@@ -1,5 +1,5 @@
 import { abrirCodigo } from "./components/Mencoes";
-import { JanelaSegredo, PedidoDoAgente } from "./components/Cofre";
+import { definirWorkspaceDoCofre, JanelaSegredo, PedidoDoAgente } from "./components/Cofre";
 import { SeloDoisTempos } from "./components/DoisTempos";
 import { partesDoLink } from "./links";
 import { abrirJanelaDaBancada, ABRIR_AO_CARREGAR, BANCADA_DA_JANELA, bancadaNaQuery, codificarBancada, decodificarBancada, mesmaBancada } from "./janela";
@@ -158,6 +158,10 @@ export default function App() {
     const id = wsAtivo ? W.itemDa(wsAtivo) : null;
     definirPastaDoWorkspace(async () => (id != null ? (await api.criarPasta(id)).pasta : bancadaAtual ?? undefined));
   }, [wsAtivo, bancadaAtual]);
+  // o cofre filtra pela família do workspace atual
+  useEffect(() => {
+    definirWorkspaceDoCofre(wsAtivo ? W.itemDa(wsAtivo) : null, wsAtivo ? ws?.info[wsAtivo]?.titulo ?? "" : "");
+  });
   // o menu do terminal diz de quem é a pasta, e oferece a do item em foco quando ele não é o do workspace
   useEffect(() => {
     const id = wsAtivo ? W.itemDa(wsAtivo) : null;

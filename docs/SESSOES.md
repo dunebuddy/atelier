@@ -801,3 +801,24 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
   no núcleo. Testado em `bun run teste` no navegador interno.
 - Ponto de parada: 0.2.33 enviada ao CI e máquina desligada a pedido dele. Confirmar no uso: a ordem dos fechados e a
   barrinha laranja quando a RAM aperta. Segue em aberto o salto do "á" no Fedora (confirmar a 0.2.32).
+
+## 2026-11-25 — worktree da próxima versão (título e Zen)
+- Novo jeito de trabalhar, pedido do Paulo: os problemas que ele relata vão sendo corrigidos na worktree
+  `.claude/worktrees/proxima-versao` (branch `proxima-versao`, saída do master em 931074b); "fecha a versão" junta
+  no master e gera.
+- Título do documento: altura recalculada por `ResizeObserver` (largura do próprio título) no lugar do `resize` da
+  janela, em `PaginaItem.tsx`; antes, ao alargar a janela do painel, ficava a altura do tempo em que estava estreito.
+- Zen: `.app.zen .corpo-app { padding-top: 8px }`, a borda e os cantos do bloco dos painéis aparecem em cima.
+- Testado em `bun run teste` (título estreito 661 px → largo 49 px; Zen com o painel a 8 px do topo). Sem commit:
+  as mudanças estão na worktree, esperando o "fecha a versão".
+- Copiar caminho: `copiarCaminho` em `src/links.ts`; botão (ícone Copy) no `.ex-cabeca` do `Explorador` (arquivo
+  aberto ou pasta atual) e da `ArvoreArquivos`; o nome do arquivo na trilha copia ao clicar (`.ex-copiavel`). Testado
+  em `bun run teste` com a área de transferência trocada (o navegador interno nega a escrita; no app ela funciona,
+  como o "Copiar link").
+- Visão geral dos workspaces: `CarinhaAgente` no cabeçalho do cartão (entre ícone e título, redesenha no
+  `atelier:agentes`); `.ws-cartao` com `height: 200px` e `.ws-metade` rolando (`overflow-y: auto`), sem o corte em 6.
+  Testado com 7 terminais e um evento `POST /api/agente/evento` "trabalhando" no `bun run teste`.
+- Visão geral dos workspaces: botão X (Fechar, Esc) no canto direito do topo (`.ws-geral-topo`).
+- Cofre por família: `db::raiz_da_familia` (sobe pelas relações `um_so`, para em ciclo ou pai apagado) +
+  `familia=` em `cofre_listar`; na tela, `definirWorkspaceDoCofre` (o App informa o workspace ativo) e o botão "Só
+  desta família" / "Todos", ligado por padrão. Testado com raiz → filho → neto + um de fora, pela API e na tela.

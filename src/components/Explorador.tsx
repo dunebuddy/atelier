@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link2 } from "lucide-react";
-import { copiarLink, linkDoArquivo } from "../links";
+import { Copy, Link2 } from "lucide-react";
+import { copiarCaminho, copiarLink, linkDoArquivo } from "../links";
 import {
   ArrowLeft, ArrowUp, ChevronDown, ChevronRight, Code2, Eye, File, FileSpreadsheet, FileText, Film, Folder, FolderOpen, Image, Music, Pencil,
   ListChecks, RefreshCw, Save, Table,
@@ -63,6 +63,7 @@ export function ArvoreArquivos({ raiz, titulo }: { raiz: string; titulo?: string
         <FolderOpen size={15} />
         <div className="ex-trilha"><strong title={raiz}>{titulo ?? nomeDe(raiz)}</strong><span className="ex-trilha-caminho" title={raiz}>{raiz}</span></div>
         <button className="btn-icone" title="Reler" onClick={() => setRecarga((n) => n + 1)}><RefreshCw size={14} /></button>
+        <button className="btn-icone" title={`Copiar o caminho da pasta (${raiz})`} onClick={() => copiarCaminho(raiz)}><Copy size={14} /></button>
         <MenuPasta pasta={raiz} classe="btn-icone"><FolderOpen size={14} /></MenuPasta>
       </div>
       <div className="ex-lista ex-arvore">
@@ -182,8 +183,12 @@ export function Explorador({ raiz, arquivo, titulo }: { raiz: string; arquivo?: 
               <button onClick={() => setEstado({ ...estado, dir: estado.raiz + sep + relativo.slice(0, i + 1).join(sep), arquivo: null })}>{p}</button>
             </span>
           ))}
-          {estado.arquivo && (<><span className="sep">/</span><strong>{nomeDe(estado.arquivo)}</strong></>)}
+          {estado.arquivo && (<><span className="sep">/</span>
+            <strong className="ex-copiavel" title={`Clique para copiar o caminho (${estado.arquivo})`} onClick={() => copiarCaminho(estado.arquivo!)}>{nomeDe(estado.arquivo)}</strong></>)}
         </div>
+        {/* o caminho de verdade no disco: do arquivo aberto, ou da pasta em que você está */}
+        <button className="btn-icone" title={`Copiar o caminho ${estado.arquivo ? "do arquivo" : "da pasta"} (${estado.arquivo ?? estado.dir})`}
+          onClick={() => copiarCaminho(estado.arquivo ?? estado.dir)}><Copy size={14} /></button>
         <MenuPasta pasta={estado.dir} classe="btn-icone"><FolderOpen size={14} /></MenuPasta>
       </div>
 

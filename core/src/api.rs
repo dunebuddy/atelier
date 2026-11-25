@@ -1285,6 +1285,16 @@ async fn cofre_listar(State(b): State<Banco>, Query(q): Query<std::collections::
         l.insert(0, c);
         docs = Some(l);
     }
+    // `familia=<código>`: sobe até o primeiro pai e pega a árvore inteira dele (a família do workspace atual)
+    if let Some(c) = q.get("familia") {
+        let l = com(&b, |conn| {
+            let raiz = db::raiz_da_familia(conn, db::id_por_codigo(conn, c)?)?;
+            let mut l = db::codigos_descendentes(conn, raiz)?;
+            l.insert(0, db::resumo_item(conn, raiz)?.0);
+            Ok(l)
+        })?;
+        docs = Some(l);
+    }
     let busca = q.get("q").cloned();
     let l = tokio::task::spawn_blocking(move || crate::cofre::listar(&banc, docs.as_deref(), busca.as_deref())).await.map_err(falhou_tarefa)??;
     Ok(Json(json!(l)))

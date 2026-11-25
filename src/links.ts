@@ -24,6 +24,11 @@ export function copiarLink(url: string) {
   navigator.clipboard.writeText(url).then(() => avisar(`Link copiado: ${url}`)).catch(falhou);
 }
 
+/** O caminho de verdade no disco (para colar no Explorer, no Teams, num e-mail), não o link do atelier. */
+export function copiarCaminho(caminho: string) {
+  navigator.clipboard.writeText(caminho).then(() => avisar(`Caminho copiado: ${caminho}`)).catch(falhou);
+}
+
 /** Segue um link. No app, pelo núcleo: ele acha a bancada do documento e abre a janela dela se for outra. No
  *  navegador de teste (sem o núcleo do app), a própria tela abre. */
 export async function seguirLink(url: string) {

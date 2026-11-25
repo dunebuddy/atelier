@@ -1,12 +1,13 @@
 // Cofre de segredos da bancada (o arquivo `cofre.db`, todo criptografado; a chave fica no cofre do Windows).
-// - TelaCofre: todos os segredos da bancada, com busca;
+// - TelaCofre: os segredos da bancada, com busca; abre só com os da família do workspace atual (sobe até o primeiro
+//   pai e pega a árvore dele), e um botão mostra todos;
 // - SegredosDoDocumento: a parte "Segredos" da página do documento (os dele e os dos descendentes);
 // - JanelaSegredo: a janelinha de criar/editar (abre de qualquer lugar com `novoSegredo`);
 // - PedidoDoAgente: a caixa "o agente quer o segredo X: Permitir por 5 min / Só desta vez / Negar".
 // O valor nunca vem na lista: só ao clicar em mostrar ou copiar (e a área de transferência se limpa em 30 s).
 // Valor que é um objeto JSON aparece (e se edita) como chave/valor, como no Secrets Manager da AWS.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bot, ChevronDown, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { Bot, ChevronDown, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, Network, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { api, Esquema, Segredo } from "../api";
 import { abrir, avisar, falhou } from "../ui";
 import { abrirCodigo } from "./Mencoes";
@@ -322,11 +323,36 @@ function FormSegredo({ inicial, documento, esquema, wsItem, aoFechar, aoCriar, v
 }
 
 /** Todos os segredos da bancada. */
+/** O workspace atual (o documento dele), que o App informa: o filtro "família do workspace" do cofre parte dele. */
+let wsDoCofre: { id: number | null; titulo: string } = { id: null, titulo: "" };
+export function definirWorkspaceDoCofre(id: number | null, titulo: string) {
+  if (wsDoCofre.id === id && wsDoCofre.titulo === titulo) return;
+  wsDoCofre = { id, titulo };
+  window.dispatchEvent(new Event("atelier:cofre-ws"));
+}
+function useWorkspaceDoCofre() {
+  const [w, setW] = useState(wsDoCofre);
+  useEffect(() => {
+    const f = () => setW(wsDoCofre);
+    window.addEventListener("atelier:cofre-ws", f);
+    return () => window.removeEventListener("atelier:cofre-ws", f);
+  }, []);
+  return w;
+}
+
 export function TelaCofre({ foco }: { foco?: number }) {
   const [lista, setLista] = useState<Segredo[] | null>(null);
   const [q, setQ] = useState("");
   const [chave, setChave] = useState(false);
-  const carregar = useCallback(() => { api.cofre().then(setLista).catch((e) => { setLista([]); falhou(e); }); }, []);
+  // padrão: só a família do workspace atual (no workspace da bancada, que não tem documento, todos)
+  const ws = useWorkspaceDoCofre();
+  // aberto para mostrar um segredo certo (pela ficha do documento): começa com todos, para ele estar na lista
+  const [familia, setFamilia] = useState(foco == null);
+  const filtrando = familia && ws.id != null;
+  const carregar = useCallback(() => {
+    const buscar = filtrando ? api.item(ws.id!).then((it) => api.cofre({ familia: it.codigo })) : api.cofre();
+    buscar.then(setLista).catch((e) => { setLista([]); falhou(e); });
+  }, [filtrando, ws.id]);
   useCofre(carregar);
   const b = q.trim().toLowerCase().replace(/^#/, "");
   const vis = (lista ?? []).filter((s) => !b || [s.nome, s.descricao, s.chave, s.documento ?? ""].some((x) => x.toLowerCase().includes(b)));
@@ -338,6 +364,14 @@ export function TelaCofre({ foco }: { foco?: number }) {
       </div>
       <div className="cofre-barra">
         <span className="cofre-busca"><Search size={14} /><input className="campo" placeholder="Buscar no nome, descrição, chave ou documento…" value={q} onChange={(e) => setQ(e.target.value)} /></span>
+        {ws.id != null && (
+          <button className={`btn${filtrando ? " ativo" : ""}`} onClick={() => setFamilia(!filtrando)}
+            title={filtrando
+              ? `Mostrando só os segredos da família de “${ws.titulo}” (do primeiro pai para baixo). Clique para ver todos.`
+              : `Mostrar só os segredos da família de “${ws.titulo}” (do primeiro pai para baixo)`}>
+            <Network size={14} /> {filtrando ? "Só desta família" : "Todos"}
+          </button>
+        )}
         <button className="btn" onClick={() => setChave((v) => !v)} title="Exportar a chave com uma senha, ou usar aqui a chave que veio de outro computador">
           <KeyRound size={14} /> Outro computador
         </button>
@@ -345,7 +379,9 @@ export function TelaCofre({ foco }: { foco?: number }) {
       </div>
       {chave && <ChaveDoCofre aoMudar={carregar} aoFechar={() => setChave(false)} />}
       {lista == null && <div className="vazio-grande">Abrindo o cofre…</div>}
-      {lista?.length === 0 && <div className="vazio-grande">Nenhum segredo ainda. Senha, secret ou token que você receber vem para cá, não para o texto.</div>}
+      {lista?.length === 0 && (filtrando
+        ? <div className="vazio-grande">Nenhum segredo na família de “{ws.titulo}”. <button className="btn" onClick={() => setFamilia(false)}>Ver todos</button></div>
+        : <div className="vazio-grande">Nenhum segredo ainda. Senha, secret ou token que você receber vem para cá, não para o texto.</div>)}
       <div className="cofre-lista">
         {vis.map((s) => <LinhaSegredo key={s.id} s={s} aoMudar={carregar} foco={s.id === foco} />)}
       </div>

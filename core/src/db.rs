@@ -372,7 +372,7 @@ const MIGRACOES: &[&str] = &[
 // criada por quem usa. O valor no item é a lista de códigos dos itens apontados (`["a3f9c21", ...]`). A config da
 // propriedade (`{"inverso": "Bloqueado por", "um_so": true}`) diz como se lê do outro lado e se aceita um item só.
 
-fn resumo_item(conn: &Connection, id: i64) -> Res<(String, String)> {
+pub fn resumo_item(conn: &Connection, id: i64) -> Res<(String, String)> {
     conn.query_row("SELECT COALESCE(codigo, ''), titulo FROM itens WHERE id = ?", [id], |r| Ok((r.get(0)?, r.get(1)?)))
         .optional()?
         .ok_or(Erro::NaoEncontrado(format!("documento {id}")))
@@ -585,6 +585,38 @@ pub fn codigos_descendentes(conn: &Connection, id: i64) -> Res<Vec<String>> {
         }
     }
     Ok(codigos)
+}
+
+/// Sobe pelas mesmas relações de um só valor (Pai) até o primeiro pai, o de cima da família. Ciclo ou pai apagado
+/// param a subida no último que existe.
+pub fn raiz_da_familia(conn: &Connection, id: i64) -> Res<i64> {
+    let pais: Vec<i64> = conn
+        .prepare("SELECT id FROM propriedades WHERE especie = 'relacao' AND json_extract(config, '$.um_so') = 1 ORDER BY id")?
+        .query_map([], |r| r.get(0))?
+        .collect::<Result<_, _>>()?;
+    let mut atual = id;
+    let mut vistos = std::collections::HashSet::from([id]);
+    'subir: loop {
+        for p in &pais {
+            let acima: Option<i64> = conn
+                .query_row(
+                    &format!(
+                        "SELECT o.id FROM itens i, json_each(i.props, '$.\"{p}\"') j JOIN itens o ON o.codigo = j.value \
+                         WHERE i.id = ?1 AND o.apagado_em IS NULL LIMIT 1"
+                    ),
+                    [atual],
+                    |r| r.get(0),
+                )
+                .optional()?;
+            if let Some(a) = acima {
+                if vistos.insert(a) {
+                    atual = a;
+                    continue 'subir;
+                }
+            }
+        }
+        return Ok(atual);
+    }
 }
 
 pub fn ramo(conn: &Connection, id: i64, prop: i64, sentido: &str) -> Res<Vec<Item>> {

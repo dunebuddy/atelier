@@ -272,9 +272,11 @@ export const api = {
   resumos: (codigos: string[]) => req<Resumo[]>("GET", `/resumos?codigos=${codigos.join(",")}`),
   lixeira: () => req<{ itens: Item[]; notas: any[] }>("GET", "/lixeira"),
   // cofre de segredos: listar nunca traz o valor; o valor só por cofreValor (a tela) ou pelo pedido do agente
-  cofre: (f: { de?: string; q?: string } = {}) => {
+  /** `de`: o documento e os descendentes; `familia`: sobe até o primeiro pai e pega a árvore inteira dele */
+  cofre: (f: { de?: string; familia?: string; q?: string } = {}) => {
     const p = new URLSearchParams();
     if (f.de) p.set("de", f.de);
+    if (f.familia) p.set("familia", f.familia);
     if (f.q) p.set("q", f.q);
     return req<Segredo[]>("GET", `/cofre${p.size ? `?${p}` : ""}`);
   },

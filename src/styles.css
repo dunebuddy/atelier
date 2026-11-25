@@ -348,7 +348,7 @@ body.redimensionando .sidebar { transition: none; }
 .ws-geral-topo .campo { width: 280px; }
 .ws-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; overflow-y: auto; align-content: start; padding: 4px; }
 .ws-cartao {
-  display: flex; flex-direction: column; gap: 10px; padding: 12px; min-height: 190px; cursor: pointer; border-radius: 14px;
+  display: flex; flex-direction: column; gap: 10px; padding: 12px; height: 200px; cursor: pointer; border-radius: 14px;
   background: var(--bg); border: 1px solid var(--borda); box-shadow: var(--sombra-folha); transition: transform .12s, border-color .12s;
 }
 .ws-cartao.sel { border-color: var(--acento); box-shadow: 0 0 0 2px var(--acento), var(--sombra); transform: translateY(-2px); }
@@ -358,8 +358,10 @@ body.redimensionando .sidebar { transition: none; }
 .ws-cartao-titulo { flex: 1; min-width: 0; font-weight: 650; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ws-cartao.atual { background: color-mix(in srgb, var(--acento) 9%, var(--bg)); border: 1px solid color-mix(in srgb, var(--acento) 60%, var(--borda)); }
 .ws-selo-atual { flex-shrink: 0; font-weight: 600; color: var(--acento); font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--acento-suave); }
-.ws-esboco { flex: 1; display: flex; gap: 6px; min-height: 0; }
-.ws-metade { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 5px; border-radius: 9px; background: var(--bg-fundo); }
+/* o esboço fica dentro do cartão: janela demais rola dentro da metade, não vaza por cima do rodapé */
+.ws-esboco { flex: 1; display: flex; gap: 6px; min-height: 0; overflow: hidden; }
+.ws-metade { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; display: flex; flex-direction: column; gap: 3px; padding: 5px; border-radius: 9px; background: var(--bg-fundo); }
+.ws-metade > * { flex-shrink: 0; }
 .ws-modo { color: var(--texto-3); display: flex; }
 .ws-janela { display: flex; align-items: center; gap: 5px; padding: 3px 6px; border-radius: 6px; font-size: 11.5px; color: var(--texto-2); background: var(--bg); min-width: 0; }
 .ws-janela.ativa { color: var(--texto); box-shadow: inset 2px 0 0 var(--acento); }
@@ -1137,6 +1139,8 @@ button.mencao:hover { text-decoration: underline; text-underline-offset: 2px; }
 .ex-trilha button:hover { background: var(--hover); color: var(--texto); }
 .ex-trilha .sep { color: var(--texto-3); margin: 0 1px; }
 .ex-trilha strong { color: var(--texto); overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
+.ex-trilha strong.ex-copiavel { cursor: copy; border-radius: 5px; padding: 2px 5px; }
+.ex-trilha strong.ex-copiavel:hover { background: var(--hover); }
 .ex-lista { flex: 1; overflow-y: auto; padding: 6px; }
 .ex-entrada { display: flex; align-items: center; gap: 9px; width: 100%; padding: 6px 8px; border-radius: 8px; text-align: left; color: var(--texto-2); }
 .ex-entrada:hover { background: var(--hover); color: var(--texto); }
@@ -1219,6 +1223,8 @@ body.arrastando-visao, body.arrastando-visao * { user-select: none; cursor: grab
 .app.zen .barra-titulo { display: none; }
 .app.zen .barra-status { display: none; }
 .app.zen .sidebar { display: none; }
+/* sem a barra de título, o bloco dos painéis ganha em cima a mesma folga dos outros lados (borda e cantos à vista) */
+.app.zen .corpo-app { padding-top: 8px; }
 
 /* Configurações → Atalhos: busca e os atalhos extras */
 .atalhos-busca { display: flex; align-items: center; gap: 8px; border: 1px solid var(--borda); border-radius: 8px; padding: 6px 10px; margin-bottom: 12px; color: var(--texto-3); }

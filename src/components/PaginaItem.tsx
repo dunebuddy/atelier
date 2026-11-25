@@ -115,16 +115,21 @@ export function PaginaItem({
     if (item && !item.titulo) tituloRef.current?.focus();
   }, [item?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // altura do título acompanha o texto; refaz quando a fonte serifada terminar de carregar
+  // altura do título acompanha o texto; refaz quando a fonte serifada terminar de carregar e quando a largura do
+  // título muda (janela do painel alargada ou estreitada, não só a janela do sistema)
   useEffect(() => {
-    const ajustar = () => {
-      const t = tituloRef.current;
-      if (t) { t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }
-    };
+    const t = tituloRef.current;
+    if (!t) return;
+    let largura = -1;
+    const ajustar = () => { t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; };
     ajustar();
     document.fonts?.ready.then(ajustar);
-    window.addEventListener("resize", ajustar);
-    return () => window.removeEventListener("resize", ajustar);
+    const obs = new ResizeObserver(([e]) => {
+      const l = Math.round(e.contentRect.width);
+      if (l !== largura) { largura = l; ajustar(); }
+    });
+    obs.observe(t);
+    return () => obs.disconnect();
   }, [item?.titulo]);
 
   // arrastar o nome de uma propriedade na ficha (ganchos antes do retorno antecipado: o React exige a mesma ordem)

@@ -59,6 +59,32 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.34** (2026-11-25) · Pedidos do dia:
+  - **Título do documento não encolhe quando o painel alarga** (2026-11-25, print do Paulo): o documento abriu
+    estreito (Claude Code grande ao lado), o título quebrou em muitas linhas; ao alargar a janela do documento, o
+    título voltou a 2 linhas mas a caixa manteve a altura antiga e a ficha ficou lá embaixo, com um buraco vazio.
+    Causa: em `PaginaItem.tsx` a altura do título só é recalculada no `resize` da janela do sistema, não quando a
+    janela do painel muda de largura. `ResizeObserver` no título no lugar do `resize`.
+  - **Modo Zen com a moldura da janela** (2026-11-25, print do Paulo): no Zen a janela com foco fica sem a bordinha em
+    cima (a moldura da janela ativa). Ele gosta do Zen como está (diferente do VS Code, e é para ficar assim); só quer
+    a bordinha aparecendo também no Zen. No Zen o bloco dos painéis ganha 8 px em cima, como
+    nos outros lados (antes encostava no topo da tela e a borda e os cantos sumiam).
+  - **Copiar o caminho de verdade no disco** (2026-11-25, pedido do Paulo): no visualizador de arquivos e pastas, o
+    botão de link copia o `atelier://`; ele quer o caminho físico para colar e mandar para alguém. Botão de copiar no cabeçalho do visualizador (o caminho do arquivo aberto, ou da pasta em que se está),
+    o nome do arquivo na trilha também copia ao clicar, e o mesmo botão no cabeçalho da árvore de arquivos.
+  - **Visão geral dos workspaces: sinal do agente e janelas contidas no cartão** (2026-11-25, print do Paulo): ele quer
+    ver no cartão, à esquerda do título, o mesmo sinal da lista de workspaces (agente trabalhando, esperando, parado);
+    e o cartão com muita janela (o do "Trace do Embulk") vazava por baixo do rodapé. A
+    `CarinhaAgente` entre o ícone e o título (só nos abertos com agente); o cartão com altura fixa (200 px) e cada
+    metade rola por dentro, mostrando todas as janelas (antes cortava em 6 com "+N").
+  - **X para fechar a visão geral dos workspaces** (2026-11-25, pedido do Paulo): só fechava com Esc (ou clicando
+    fora); com o mouse na mão, ele quer um X no canto direito de cima.
+  - **Cofre filtrado pela família do workspace atual** (2026-11-25, pedido do Paulo): além da busca por nome, um botão
+    que mostra só os segredos da família do workspace (sobe até o primeiro pai e pega todos os descendentes dele), e
+    esse filtro é o padrão ao abrir. `GET /api/cofre?familia=<código>` (`db::raiz_da_familia`
+    sobe pelas relações de um só valor, as mesmas que o cofre já usava para descer); a tela abre com "Só desta
+    família" e o botão alterna para "Todos". No workspace da bancada (sem documento) mostra todos; aberto para um
+    segredo certo (pela ficha) também começa com todos.
 - **0.2.33** (2026-11-24) · Pedidos do dia:
   - **Workspaces em ordem de uso:** no seletor lá em cima e na visão geral, depois do da bancada e dos ativos, os
     fechados (e os arquivados) vêm do usado por último para o mais antigo, não mais em ordem alfabética. Conta como

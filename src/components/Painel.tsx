@@ -295,6 +295,8 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo, workspace }: { estad
                   onClick={() => mudar((s) => P.ativar(s, mi, j.id))}
                   onDoubleClick={() => mudar((s) => P.alternarExpandida(P.ativar(s, mi, j.id), j.id))}
                   onContextMenu={(e) => { e.preventDefault(); setMenu({ ancora: e.currentTarget, id: j.id, mi }); }}
+                  // sem isso o botão do meio liga o autoscroll do WebView2 (a faixa de abas rola) e o auxclick nem chega
+                  onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }}
                   onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); mudar((s) => P.fechar(s, j.id)); } }}
                   title={`${j.titulo ?? ""}${j.fixada ? " (fixada: o que se abre nela vai para outra janela)" : ""}`}
                 >

@@ -13,7 +13,9 @@ Como usar:
 
 ## Próxima versão
 
-(vazio — escolher da caixa de entrada)
+- **Botão do meio fecha a aba do painel** (2026-11-26, pedido do Paulo). O código já existia, mas o clique do meio
+  ligava o autoscroll do WebView2 na faixa de abas (que rola) e o `auxclick` não chegava. Agora o `mousedown` do meio
+  é cancelado na aba (`Painel.tsx`).
 
 ## Caixa de entrada
 

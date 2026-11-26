@@ -23,6 +23,9 @@ Como usar:
   Paulo). A fonte continua a Cascadia Code, mas com as Nerd Fonts atrás (CaskaydiaCove, Symbols...) só para os
   ícones (oh-my-posh). Nova seção Configurações → Terminal: fonte (com as instaladas na máquina) e tamanho, com
   prévia; vale na hora para todos os terminais, inclusive janelas soltas (`fonteTerminal.ts`).
+- **Ctrl+clique em link do terminal perguntava sempre** (2026-11-26, pedido do Paulo). Era o `confirm` padrão do
+  xterm. Agora a pergunta é do atelier, com "Abrir e não perguntar mais"; para voltar (ou desligar antes), a caixinha
+  em Configurações → Terminal → Links (`linkTerminal.tsx`). O link abre no navegador do sistema, como antes.
 
 ## Caixa de entrada
 

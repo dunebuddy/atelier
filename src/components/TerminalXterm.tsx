@@ -8,6 +8,7 @@ import { atender, estadoDaSessao, marcarAgente, sessaoEmFoco } from "../agentes"
 import { BANCADA_DA_JANELA } from "../janela";
 import { usarLarguras } from "../larguras";
 import { lerFonteTerminal, pilhaDeFontes } from "../fonteTerminal";
+import { abrirLinkDoTerminal } from "../linkTerminal";
 
 // O terminal em si (xterm ligado ao processo pelo WebSocket). Fica num arquivo à parte para ser carregado só quando
 // o primeiro terminal abre (ver TerminalJanela em Terminal.tsx).
@@ -46,6 +47,8 @@ export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; ao
       fontFamily: pilhaDeFontes(lerFonteTerminal().familia),
       fontSize: lerFonteTerminal().tamanho,
       cursorBlink: true,
+      // Ctrl+clique em link: a pergunta é do atelier (com "não perguntar mais"), não o confirm do navegador
+      linkHandler: { activate: (_e, uri) => abrirLinkDoTerminal(uri) },
       allowProposedApi: true,
       // do outro lado está o ConPTY do Windows: sem isto, ao ganhar linhas o xterm puxa o histórico para a tela e o
       // ConPTY acha que elas estão vazias; o redesenho seguinte do agente sai com palavra comida e quebra fora do lugar

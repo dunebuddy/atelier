@@ -9,6 +9,7 @@ import { avisar, falhou, Tema } from "../ui";
 import { abrirWorkspace } from "./Workspaces";
 import { SecaoDitado } from "./Ditado";
 import { Marca } from "./Marca";
+import { mudarPerguntarLink, perguntarLink } from "../linkTerminal";
 import { FONTE_PADRAO, guardarFonteTerminal, instalada, lerFonteTerminal, pilhaDeFontes, SUGESTOES } from "../fonteTerminal";
 
 // as do app (engrenagem da barra de título) e as da bancada aberta (botão no rodapé da barra lateral)
@@ -199,6 +200,7 @@ function SecaoTerminal() {
     guardarFonteTerminal(novo);
   };
   const existe = instalada(f.familia);
+  const [perguntar, setPerguntar] = useState(perguntarLink);
   return (
     <>
       <h3>Terminal</h3>
@@ -226,6 +228,12 @@ function SecaoTerminal() {
       <pre style={{ fontFamily: pilhaDeFontes(f.familia), fontSize: f.tamanho, padding: "10px 12px", borderRadius: 6, background: "var(--bg-fundo)", border: "1px solid var(--borda, transparent)", margin: 0 }}>
         {PREVIA}
       </pre>
+      <h4>Links</h4>
+      <label className="menu-item" style={{ cursor: "pointer", paddingLeft: 0 }}>
+        <input type="checkbox" checked={perguntar} style={{ accentColor: "var(--acento)" }}
+          onChange={(e) => { setPerguntar(e.target.checked); mudarPerguntarLink(e.target.checked); }} />
+        Perguntar antes de abrir um link do terminal (Ctrl+clique) no navegador
+      </label>
     </>
   );
 }

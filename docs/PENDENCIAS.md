@@ -19,6 +19,10 @@ Como usar:
 - **Botão direito na pílula do agente (barra de status) dispensa o alerta** (2026-11-26, pedido do Paulo: "às vezes
   eu sei o que ele terminou e não me interessa ver"). O clique normal continua indo até o agente; o direito só tira a
   pílula, como se tivesse ido (todos os agentes daquele workspace na fila) (`Workspaces.tsx`).
+- **Terminal: ícones do prompt saíam como quadradinhos e não dava para trocar a fonte** (2026-11-26, pedido do
+  Paulo). A fonte continua a Cascadia Code, mas com as Nerd Fonts atrás (CaskaydiaCove, Symbols...) só para os
+  ícones (oh-my-posh). Nova seção Configurações → Terminal: fonte (com as instaladas na máquina) e tamanho, com
+  prévia; vale na hora para todos os terminais, inclusive janelas soltas (`fonteTerminal.ts`).
 
 ## Caixa de entrada
 

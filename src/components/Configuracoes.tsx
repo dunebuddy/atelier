@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, FileCode, FolderOpen, FolderPlus, Keyboard, Languages, Info, LayoutPanelLeft, Mic, Package, Palette, Pencil, Plug, Plus, RefreshCw, Shapes, Timer, X, Bell } from "lucide-react";
+import { Check, Copy, FileCode, FolderOpen, FolderPlus, Keyboard, Languages, Info, LayoutPanelLeft, Mic, Package, Palette, Pencil, Plug, Plus, RefreshCw, Shapes, SquareTerminal, Timer, X, Bell } from "lucide-react";
 import { Agente, api, Bancada, Bancadas, Esquema, Integracoes, Preferencias, TemaArquivo, AgenteCli, UsoAgente } from "../api";
 import { SecaoAutomacao, SecaoGeral } from "./Automacao";
 import { SecaoHooks, SecaoNotificacoes } from "./Avisos";
@@ -9,9 +9,10 @@ import { avisar, falhou, Tema } from "../ui";
 import { abrirWorkspace } from "./Workspaces";
 import { SecaoDitado } from "./Ditado";
 import { Marca } from "./Marca";
+import { FONTE_PADRAO, guardarFonteTerminal, instalada, lerFonteTerminal, pilhaDeFontes, SUGESTOES } from "../fonteTerminal";
 
 // as do app (engrenagem da barra de título) e as da bancada aberta (botão no rodapé da barra lateral)
-export type SecaoConfig = "aparencia" | "geral" | "bancadas" | "integracoes" | "ditado" | "automacao" | "editor" | "atalhos" | "notificacoes" | "sobre" | "bancada" | "tipos";
+export type SecaoConfig = "aparencia" | "geral" | "bancadas" | "integracoes" | "ditado" | "automacao" | "editor" | "terminal" | "atalhos" | "notificacoes" | "sobre" | "bancada" | "tipos";
 type Secao = SecaoConfig;
 
 const TEMAS: { id: Tema; nome: string; cores: string[] }[] = [
@@ -88,6 +89,7 @@ export function Configuracoes({
               {item("integracoes", <Plug size={15} />, "Integrações")}
               {item("ditado", <Mic size={15} />, "Ditado")}
               {item("editor", <FileCode size={15} />, "Editor de arquivos")}
+              {item("terminal", <SquareTerminal size={15} />, "Terminal")}
               {item("atalhos", <Keyboard size={15} />, "Atalhos")}
               {item("notificacoes", <Bell size={15} />, "Notificações")}
               {item("automacao", <Timer size={15} />, "Automação")}
@@ -175,10 +177,56 @@ export function Configuracoes({
               <p className="dica" style={{ marginTop: 16 }}>Se o arquivo mudar fora daqui (o agente editou) enquanto você tem mudanças, nada é salvo por cima: o painel avisa.</p>
             </>
           )}
+          {secao === "terminal" && <SecaoTerminal />}
           {secao === "tipos" && <SecaoTipos esquema={esquema} irTipo={irTipo} aoMudarEsquema={aoMudarEsquema} />}
         </section>
       </div>
     </div>
+  );
+}
+
+/** Configurações → Terminal: fonte e tamanho da letra (desta máquina). */
+const ic = (n: number) => String.fromCodePoint(n);
+const PREVIA = `${ic(0xf31a)} paulo@wks  ${ic(0xe5ff)} ~/projetos/atelier  ${ic(0xe0a0)} master ${ic(0xf00c)}
+ação, café, 0O1lI {} => != ->`;
+
+function SecaoTerminal() {
+  const [f, setF] = useState(lerFonteTerminal);
+  const [instaladas] = useState(() => SUGESTOES.filter(instalada));
+  const mudar = (d: Partial<typeof f>) => {
+    const novo = { ...f, ...d };
+    setF(novo);
+    guardarFonteTerminal(novo);
+  };
+  const existe = instalada(f.familia);
+  return (
+    <>
+      <h3>Terminal</h3>
+      <p className="dica">
+        Vale para todos os terminais e agentes desta máquina, na hora. Os ícones dos prompts (oh-my-posh, starship...) vêm
+        de uma Nerd Font: se uma estiver instalada, ela entra só para esses símbolos e o texto fica na fonte escolhida.
+      </p>
+      <h4>Fonte</h4>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <input className="campo" style={{ maxWidth: 280 }} list="fontes-terminal" value={f.familia}
+          onChange={(e) => mudar({ familia: e.target.value })} placeholder={FONTE_PADRAO.familia} />
+        <datalist id="fontes-terminal">{instaladas.map((n) => <option key={n} value={n} />)}</datalist>
+        <label className="auto-campos" style={{ margin: 0 }}>
+          Tamanho <input type="number" min={8} max={32} value={f.tamanho} onChange={(e) => mudar({ tamanho: Number(e.target.value) || FONTE_PADRAO.tamanho })} />
+        </label>
+        {(f.familia !== FONTE_PADRAO.familia || f.tamanho !== FONTE_PADRAO.tamanho) && (
+          <button className="btn" onClick={() => mudar(FONTE_PADRAO)}>Voltar ao padrão</button>
+        )}
+      </div>
+      {f.familia.trim() && !existe && <p className="dica" style={{ color: "var(--perigo, #c0392b)" }}>Esta fonte não está instalada nesta máquina: o terminal usa a próxima da fila.</p>}
+      {instaladas.length > 0 && (
+        <p className="dica">Instaladas aqui: {instaladas.map((n, i) => <span key={n}>{i > 0 && ", "}<a href="#" onClick={(e) => { e.preventDefault(); mudar({ familia: n }); }}>{n}</a></span>)}</p>
+      )}
+      <h4>Prévia</h4>
+      <pre style={{ fontFamily: pilhaDeFontes(f.familia), fontSize: f.tamanho, padding: "10px 12px", borderRadius: 6, background: "var(--bg-fundo)", border: "1px solid var(--borda, transparent)", margin: 0 }}>
+        {PREVIA}
+      </pre>
+    </>
   );
 }
 

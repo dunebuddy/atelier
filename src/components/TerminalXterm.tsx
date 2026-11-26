@@ -7,6 +7,7 @@ import { bate, doPainel } from "../atalhos";
 import { atender, estadoDaSessao, marcarAgente, sessaoEmFoco } from "../agentes";
 import { BANCADA_DA_JANELA } from "../janela";
 import { usarLarguras } from "../larguras";
+import { lerFonteTerminal, pilhaDeFontes } from "../fonteTerminal";
 
 // O terminal em si (xterm ligado ao processo pelo WebSocket). Fica num arquivo à parte para ser carregado só quando
 // o primeiro terminal abre (ver TerminalJanela em Terminal.tsx).
@@ -41,8 +42,9 @@ export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; ao
     if (!pronto || !caixa.current) return;
     let morto = false;
     const term = new XTerm({
-      fontFamily: '"Cascadia Code", "JetBrains Mono", Consolas, monospace',
-      fontSize: 13,
+      // a escolhida em Configurações → Terminal, com as Nerd Fonts atrás para os ícones dos prompts
+      fontFamily: pilhaDeFontes(lerFonteTerminal().familia),
+      fontSize: lerFonteTerminal().tamanho,
       cursorBlink: true,
       allowProposedApi: true,
       // do outro lado está o ConPTY do Windows: sem isto, ao ganhar linhas o xterm puxa o histórico para a tela e o
@@ -159,6 +161,17 @@ export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; ao
         mandarTamanho();
       } catch { /* ignore */ }
     };
+    // trocou a fonte nas configurações (nesta janela ou em outra do atelier): aplica e refaz as colunas
+    const novaFonte = () => {
+      if (morto) return;
+      const f = lerFonteTerminal();
+      term.options.fontFamily = pilhaDeFontes(f.familia);
+      term.options.fontSize = f.tamanho;
+      ajustar.current();
+    };
+    const fonteDeOutraJanela = (e: StorageEvent) => { if (e.key === "atelier.terminal.fonte") novaFonte(); };
+    window.addEventListener("atelier:fonte-terminal", novaFonte);
+    window.addEventListener("storage", fonteDeOutraJanela);
     const obs = new ResizeObserver(() => ajustar.current());
     obs.observe(caixa.current!);
     ws.onopen = () => ajustar.current();
@@ -167,6 +180,8 @@ export function TerminalXterm({ aba, visivel }: { aba: Aba; visivel: boolean; ao
       morto = true;
       clearTimeout(espera);
       obs.disconnect();
+      window.removeEventListener("atelier:fonte-terminal", novaFonte);
+      window.removeEventListener("storage", fonteDeOutraJanela);
       caixaAtual.removeEventListener("paste", colar, true);
       caixaAtual.removeEventListener("compositionstart", inicioComposicao, true);
       caixaAtual.removeEventListener("compositionend", fimComposicao, true);

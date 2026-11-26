@@ -16,6 +16,9 @@ Como usar:
 - **Botão do meio fecha a aba do painel** (2026-11-26, pedido do Paulo). O código já existia, mas o clique do meio
   ligava o autoscroll do WebView2 na faixa de abas (que rola) e o `auxclick` não chegava. Agora o `mousedown` do meio
   é cancelado na aba (`Painel.tsx`).
+- **Botão direito na pílula do agente (barra de status) dispensa o alerta** (2026-11-26, pedido do Paulo: "às vezes
+  eu sei o que ele terminou e não me interessa ver"). O clique normal continua indo até o agente; o direito só tira a
+  pílula, como se tivesse ido (todos os agentes daquele workspace na fila) (`Workspaces.tsx`).
 
 ## Caixa de entrada
 

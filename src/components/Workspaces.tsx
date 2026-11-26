@@ -11,7 +11,7 @@ import { Popover, usePopover } from "./Popover";
 import { Marca } from "./Marca";
 import { CarinhaAgente } from "./Avisos";
 import { Interruptor } from "./Automacao";
-import { estadoDe, filaDeEspera } from "../agentes";
+import { atender, estadoDe, filaDeEspera } from "../agentes";
 
 /** Pede para abrir o workspace de um item (ou o "Geral", sem id). */
 /** O ícone do workspace: o da bancada (fixo, nunca some) é a marca do atelier; o de um documento, o ícone dele. */
@@ -336,13 +336,15 @@ function FilaAgentes({ ws, irAoAgente }: { ws: Workspaces; irAoAgente: (sessao: 
     window.addEventListener("atelier:agentes", f);
     return () => window.removeEventListener("atelier:agentes", f);
   }, []);
-  const vistos = new Set<string>();
+  const todas = new Map<string, number[]>();
   const fila: { k: string; sessao: number; estado: "esperando" | "terminou" }[] = [];
   for (const f of filaDeEspera()) {
     const k = workspaceDaSessao(ws, f.sessao);
     // só os abertos: fechar ou arquivar o workspace para os terminais (o agente dele já não espera ninguém)
-    if (!k || vistos.has(k) || !ws.abertos.includes(k)) continue;
-    vistos.add(k);
+    if (!k || !ws.abertos.includes(k)) continue;
+    const ja = todas.get(k);
+    if (ja) { ja.push(f.sessao); continue; }
+    todas.set(k, [f.sessao]);
     fila.push({ k, sessao: f.sessao, estado: f.estado as "esperando" | "terminou" });
   }
   if (!fila.length) return null;
@@ -352,7 +354,9 @@ function FilaAgentes({ ws, irAoAgente }: { ws: Workspaces; irAoAgente: (sessao: 
         const titulo = ws.info[f.k]?.titulo ?? f.k;
         return (
           <button key={f.k} className={`bs-pilula ${f.estado}`} onClick={() => irAoAgente(f.sessao)}
-            title={`${titulo}: ${f.estado === "esperando" ? "um agente está esperando você" : "um agente terminou"} (clique para ir até ele)`}>
+            // botão direito: dispensa o alerta sem ir até lá (todos os agentes deste workspace na fila)
+            onContextMenu={(e) => { e.preventDefault(); atender(todas.get(f.k) ?? [f.sessao]); }}
+            title={`${titulo}: ${f.estado === "esperando" ? "um agente está esperando você" : "um agente terminou"} (clique para ir até ele; botão direito dispensa)`}>
             <CarinhaAgente estado={f.estado} temAgente />
             <span className="bs-pilula-nome">{titulo}</span>
           </button>

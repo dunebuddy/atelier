@@ -590,7 +590,7 @@ async fn ligar(State(b): State<Banco>, Path(id): Path<i64>, Json(d): Json<Value>
     com(&b, |c| {
         let prop = db::prop_por_nome_ou_id(c, d.get("prop").unwrap_or(&Value::Null))?;
         let para = match d.get("para") {
-            Some(Value::Number(n)) => n.as_i64().ok_or(Erro::Invalido("para inválido".into()))?,
+            Some(Value::Number(n)) => db::id_por_numero(c, n.as_i64().ok_or(Erro::Invalido("para inválido".into()))?)?,
             Some(Value::String(s)) => db::id_por_codigo(c, s)?,
             _ => return Err(Erro::Invalido("informe `para` (o outro documento)".into())),
         };

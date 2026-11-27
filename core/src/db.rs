@@ -419,7 +419,7 @@ fn normalizar_relacao(conn: &Connection, proprio: Option<&str>, v: &Value, um_so
     let mut cods: Vec<String> = vec![];
     for b in brutos {
         let id = match &b {
-            Value::Number(n) => n.as_i64().ok_or(Erro::Invalido("documento inválido na relação".into()))?,
+            Value::Number(n) => id_por_numero(conn, n.as_i64().ok_or(Erro::Invalido("documento inválido na relação".into()))?)?,
             Value::String(s) if s.trim().is_empty() => continue,
             Value::String(s) => id_por_codigo(conn, s)?,
             _ => return Err(Erro::Invalido("relação aceita códigos de documento (#a3f9c21)".into())),
@@ -792,6 +792,16 @@ pub fn id_por_codigo(conn: &Connection, codigo: &str) -> Res<i64> {
     conn.query_row("SELECT id FROM itens WHERE codigo = ?", [&c], |r| r.get(0))
         .optional()?
         .ok_or(Erro::NaoEncontrado(format!("documento #{c}")))
+}
+
+/// Documento citado por um número: o id interno, ou, se não há documento com esse id, o código (código só com
+/// dígitos, ex.: #5585351, chega como número quando o agente manda sem aspas; zeros à esquerda se perdem: 0012345).
+pub fn id_por_numero(conn: &Connection, n: i64) -> Res<i64> {
+    let existe: bool = conn.query_row("SELECT EXISTS(SELECT 1 FROM itens WHERE id = ?)", [n], |r| r.get(0))?;
+    if existe || n < 0 {
+        return Ok(n);
+    }
+    id_por_codigo(conn, &format!("{n:07}")).map_err(|_| Erro::NaoEncontrado(format!("documento #{n} (nem como código, nem como id)")))
 }
 
 /// Banco em memória já migrado (para os testes dos outros módulos).
@@ -2334,6 +2344,20 @@ mod testes {
 
         let sem = criar_item(&c, &json!({"titulo": "crua", "tipo_id": 1, "modelo_id": null})).unwrap();
         assert_eq!(ler_item(&c, sem).unwrap().corpo.unwrap(), "");
+    }
+
+    #[test]
+    fn codigo_so_com_digitos_vindo_como_numero() {
+        let c = banco();
+        let a = criar_item(&c, &json!({ "titulo": "dívida" })).unwrap();
+        let b = criar_item(&c, &json!({ "titulo": "zeros" })).unwrap();
+        c.execute("UPDATE itens SET codigo = '5585351' WHERE id = ?", [a]).unwrap();
+        c.execute("UPDATE itens SET codigo = '0012345' WHERE id = ?", [b]).unwrap();
+        assert_eq!(id_por_numero(&c, 5585351).unwrap(), a, "número que não é id: o código");
+        assert_eq!(id_por_numero(&c, 12345).unwrap(), b, "zeros à esquerda perdidos no número");
+        assert_eq!(id_por_numero(&c, a).unwrap(), a, "o id interno continua valendo");
+        assert!(id_por_numero(&c, 999_999).is_err());
+        assert_eq!(id_por_codigo(&c, "5585351").unwrap(), a);
     }
 
     #[test]

@@ -20,6 +20,10 @@ Como usar:
 - **Checklist: "Esconder feitos" não ficava lembrado** (2026-11-27, pedido do Paulo). Era um estado da tela, que
   voltava a desligado a cada abertura. Agora fica guardado por checklist (cada arquivo o seu), também depois de
   reiniciar o app (`Checklist.tsx`).
+- **Documento com código só de dígitos não abria pelo código** (2026-11-27, relato de um agente pelo `nao_consigo`: a
+  Dívida #5585351). O agente mandava o código sem aspas, como número, e número era sempre o id interno. Agora um
+  número que não é id de nenhum documento é procurado como código (com os zeros à esquerda de volta), no MCP, nas
+  relações e na API; o esquema do MCP pede o código como texto (`db::id_por_numero`, com teste).
 
 ## Caixa de entrada
 

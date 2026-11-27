@@ -160,7 +160,7 @@ banco): chame `nao_consigo` com o pedido e o que faltou, e diga a ele que ficou 
 
 fn ferramentas() -> Value {
     #[allow(non_snake_case)]
-    let ID = json!({ "type": ["string", "integer"], "description": "código do documento, ex.: \"a3f9c21\" (aparece como #a3f9c21)" });
+    let ID = json!({ "type": ["string", "integer"], "description": "código do documento, sempre como texto, ex.: \"a3f9c21\" ou \"5585351\" (aparece como #a3f9c21)" });
     let props = json!({
         "type": "object",
         "description": "Propriedades pelo NOME, ex.: {\"Status\": \"Em andamento\", \"Frente\": \"F2\", \"Tags\": [\"aws\"]}. Valor null apaga. Opção nova de seleção é criada sozinha.",
@@ -907,7 +907,8 @@ fn chrono_hoje() -> String {
 /// O item pode vir pelo código ("a3f9c21", "#a3f9c21") ou pelo id interno (número).
 fn id_de(conn: &Connection, a: &Value) -> Result<i64, String> {
     match a.get("id") {
-        Some(Value::Number(n)) => n.as_i64().ok_or("id inválido".into()),
+        // código só com dígitos (#5585351) chega como número: id_por_numero tenta o id e, se não há, o código
+        Some(Value::Number(n)) => db::id_por_numero(conn, n.as_i64().ok_or("id inválido")?).map_err(|e| e.to_string()),
         Some(Value::String(c)) => db::id_por_codigo(conn, c).map_err(|e| e.to_string()),
         _ => Err("informe o id (código do documento)".into()),
     }

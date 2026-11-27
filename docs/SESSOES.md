@@ -835,3 +835,19 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 - **0.2.35 publicada** (tag `v0.2.35`). Worktree juntada no master e removida. Ponto de parada: o Paulo confere na
   janela de verdade o botão do meio, a pílula e o Ctrl+clique num link do Claude Code (no teste não deu para gerar
   um link OSC 8 pelo PowerShell); segue em aberto o salto do "á" no Fedora.
+
+## 2026-11-27 — 0.2.36
+
+- Pedidos do dia na worktree `proxima-versao`: zoom no PDF e na imagem (`Zoom.tsx`, botões e Ctrl+roda); checklist
+  lembra o "Esconder feitos" por arquivo; código só com dígitos (#5585351) acha o documento vindo como número
+  (`db::id_por_numero`).
+- Conversa sobre sair do WebView (GPUI x Rune): GPUI é o mais sério (Zed, Discord), Rune é pré-lançamento; migrar é
+  reescrever ~19 mil linhas de interface (o editor TipTap é o pedaço mais difícil). Ficou só na conversa.
+- Medição de memória no app do Paulo: ~185 MB são o motor WebView2, o JS do atelier fica em 60 a 80 MB, o ditado põe
+  680 a 900 MB. Cortes: ditado sai 1 min depois (ou "logo depois"), workspace escondido há 5 min dorme (menos
+  terminal e arquivo com edição pendente), TipTap sob demanda.
+- O app caiu às 16:33 (e em 20/11): a máquina ficou sem memória virtual (aviso do Windows 2 s antes) e o núcleo
+  abortou (0xc0000409). Agora o `erros.log` guarda o motivo (`core/src/queda.rs`). O Paulo vai migrar a máquina para
+  Linux.
+- **0.2.36 publicada** (tag `v0.2.36`). Ponto de parada: medir a memória no app dele com a 0.2.36 e comparar com hoje
+  (~590 MB de WebView2 com 4 workspaces); conferir o ditado "logo depois" ditando de verdade.

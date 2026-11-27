@@ -13,7 +13,13 @@ Como usar:
 
 ## Próxima versão
 
-(vazio — escolher da caixa de entrada)
+- **Zoom no PDF e na imagem** (2026-11-27, pedido do Paulo: "abri um PDF e não tem como mudar o zoom"). Barrinha no
+  canto de baixo (−, porcentagem, +, caber) e Ctrl+roda do mouse (e o pinçar do touchpad), com o ponto embaixo do
+  mouse parado no lugar. 100% = caber na largura (PDF) ou na área (imagem); a área rola de lado quando passa. O PDF
+  redesenha as páginas no tamanho novo sem recarregar o arquivo (`Zoom.tsx`, `Explorador.tsx`).
+- **Checklist: "Esconder feitos" não ficava lembrado** (2026-11-27, pedido do Paulo). Era um estado da tela, que
+  voltava a desligado a cada abertura. Agora fica guardado por checklist (cada arquivo o seu), também depois de
+  reiniciar o app (`Checklist.tsx`).
 
 ## Caixa de entrada
 

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ImagemComZoom, useZoom } from "./Zoom";
+import type { PDFDocumentProxy } from "pdfjs-dist";
 import { Copy, Link2 } from "lucide-react";
 import { copiarCaminho, copiarLink, linkDoArquivo } from "../links";
 import {
@@ -442,10 +444,8 @@ function Previa({ caminho, aoVoltar, aoVerChecklist }: { caminho: string; aoVolt
         ) : info.especie === "pdf" ? (
           <Pdf key={versao} url={urlDo(caminho) + `&v=${versao}`} />
         ) : info.especie === "imagem" ? (
-          <div className="ex-centro">
-            <img src={urlDo(caminho) + `&v=${versao}`} alt={nomeDe(caminho)} title="Clique para ver em tela cheia" style={{ cursor: "zoom-in" }}
-              onClick={() => verImagem([{ src: urlDo(caminho) + `&v=${versao}`, nome: nomeDe(caminho) }])} />
-          </div>
+          <ImagemComZoom key={versao} src={urlDo(caminho) + `&v=${versao}`} nome={nomeDe(caminho)}
+            aoClicar={() => verImagem([{ src: urlDo(caminho) + `&v=${versao}`, nome: nomeDe(caminho) }])} />
         ) : info.especie === "video" ? (
           <div className="ex-centro"><video src={urlDo(caminho)} controls /></div>
         ) : info.especie === "audio" ? (
@@ -503,15 +503,19 @@ function Moldura({ html, frame, aoCarregar }: { html: string; frame?: React.Muta
  *  (e uma de folga em cada lado) são desenhadas; as que saem de vista soltam o desenho. Antes desenhava até 300 de
  *  uma vez, e um PDF grande comia centenas de MB. */
 function Pdf({ url }: { url: string }) {
+  const rolagem = useRef<HTMLDivElement>(null);
   const caixa = useRef<HTMLDivElement>(null);
+  const { zoom, barra, manterAncora } = useZoom(rolagem);
   const [erro, setErro] = useState<string | null>(null);
-  const [paginas, setPaginas] = useState(0);
+  const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
+  // a largura da área (sem o zoom): muda quando a janela do painel alarga ou estreita
+  const [area, setArea] = useState(0);
 
+  // carrega o documento (uma vez por arquivo)
   useEffect(() => {
     let cancelado = false;
     // cada documento sobe um worker do pdf.js: destruir a tarefa solta o documento e o worker
     let tarefa: { destroy: () => Promise<void> } | null = null;
-    let observador: IntersectionObserver | null = null;
     (async () => {
       try {
         const pdfjs = await import("pdfjs-dist");
@@ -520,71 +524,98 @@ function Pdf({ url }: { url: string }) {
         if (cancelado) return;
         const t = pdfjs.getDocument({ url });
         tarefa = t;
-        const doc = await t.promise;
-        if (cancelado) return;
-        setPaginas(doc.numPages);
-        const alvo = caixa.current!;
-        alvo.innerHTML = "";
-        const largura = alvo.clientWidth - 24;
-        // um lugar do tamanho certo para cada página (o tamanho vem da primeira; as diferentes se ajustam ao desenhar)
-        const primeira = (await doc.getPage(1)).getViewport({ scale: 1 });
-        const altura = (largura / primeira.width) * primeira.height;
-        const desenhando = new Set<number>();
-        const desenhar = async (lugar: HTMLDivElement, n: number) => {
-          if (desenhando.has(n) || lugar.firstChild) return;
-          desenhando.add(n);
-          try {
-            const pag = await doc.getPage(n);
-            const base = pag.getViewport({ scale: 1 });
-            const vp = pag.getViewport({ scale: (largura / base.width) * (window.devicePixelRatio || 1) });
-            const canvas = document.createElement("canvas");
-            canvas.width = vp.width;
-            canvas.height = vp.height;
-            canvas.style.width = `${largura}px`;
-            canvas.style.display = "block";
-            lugar.style.height = `${(largura / base.width) * base.height}px`;
-            await pag.render({ canvasContext: canvas.getContext("2d")!, viewport: vp }).promise;
-            // saiu de vista enquanto desenhava: não pendura o desenho (ninguém vai soltá-lo depois)
-            if (!cancelado && lugar.isConnected && lugar.dataset.vista === "1") lugar.appendChild(canvas);
-          } finally {
-            desenhando.delete(n);
-          }
-        };
-        observador = new IntersectionObserver((entradas) => {
-          for (const e of entradas) {
-            const lugar = e.target as HTMLDivElement;
-            const n = Number(lugar.dataset.pagina);
-            lugar.dataset.vista = e.isIntersecting ? "1" : "0";
-            if (e.isIntersecting) desenhar(lugar, n).catch(() => {});
-            else lugar.replaceChildren(); // saiu de vista (com folga): solta o desenho
-          }
-          // raiz = a vista (o corte de quem rola, a janela, entra na conta); folga de uma página em cima e embaixo
-        }, { rootMargin: `${Math.round(altura)}px 0px` });
-        for (let n = 1; n <= doc.numPages; n++) {
-          const lugar = document.createElement("div");
-          lugar.className = "ex-pdf-pagina";
-          lugar.dataset.pagina = String(n);
-          lugar.style.width = `${largura}px`;
-          lugar.style.height = `${altura}px`;
-          alvo.appendChild(lugar);
-          observador.observe(lugar);
-        }
+        const d = await t.promise;
+        if (!cancelado) setDoc(d);
       } catch (e) {
         if (!cancelado) setErro(String(e));
       }
     })();
     return () => {
       cancelado = true;
-      observador?.disconnect();
+      setDoc(null);
       tarefa?.destroy().catch(() => {});
     };
   }, [url]);
 
+  useEffect(() => {
+    const el = rolagem.current;
+    if (!el) return;
+    const obs = new ResizeObserver(() => setArea((a) => (Math.abs(a - el.clientWidth) > 2 ? el.clientWidth : a)));
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  // monta os lugares das páginas no tamanho do zoom; desenha só as que estão à vista
+  useEffect(() => {
+    if (!doc || !area || !caixa.current) return;
+    let cancelado = false;
+    let observador: IntersectionObserver | null = null;
+    const alvo = caixa.current;
+    (async () => {
+      const largura = Math.max(80, (area - 24) * zoom);
+      // um lugar do tamanho certo para cada página (o tamanho vem da primeira; as diferentes se ajustam ao desenhar)
+      const primeira = (await doc.getPage(1)).getViewport({ scale: 1 });
+      if (cancelado) return;
+      const altura = (largura / primeira.width) * primeira.height;
+      const desenhando = new Set<number>();
+      const desenhar = async (lugar: HTMLDivElement, n: number) => {
+        if (desenhando.has(n) || lugar.firstChild) return;
+        desenhando.add(n);
+        try {
+          const pag = await doc.getPage(n);
+          const base = pag.getViewport({ scale: 1 });
+          const vp = pag.getViewport({ scale: (largura / base.width) * (window.devicePixelRatio || 1) });
+          const canvas = document.createElement("canvas");
+          canvas.width = vp.width;
+          canvas.height = vp.height;
+          canvas.style.width = `${largura}px`;
+          canvas.style.display = "block";
+          lugar.style.height = `${(largura / base.width) * base.height}px`;
+          await pag.render({ canvasContext: canvas.getContext("2d")!, viewport: vp }).promise;
+          // saiu de vista enquanto desenhava: não pendura o desenho (ninguém vai soltá-lo depois)
+          if (!cancelado && lugar.isConnected && lugar.dataset.vista === "1") lugar.appendChild(canvas);
+        } finally {
+          desenhando.delete(n);
+        }
+      };
+      observador = new IntersectionObserver((entradas) => {
+        for (const e of entradas) {
+          const lugar = e.target as HTMLDivElement;
+          const n = Number(lugar.dataset.pagina);
+          lugar.dataset.vista = e.isIntersecting ? "1" : "0";
+          if (e.isIntersecting) desenhar(lugar, n).catch(() => {});
+          else lugar.replaceChildren(); // saiu de vista (com folga): solta o desenho
+        }
+        // folga de uma página em cima e embaixo
+      }, { root: rolagem.current, rootMargin: `${Math.round(altura)}px ${Math.round(largura)}px` });
+      const lugares: HTMLDivElement[] = [];
+      for (let n = 1; n <= doc.numPages; n++) {
+        const lugar = document.createElement("div");
+        lugar.className = "ex-pdf-pagina";
+        lugar.dataset.pagina = String(n);
+        lugar.style.width = `${largura}px`;
+        lugar.style.height = `${altura}px`;
+        lugares.push(lugar);
+      }
+      alvo.replaceChildren(...lugares);
+      // o zoom veio da roda: o ponto embaixo do mouse continua lá
+      manterAncora();
+      for (const l of lugares) observador.observe(l);
+    })().catch((e) => { if (!cancelado) setErro(String(e)); });
+    return () => {
+      cancelado = true;
+      observador?.disconnect();
+    };
+  }, [doc, area, zoom, manterAncora]);
+
   if (erro) return <div className="vazio-grande">Não consegui mostrar o PDF ({erro}).</div>;
   return (
-    <div className="ex-pdf">
-      {paginas > 0 && <div className="ex-meta" style={{ padding: "4px 12px" }}>{paginas} {paginas === 1 ? "página" : "páginas"}</div>}
-      <div ref={caixa} />
+    <div className="zoom-caixa">
+      <div ref={rolagem} className="zoom-rolagem ex-pdf">
+        {doc && <div className="ex-meta" style={{ padding: "4px 12px" }}>{doc.numPages} {doc.numPages === 1 ? "página" : "páginas"}</div>}
+        <div ref={caixa} className="ex-pdf-paginas" />
+      </div>
+      {doc && barra}
     </div>
   );
 }

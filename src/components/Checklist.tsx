@@ -6,7 +6,7 @@ import {
   AlertTriangle, KeyRound, Lock, Paperclip, Pencil, Plus, RefreshCw, SkipForward, Trash2, Undo2, X,
 } from "lucide-react";
 import { api, BASE, Esquema, Props, Resumo } from "../api";
-import { abrir, avisar, falhou, lerBase64 } from "../ui";
+import { abrir, avisar, falhou, guardar, ler, lerBase64 } from "../ui";
 import { useAoReaparecer, useVisivel } from "../visivel";
 import { lembrarResumo, useResumos } from "../resumos";
 import { abrirCodigo } from "./Mencoes";
@@ -275,7 +275,11 @@ export function ChecklistTela({ caminho, raiz, aoVoltar, aoVerTexto }: { caminho
   const [abertos, setAbertos] = useState<Record<string, boolean>>({});
   const [editando, setEditando] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<string[]>([]);
-  const [esconderFeitos, setEsconderFeitos] = useState(false);
+  // lembrado por checklist (cada arquivo guarda o seu), entre aberturas e reinícios do app
+  const chaveEsconder = `checklist.esconderFeitos.${caminho}`;
+  const [esconderFeitos, setEsconderFeitosBruto] = useState(() => ler<boolean>(chaveEsconder, false));
+  useEffect(() => { setEsconderFeitosBruto(ler<boolean>(chaveEsconder, false)); }, [chaveEsconder]);
+  const setEsconderFeitos = (v: boolean) => { setEsconderFeitosBruto(v); guardar(chaveEsconder, v); };
   const [verValores, setVerValores] = useState(true);
   const [arrasto, setArrasto] = useState<{ id: string; alvo?: string; antes?: boolean } | null>(null);
   const [secaoNova, setSecaoNova] = useState<{ b: number; nome: string } | null>(null);

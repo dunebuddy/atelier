@@ -1,6 +1,6 @@
 [package]
 name = "atelier"
-version = "0.2.35"
+version = "0.2.36"
 description = "atelier — gestão pessoal do Paulo"
 authors = ["Paulo"]
 edition = "2024"

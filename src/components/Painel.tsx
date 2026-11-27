@@ -83,9 +83,26 @@ function IconeJanela({ j }: { j: Janela }) {
   return <span className="j-emoji">{j.icone ?? "·"}</span>;
 }
 
+/** Quanto tempo um workspace fica escondido antes de as janelas dele dormirem (trocar e voltar logo não recarrega). */
+const DORMIR_MS = 5 * 60_000;
+
 /** `ativo`: é o workspace que está na tela (os outros ficam montados por trás). */
 export function PainelTrabalho({ estado, mudar, ctx, ativo, workspace }: { estado: EstadoPainel; mudar: Mudar; ctx: Contexto; ativo: boolean; workspace?: string }) {
   const caixa = useRef<HTMLDivElement>(null);
+  // workspace escondido há um tempo: as janelas dormem (saem da memória) e acordam quando você volta. O terminal
+  // nunca dorme (o agente continua lá), nem janela com mudança não salva (`data-pendente`). Dormindo = o conjunto das
+  // que ficam acordadas; null = acordado.
+  const [acordadas, setAcordadas] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    if (ativo) { setAcordadas(null); return; }
+    const t = window.setTimeout(() => {
+      const pendentes = [...(caixa.current?.querySelectorAll<HTMLElement>("section[data-janela]") ?? [])]
+        .filter((el) => el.querySelector("[data-pendente]"))
+        .map((el) => el.dataset.janela!);
+      setAcordadas(new Set(pendentes));
+    }, DORMIR_MS);
+    return () => window.clearTimeout(t);
+  }, [ativo]);
   const [tam, setTam] = useState({ w: 0, h: 0 });
   const [rolagem, setRolagem] = useState<number[]>([0, 0]);
   const [arrastando, setArrastando] = useState<string | null>(null);
@@ -373,9 +390,11 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo, workspace }: { estad
           left: Math.max(0, corpo.x - l.r.x),
         };
         const ativa = m.ativa === j.id && estado.foco === mi;
+        const dorme = acordadas != null && P.rotaDe(j).v !== "terminal" && !acordadas.has(j.id);
         return (
           <section
             key={j.id}
+            data-janela={j.id}
             className={`janela${ativa ? " ativa" : ""}${m.modo !== "abas" && m.janelas.length > 1 ? " moldura" : ""}${m.modo === "fita" ? " na-fita" : ""}`}
             style={{
               left: l.r.x, top: l.r.y, width: l.r.w, height: l.r.h,
@@ -418,7 +437,7 @@ export function PainelTrabalho({ estado, mudar, ctx, ativo, workspace }: { estad
               {/* o terminal segue o lugar da janela; o resto também para quando o workspace está escondido */}
               <VisivelContext.Provider value={ativo && l.visivel}>
                 <Quebrou onde={`janela: ${j.titulo ?? JSON.stringify(P.rotaDe(j))}`} aoFechar={() => mudar((s) => P.fechar(s, j.id))}>
-                  <Conteudo j={j} ctx={ctx} visivel={l.visivel} mudar={mudar} />
+                  {dorme ? <div className="janela-dormindo" /> : <Conteudo j={j} ctx={ctx} visivel={l.visivel} mudar={mudar} />}
                 </Quebrou>
               </VisivelContext.Provider>
             </div>

@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { copiarSegredo } from "./Cofre";
 import { copiarLink, linkDoArquivo } from "../links";
 import {
@@ -13,7 +13,8 @@ import { abrirCodigo } from "./Mencoes";
 import { ChipItem, EscolherItem } from "./Valor";
 import { Popover, usePopover } from "./Popover";
 import { trazerArquivos } from "./Arquivos";
-import { Editor } from "./Editor";
+// o editor (TipTap) só carrega quando um texto do checklist é editado: import direto puxava ele na abertura do app
+const Editor = lazy(() => import("./Editor").then((m) => ({ default: m.Editor })));
 import {
   alvoDe, apagarComentario, apagarPasso, blocos, chaveDeCampo, Checklist, corDaTag, criarComentario, criarPasso, dependeDe, dependentes, donoDaPasta, EstadoPasso,
   escreverChecklist, faltando, feito, juntar, lerChecklist, Link, moverParaSecao, moverPasso, moverSecao, Passo, preencher,
@@ -1003,6 +1004,7 @@ function EditorTexto({ ctx, rotulo, valor, placeholder, aoMudar }: {
   };
   return (
     <div className="ck-editor">
+      <Suspense fallback={null}>
       <Editor barra autoFoco valor={valor} aoMudar={aoMudar} placeholder={placeholder} pasta={pasta}
         aoMencao={(c) => abrirCodigo(c, (r) => abrir(r, true, true))}
         aoEscolherArquivo={async () => {
@@ -1020,6 +1022,7 @@ function EditorTexto({ ctx, rotulo, valor, placeholder, aoMudar }: {
           const r = await api.colarArquivo(it.id, f.name || "colado.png", await lerBase64(f));
           return r.caminho;
         }} />
+      </Suspense>
     </div>
   );
 }

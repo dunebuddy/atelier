@@ -97,7 +97,9 @@ export function anotarRamInterface(n: number | null) {
 }
 let estado: EstadoDitado | null = null;
 let relogio: number | undefined;
-export const minutosParaDescarregar = (): number => ler("ditado.descarregar_min", 5);
+// -1 = logo depois de cada ditado; 0 = nunca. Padrão 1 minuto desde 2026-11-27 (antes 5): o modelo ocupa 700 a 900 MB
+// e, num pico de memória da máquina, isso derrubava o app (ver core/src/queda.rs)
+export const minutosParaDescarregar = (): number => ler("ditado.descarregar_min", 1);
 export function mudarMinutos(n: number) {
   guardar("ditado.descarregar_min", n);
   usado();
@@ -105,7 +107,7 @@ export function mudarMinutos(n: number) {
 export const estadoDitado = () => estado;
 
 /** Marca uso agora e reprograma a descarga. */
-function usado(m?: ModeloDitado, onde: Dispositivo = dispositivo()) {
+function usado(m?: ModeloDitado, onde: Dispositivo = dispositivo(), fim = false) {
   if (m) {
     const mesmo = estado?.modelo.id === m.id;
     estado = { modelo: m, desde: mesmo ? estado!.desde : Date.now(), ultimoUso: Date.now(), dispositivo: onde, ramAntes: mesmo ? estado!.ramAntes : ramAntesDoWorker };
@@ -114,6 +116,9 @@ function usado(m?: ModeloDitado, onde: Dispositivo = dispositivo()) {
   window.clearTimeout(relogio);
   const min = minutosParaDescarregar();
   if (estado && min > 0) relogio = window.setTimeout(descarregar, min * 60_000);
+  // logo depois do ditado: sai uns segundos depois do texto pronto; no meio de um ditado (o modelo acabou de subir),
+  // espera o fim, com 5 minutos de garantia se o fim nunca vier
+  else if (estado && min < 0) relogio = window.setTimeout(descarregar, fim ? 3_000 : 5 * 60_000);
   avisarMudanca();
 }
 
@@ -200,7 +205,7 @@ export async function transcrever(audio: Float32Array): Promise<string> {
   const m = modeloAtual();
   if (!m) throw new Error("Nenhum modelo de ditado escolhido (Configurações → Ditado).");
   const r = await pedir<{ texto: string; dispositivo: Dispositivo }>({ t: "transcrever", modelo: m, audio }, [audio.buffer]);
-  usado(m, r.dispositivo);
+  usado(m, r.dispositivo, true);
   return r.texto;
 }
 
@@ -225,7 +230,7 @@ export async function terminarStreaming(): Promise<string> {
   const m = modeloAtual();
   if (!m) return "";
   const r = await pedir<{ texto: string; dispositivo: Dispositivo }>({ t: "stream_fim", modelo: m });
-  usado(m, r.dispositivo);
+  usado(m, r.dispositivo, true);
   return r.texto;
 }
 

@@ -253,6 +253,8 @@ fn link_inicial() -> Option<String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // quando o núcleo cai (pânico, falta de memória), o motivo fica no ~/atelier/erros.log
+    atelier_core::queda::registrar(env!("CARGO_PKG_VERSION"));
     let estado = api::Estado::iniciar().unwrap_or_else(|e| panic!("não abri a bancada: {e}"));
 
     tauri::Builder::default()

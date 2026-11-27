@@ -24,6 +24,17 @@ Como usar:
   Dívida #5585351). O agente mandava o código sem aspas, como número, e número era sempre o id interno. Agora um
   número que não é id de nenhum documento é procurado como código (com os zeros à esquerda de volta), no MCP, nas
   relações e na API; o esquema do MCP pede o código como texto (`db::id_por_numero`, com teste).
+- **Registro de queda do app** (2026-11-27). O atelier caiu às 16:33 (e em 20/11): a máquina ficou sem memória virtual
+  uns segundos ("Memória virtual mínima muito baixa" 2 s antes, nos dois casos) e o núcleo abortou ao não conseguir
+  memória (0xc0000409). O motivo se perdia (app sem console). Agora a saída de erro do processo vai para o
+  `~/atelier/erros.log` (falta de memória e quem aborta deixam a mensagem), o pânico ganha entrada com data, onde foi
+  e a pilha, e cada abertura deixa uma linha (`core/src/queda.rs`; teste à mão: `--example queda`).
+- **Economia de memória** (2026-11-27, medição: ~185 MB são o motor WebView2, o JavaScript do atelier fica em 60 a
+  80 MB, o ditado põe 680 a 900 MB):
+  - ditado sai da memória 1 minuto depois do uso (era 5) e ganhou a opção "Logo depois do ditado" (`ditado.ts`);
+  - workspace escondido há 5 minutos: as janelas dele dormem (saem da memória) e acordam quando você volta; terminal
+    nunca dorme, nem arquivo com edição não salva (`Painel.tsx`, `data-pendente` no Explorador);
+  - o editor (TipTap) não carrega mais na abertura do app por causa do checklist (`Checklist.tsx`, carga sob demanda).
 
 ## Caixa de entrada
 

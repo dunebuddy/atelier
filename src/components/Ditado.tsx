@@ -132,7 +132,7 @@ function juntar(partes: Float32Array[]): Float32Array {
   return a;
 }
 
-const TEMPOS: [number, string][] = [[1, "1 minuto"], [5, "5 minutos"], [15, "15 minutos"], [30, "30 minutos"], [0, "Nunca (fica carregado)"]];
+const TEMPOS: [number, string][] = [[-1, "Logo depois do ditado"], [1, "depois de 1 minuto"], [5, "depois de 5 minutos"], [15, "depois de 15 minutos"], [30, "depois de 30 minutos"], [0, "Nunca (fica carregado)"]];
 
 /** Configurações → Ditado: a lista de modelos; baixar, escolher, apagar; quanto tempo o modelo fica na memória. */
 export function SecaoDitado() {
@@ -244,11 +244,11 @@ export function SecaoDitado() {
         barra de status mostra enquanto ele está carregado, com a memória medida de verdade).
       </p>
       <label className="ditado-tempo">
-        Descarregar depois de
+        Descarregar
         <select className="campo" value={D.minutosParaDescarregar()} onChange={(e) => D.mudarMinutos(Number(e.target.value))}>
           {TEMPOS.map(([n, nome]) => <option key={n} value={n}>{nome}</option>)}
         </select>
-        sem uso
+        {D.minutosParaDescarregar() >= 0 && "sem uso"}
       </label>
       {carregado && <button className="btn" style={{ marginTop: 10 }} onClick={D.descarregar}>Descarregar agora</button>}
 
@@ -287,6 +287,7 @@ export function IndicadorDitado({ interfaceRam }: { interfaceRam: number | null 
   const onde = e.dispositivo === "gpu" ? "na placa de vídeo" : "no processador";
   const min = D.minutosParaDescarregar();
   const resta = min > 0 ? Math.max(0, Math.ceil((e.ultimoUso + min * 60_000 - Date.now()) / 60_000)) : null;
+  // "logo depois do ditado": aparece só enquanto você dita
   return (
     <button
       className="bs-medida ditado-indicador"

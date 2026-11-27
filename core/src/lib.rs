@@ -18,6 +18,7 @@ pub mod hooks;
 pub mod integracoes;
 pub mod manutencao;
 pub mod pastas;
+pub mod queda;
 pub mod sistema;
 pub mod temas;
 pub mod terminal;

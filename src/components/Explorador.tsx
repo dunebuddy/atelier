@@ -370,7 +370,8 @@ function Previa({ caminho, aoVoltar, aoVerChecklist }: { caminho: string; aoVolt
   const ext = caminho.split(".").pop()?.toLowerCase();
 
   return (
-    <div className="ex-previa">
+    // data-pendente: o painel não põe esta janela para dormir (workspace escondido) com mudança não salva
+    <div className="ex-previa" data-pendente={pendente ? "1" : undefined}>
       <div className="ex-barra">
         <button
           className="btn"

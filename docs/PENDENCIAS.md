@@ -13,19 +13,7 @@ Como usar:
 
 ## Próxima versão
 
-- **Botão do meio fecha a aba do painel** (2026-11-26, pedido do Paulo). O código já existia, mas o clique do meio
-  ligava o autoscroll do WebView2 na faixa de abas (que rola) e o `auxclick` não chegava. Agora o `mousedown` do meio
-  é cancelado na aba (`Painel.tsx`).
-- **Botão direito na pílula do agente (barra de status) dispensa o alerta** (2026-11-26, pedido do Paulo: "às vezes
-  eu sei o que ele terminou e não me interessa ver"). O clique normal continua indo até o agente; o direito só tira a
-  pílula, como se tivesse ido (todos os agentes daquele workspace na fila) (`Workspaces.tsx`).
-- **Terminal: ícones do prompt saíam como quadradinhos e não dava para trocar a fonte** (2026-11-26, pedido do
-  Paulo). A fonte continua a Cascadia Code, mas com as Nerd Fonts atrás (CaskaydiaCove, Symbols...) só para os
-  ícones (oh-my-posh). Nova seção Configurações → Terminal: fonte (com as instaladas na máquina) e tamanho, com
-  prévia; vale na hora para todos os terminais, inclusive janelas soltas (`fonteTerminal.ts`).
-- **Ctrl+clique em link do terminal perguntava sempre** (2026-11-26, pedido do Paulo). Era o `confirm` padrão do
-  xterm. Agora a pergunta é do atelier, com "Abrir e não perguntar mais"; para voltar (ou desligar antes), a caixinha
-  em Configurações → Terminal → Links (`linkTerminal.tsx`). O link abre no navegador do sistema, como antes.
+(vazio — escolher da caixa de entrada)
 
 ## Caixa de entrada
 
@@ -71,6 +59,20 @@ Como usar:
 - Configurações → Integrações → Claude Code: instalar o MCP e marcar **Comando**.
 
 ## Feito
+- **0.2.35** (2026-11-27) · Pedidos do dia 26:
+  - **Botão do meio fecha a aba do painel** (2026-11-26, pedido do Paulo). O código já existia, mas o clique do meio
+    ligava o autoscroll do WebView2 na faixa de abas (que rola) e o `auxclick` não chegava. Agora o `mousedown` do meio
+    é cancelado na aba (`Painel.tsx`).
+  - **Botão direito na pílula do agente (barra de status) dispensa o alerta** (2026-11-26, pedido do Paulo: "às vezes
+    eu sei o que ele terminou e não me interessa ver"). O clique normal continua indo até o agente; o direito só tira a
+    pílula, como se tivesse ido (todos os agentes daquele workspace na fila) (`Workspaces.tsx`).
+  - **Terminal: ícones do prompt saíam como quadradinhos e não dava para trocar a fonte** (2026-11-26, pedido do
+    Paulo). A fonte continua a Cascadia Code, mas com as Nerd Fonts atrás (CaskaydiaCove, Symbols...) só para os
+    ícones (oh-my-posh). Nova seção Configurações → Terminal: fonte (com as instaladas na máquina) e tamanho, com
+    prévia; vale na hora para todos os terminais, inclusive janelas soltas (`fonteTerminal.ts`).
+  - **Ctrl+clique em link do terminal perguntava sempre** (2026-11-26, pedido do Paulo). Era o `confirm` padrão do
+    xterm. Agora a pergunta é do atelier, com "Abrir e não perguntar mais"; para voltar (ou desligar antes), a caixinha
+    em Configurações → Terminal → Links (`linkTerminal.tsx`). O link abre no navegador do sistema, como antes.
 - **0.2.34** (2026-11-25) · Pedidos do dia:
   - **Título do documento não encolhe quando o painel alarga** (2026-11-25, print do Paulo): o documento abriu
     estreito (Claude Code grande ao lado), o título quebrou em muitas linhas; ao alargar a janela do documento, o

@@ -822,3 +822,16 @@ atualização automática testada). O Paulo achou "bem utilizável". Para a pró
 - Cofre por família: `db::raiz_da_familia` (sobe pelas relações `um_so`, para em ciclo ou pai apagado) +
   `familia=` em `cofre_listar`; na tela, `definirWorkspaceDoCofre` (o App informa o workspace ativo) e o botão "Só
   desta família" / "Todos", ligado por padrão. Testado com raiz → filho → neto + um de fora, pela API e na tela.
+- **0.2.34 publicada** (tag `v0.2.34`, CI `release` rodando ao fechar). Worktree `proxima-versao` juntada no master e
+  removida; a próxima rodada de pedidos abre uma worktree nova do mesmo jeito. Ponto de parada: o Paulo confere no
+  uso o cofre por família, o copiar caminho e o título; segue em aberto o salto do "á" no Fedora (confirmar a 0.2.32).
+
+## 2026-11-26/27 — 0.2.35
+
+- Pedidos do dia na worktree `proxima-versao` (recriada do master): botão do meio fecha a aba do painel (o autoscroll
+  do WebView2 engolia o `auxclick`); botão direito na pílula do agente dispensa o alerta; terminal com as Nerd Fonts
+  atrás da Cascadia Code (ícones do oh-my-posh) e seção Configurações → Terminal (fonte, tamanho, prévia, perguntar
+  antes de abrir link); Ctrl+clique em link do terminal pergunta pelo atelier, com "não perguntar mais".
+- **0.2.35 publicada** (tag `v0.2.35`). Worktree juntada no master e removida. Ponto de parada: o Paulo confere na
+  janela de verdade o botão do meio, a pílula e o Ctrl+clique num link do Claude Code (no teste não deu para gerar
+  um link OSC 8 pelo PowerShell); segue em aberto o salto do "á" no Fedora.
